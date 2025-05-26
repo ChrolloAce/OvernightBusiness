@@ -131,28 +131,40 @@ export class GoogleAuthService {
     return this.tokens.access_token
   }
 
-  // Save tokens to localStorage
+  // Save tokens to localStorage (client-side only)
   private saveTokens(tokens: GoogleTokens): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('google_tokens', JSON.stringify({
-        ...tokens,
-        expires_at: Date.now() + (tokens.expires_in * 1000)
-      }))
-    }
-  }
-
-  // Load tokens from localStorage
-  private loadTokens(): void {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('google_tokens')
-      if (stored) {
-        this.tokens = JSON.parse(stored)
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        localStorage.setItem('google_tokens', JSON.stringify({
+          ...tokens,
+          expires_at: Date.now() + (tokens.expires_in * 1000)
+        }))
+      } catch (error) {
+        console.warn('Failed to save tokens to localStorage:', error)
       }
     }
   }
 
-  // Check if user is authenticated
+  // Load tokens from localStorage (client-side only)
+  private loadTokens(): void {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const stored = localStorage.getItem('google_tokens')
+        if (stored) {
+          this.tokens = JSON.parse(stored)
+        }
+      } catch (error) {
+        console.warn('Failed to load tokens from localStorage:', error)
+      }
+    }
+  }
+
+  // Check if user is authenticated (client-side only)
   isAuthenticated(): boolean {
+    if (typeof window === 'undefined') {
+      return false // Always return false during SSR
+    }
+    
     this.loadTokens()
     return !!this.tokens?.access_token
   }
@@ -160,8 +172,12 @@ export class GoogleAuthService {
   // Clear tokens (logout)
   logout(): void {
     this.tokens = null
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('google_tokens')
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        localStorage.removeItem('google_tokens')
+      } catch (error) {
+        console.warn('Failed to remove tokens from localStorage:', error)
+      }
     }
   }
 } 

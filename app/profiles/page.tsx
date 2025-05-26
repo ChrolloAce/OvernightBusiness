@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Building2, 
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { GoogleAuthService } from '@/lib/google-auth'
 
 interface BusinessProfile {
   id: string
@@ -74,6 +75,21 @@ export default function ProfilesPage() {
   ])
 
   const [showAddForm, setShowAddForm] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Check connection status after component mounts
+  useEffect(() => {
+    setMounted(true)
+    const authService = GoogleAuthService.getInstance()
+    setIsConnected(authService.isAuthenticated())
+  }, [])
+
+  const handleConnectGoogle = () => {
+    const authService = GoogleAuthService.getInstance()
+    const authUrl = authService.getAuthUrl()
+    window.location.href = authUrl
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -114,15 +130,22 @@ export default function ProfilesPage() {
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <span className="text-sm">Not Connected</span>
+              <div className={`w-3 h-3 rounded-full ${mounted && isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="text-sm">
+                {mounted ? (isConnected ? 'Connected' : 'Not Connected') : 'Checking...'}
+              </span>
             </div>
-            <Button variant="outline">
-              Connect Google Account
-            </Button>
+            {mounted && !isConnected && (
+              <Button variant="outline" onClick={handleConnectGoogle}>
+                Connect Google Account
+              </Button>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            You need to connect your Google account to sync business profiles and manage posts.
+            {mounted && isConnected 
+              ? 'Your Google account is connected and ready to manage business profiles.'
+              : 'You need to connect your Google account to sync business profiles and manage posts.'
+            }
           </p>
         </CardContent>
       </Card>
