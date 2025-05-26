@@ -64,13 +64,26 @@ interface GoogleBusinessLocation {
     regionCode: string
   }
   primaryCategory?: {
+    categoryId: string
     displayName: string
   }
   locationState?: {
+    isGoogleUpdated: boolean
+    isDuplicate: boolean
+    isSuspended: boolean
+    canUpdate: boolean
+    canDelete: boolean
     isVerified: boolean
+    needsReverification: boolean
   }
   openInfo?: {
-    status: 'OPEN' | 'CLOSED'
+    status: string
+    canReopen: boolean
+    openingDate?: {
+      year: number
+      month: number
+      day: number
+    }
   }
   regularHours?: {
     periods: Array<{
@@ -89,12 +102,20 @@ interface GoogleBusinessLocation {
     }>
   }>
   metadata?: {
-    canOperateLocalPost?: boolean
-    canHaveFoodMenus?: boolean
-    canOperateHealthData?: boolean
-    canOperateLodgingData?: boolean
-    canHaveBusinessCalls?: boolean
-    hasVoiceOfMerchant?: boolean
+    hasGoogleUpdated: boolean
+    hasPendingEdits: boolean
+    canDelete: boolean
+    canOperateLocalPost: boolean
+    canModifyServiceList: boolean
+    canHaveFoodMenus: boolean
+    canOperateHealthData: boolean
+    canOperateLodgingData: boolean
+    placeId: string
+    duplicateLocation?: string
+    mapsUri: string
+    newReviewUri: string
+    canHaveBusinessCalls: boolean
+    hasVoiceOfMerchant: boolean
   }
   latlng?: {
     latitude: number
@@ -111,6 +132,7 @@ interface GoogleBusinessLocation {
   relationshipData?: any
   serviceItems?: any[]
   additionalCategories?: Array<{
+    categoryId: string
     displayName: string
   }>
 }
@@ -863,11 +885,11 @@ export default function ProfilesPage() {
                                   <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
                                   <div className="text-sm text-muted-foreground">
                                     <div className="font-medium">Business Hours:</div>
-                                    {GoogleBusinessAPI.formatBusinessHours(location).slice(0, 2).map((hour, idx) => (
+                                    {GoogleBusinessAPI.formatBusinessHours(location as any).slice(0, 2).map((hour, idx) => (
                                       <div key={idx} className="text-xs">{hour}</div>
                                     ))}
-                                    {GoogleBusinessAPI.formatBusinessHours(location).length > 2 && (
-                                      <div className="text-xs text-blue-600">+{GoogleBusinessAPI.formatBusinessHours(location).length - 2} more</div>
+                                    {GoogleBusinessAPI.formatBusinessHours(location as any).length > 2 && (
+                                      <div className="text-xs text-blue-600">+{GoogleBusinessAPI.formatBusinessHours(location as any).length - 2} more</div>
                                     )}
                                   </div>
                                 </div>
@@ -884,18 +906,18 @@ export default function ProfilesPage() {
                               </div>
                               
                               {/* Business Capabilities */}
-                              {location.metadata && GoogleBusinessAPI.getBusinessCapabilities(location).length > 0 && (
+                              {location.metadata && GoogleBusinessAPI.getBusinessCapabilities(location as any).length > 0 && (
                                 <div className="mt-2">
                                   <div className="text-xs font-medium text-muted-foreground mb-1">Capabilities:</div>
                                   <div className="flex flex-wrap gap-1">
-                                    {GoogleBusinessAPI.getBusinessCapabilities(location).slice(0, 3).map((capability, idx) => (
+                                    {GoogleBusinessAPI.getBusinessCapabilities(location as any).slice(0, 3).map((capability, idx) => (
                                       <span key={idx} className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                                         {capability}
                                       </span>
                                     ))}
-                                    {GoogleBusinessAPI.getBusinessCapabilities(location).length > 3 && (
+                                    {GoogleBusinessAPI.getBusinessCapabilities(location as any).length > 3 && (
                                       <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                                        +{GoogleBusinessAPI.getBusinessCapabilities(location).length - 3}
+                                        +{GoogleBusinessAPI.getBusinessCapabilities(location as any).length - 3}
                                       </span>
                                     )}
                                   </div>
