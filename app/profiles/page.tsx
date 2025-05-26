@@ -419,7 +419,7 @@ export default function ProfilesPage() {
         category: allCategories[0] || 'Business',
         rating: completeLocation.rating || 0,
         reviewCount: completeLocation.reviewCount || 0,
-        status: completeLocation.isVerified ? 'active' : 'pending',
+        status: (completeLocation.locationState?.isVerified || completeLocation.isVerified) ? 'active' : 'pending',
         lastUpdated: new Date().toISOString().split('T')[0],
         googleBusinessId: completeLocation.name || location.name || `temp_${profileId}`
       }
@@ -451,9 +451,15 @@ export default function ProfilesPage() {
           allCategories: allCategories,
           capabilities: capabilities,
           isOpen: completeLocation.isOpen,
-          businessType: completeLocation.businessType
+          businessType: completeLocation.businessType,
+          // New fields
+          phoneNumbers: completeLocation.phoneNumbers,
+          categories: completeLocation.categories,
+          additionalPhones: GoogleBusinessAPI.getAdditionalPhones(completeLocation),
+          serviceTypes: GoogleBusinessAPI.getServiceTypes(completeLocation),
+          moreHoursTypes: GoogleBusinessAPI.getMoreHoursTypes(completeLocation)
         },
-        isVerified: completeLocation.isVerified || false,
+        isVerified: completeLocation.locationState?.isVerified || completeLocation.isVerified || false,
         totalReviews: completeLocation.reviewCount || 0,
         lastSynced: new Date().toISOString(),
         createdAt: new Date().toISOString()
@@ -1015,10 +1021,21 @@ export default function ProfilesPage() {
                   <div className="flex items-center space-x-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">Phone</p>
+                      <p className="font-medium">Primary Phone</p>
                       <p className="text-sm text-muted-foreground">{selectedProfile.phone}</p>
                     </div>
                   </div>
+                  {selectedProfile.googleData?.additionalPhones && selectedProfile.googleData.additionalPhones.length > 0 && (
+                    <div className="flex items-start space-x-2">
+                      <Phone className="h-4 w-4 text-muted-foreground mt-1" />
+                      <div>
+                        <p className="font-medium">Additional Phones</p>
+                        {selectedProfile.googleData.additionalPhones.map((phone, idx) => (
+                          <p key={idx} className="text-sm text-muted-foreground">{phone}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {selectedProfile.website && (
                     <div className="flex items-center space-x-2">
                       <Globe className="h-4 w-4 text-muted-foreground" />
@@ -1138,6 +1155,44 @@ export default function ProfilesPage() {
                         <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700">
                           {capability}
                         </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Service Types */}
+              {selectedProfile.googleData?.serviceTypes && selectedProfile.googleData.serviceTypes.length > 0 && (
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Available Services</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                      {selectedProfile.googleData.serviceTypes.map((service, idx) => (
+                        <div key={idx} className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                          <p className="text-sm font-medium">{service.displayName}</p>
+                          <p className="text-xs text-muted-foreground">{service.serviceTypeId}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* More Hours Types */}
+              {selectedProfile.googleData?.moreHoursTypes && selectedProfile.googleData.moreHoursTypes.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Additional Hours Types</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {selectedProfile.googleData.moreHoursTypes.map((hoursType, idx) => (
+                        <div key={idx} className="flex justify-between items-center p-2 border rounded">
+                          <span className="text-sm font-medium">{hoursType.displayName}</span>
+                          <span className="text-xs text-muted-foreground">{hoursType.localizedDisplayName}</span>
+                        </div>
                       ))}
                     </div>
                   </CardContent>

@@ -36,6 +36,38 @@ export interface SavedBusinessProfile {
     capabilities?: string[]
     isOpen?: boolean
     businessType?: string
+    // New fields for enhanced data
+    phoneNumbers?: {
+      primaryPhone?: string
+      additionalPhones?: string[]
+    }
+    categories?: {
+      primaryCategory?: {
+        displayName: string
+        serviceTypes?: Array<{
+          serviceTypeId: string
+          displayName: string
+        }>
+        moreHoursTypes?: Array<{
+          hoursTypeId: string
+          displayName: string
+          localizedDisplayName: string
+        }>
+      }
+      additionalCategories?: Array<{
+        displayName: string
+      }>
+    }
+    additionalPhones?: string[]
+    serviceTypes?: Array<{
+      serviceTypeId: string
+      displayName: string
+    }>
+    moreHoursTypes?: Array<{
+      hoursTypeId: string
+      displayName: string
+      localizedDisplayName: string
+    }>
   }
   // Computed fields
   isVerified?: boolean

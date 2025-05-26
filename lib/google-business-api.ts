@@ -10,9 +10,9 @@ export interface BusinessLocation {
   regularHours?: {
     periods: Array<{
       openDay: string
-      openTime: string
+      openTime: string | { hours: number; minutes?: number }
       closeDay: string
-      closeTime: string
+      closeTime: string | { hours: number; minutes?: number }
     }>
   }
   address?: {
@@ -32,6 +32,15 @@ export interface BusinessLocation {
   primaryCategory?: {
     categoryId: string
     displayName: string
+    serviceTypes?: Array<{
+      serviceTypeId: string
+      displayName: string
+    }>
+    moreHoursTypes?: Array<{
+      hoursTypeId: string
+      displayName: string
+      localizedDisplayName: string
+    }>
   }
   additionalCategories?: Array<{
     categoryId: string
@@ -108,9 +117,9 @@ export interface BusinessLocation {
     hoursTypeId: string
     periods: Array<{
       openDay: string
-      openTime: string
+      openTime: string | { hours: number; minutes?: number }
       closeDay: string
-      closeTime: string
+      closeTime: string | { hours: number; minutes?: number }
     }>
   }>
   serviceItems?: Array<{
@@ -145,6 +154,15 @@ export interface BusinessLocation {
   categories?: {
     primaryCategory?: {
       displayName: string
+      serviceTypes?: Array<{
+        serviceTypeId: string
+        displayName: string
+      }>
+      moreHoursTypes?: Array<{
+        hoursTypeId: string
+        displayName: string
+        localizedDisplayName: string
+      }>
     }
     additionalCategories?: Array<{
       displayName: string
@@ -152,6 +170,7 @@ export interface BusinessLocation {
   }
   phoneNumbers?: {
     primaryPhone?: string
+    additionalPhones?: string[]
   }
 }
 
@@ -587,13 +606,47 @@ export class GoogleBusinessAPI {
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
       
       location.regularHours.periods.forEach(period => {
-        const openDay = dayNames[parseInt(period.openDay)] || period.openDay
-        const closeDay = dayNames[parseInt(period.closeDay)] || period.closeDay
+        let openDay = period.openDay
+        let closeDay = period.closeDay
+        
+        // Convert day names if they're in enum format
+        if (openDay === 'MONDAY') openDay = 'Monday'
+        else if (openDay === 'TUESDAY') openDay = 'Tuesday'
+        else if (openDay === 'WEDNESDAY') openDay = 'Wednesday'
+        else if (openDay === 'THURSDAY') openDay = 'Thursday'
+        else if (openDay === 'FRIDAY') openDay = 'Friday'
+        else if (openDay === 'SATURDAY') openDay = 'Saturday'
+        else if (openDay === 'SUNDAY') openDay = 'Sunday'
+        
+        if (closeDay === 'MONDAY') closeDay = 'Monday'
+        else if (closeDay === 'TUESDAY') closeDay = 'Tuesday'
+        else if (closeDay === 'WEDNESDAY') closeDay = 'Wednesday'
+        else if (closeDay === 'THURSDAY') closeDay = 'Thursday'
+        else if (closeDay === 'FRIDAY') closeDay = 'Friday'
+        else if (closeDay === 'SATURDAY') closeDay = 'Saturday'
+        else if (closeDay === 'SUNDAY') closeDay = 'Sunday'
+        
+        // Handle time objects properly
+        let openTime = period.openTime
+        let closeTime = period.closeTime
+        
+        // If time is an object with hours property, format it
+        if (typeof openTime === 'object' && openTime.hours !== undefined) {
+          const hours = openTime.hours
+          const minutes = openTime.minutes || 0
+          openTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+        }
+        
+        if (typeof closeTime === 'object' && closeTime.hours !== undefined) {
+          const hours = closeTime.hours
+          const minutes = closeTime.minutes || 0
+          closeTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+        }
         
         if (openDay === closeDay) {
-          hours.push(`${openDay}: ${period.openTime} - ${period.closeTime}`)
+          hours.push(`${openDay}: ${openTime} - ${closeTime}`)
         } else {
-          hours.push(`${openDay} ${period.openTime} - ${closeDay} ${period.closeTime}`)
+          hours.push(`${openDay} ${openTime} - ${closeDay} ${closeTime}`)
         }
       })
     }
@@ -680,5 +733,46 @@ export class GoogleBusinessAPI {
     }
     
     return 'Phone not available'
+  }
+
+  // Get additional phone numbers
+  static getAdditionalPhones(location: BusinessLocation): string[] {
+    const phones: string[] = []
+    
+    // Handle the new phoneNumbers structure
+    if (location.phoneNumbers?.additionalPhones) {
+      phones.push(...location.phoneNumbers.additionalPhones)
+    }
+    
+    return phones
+  }
+
+  // Get service types from primary category
+  static getServiceTypes(location: BusinessLocation): Array<{serviceTypeId: string, displayName: string}> {
+    const serviceTypes: Array<{serviceTypeId: string, displayName: string}> = []
+    
+    // Handle the new categories structure
+    if (location.categories?.primaryCategory?.serviceTypes) {
+      serviceTypes.push(...location.categories.primaryCategory.serviceTypes)
+    }
+    
+    // Fallback to old structure for backward compatibility
+    if (location.primaryCategory?.serviceTypes) {
+      serviceTypes.push(...location.primaryCategory.serviceTypes)
+    }
+    
+    return serviceTypes
+  }
+
+  // Get more hours types available for this business
+  static getMoreHoursTypes(location: BusinessLocation): Array<{hoursTypeId: string, displayName: string, localizedDisplayName: string}> {
+    const moreHoursTypes: Array<{hoursTypeId: string, displayName: string, localizedDisplayName: string}> = []
+    
+    // Handle the new categories structure
+    if (location.categories?.primaryCategory?.moreHoursTypes) {
+      moreHoursTypes.push(...location.categories.primaryCategory.moreHoursTypes)
+    }
+    
+    return moreHoursTypes
   }
 } 
