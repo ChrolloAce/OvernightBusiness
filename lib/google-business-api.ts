@@ -510,8 +510,8 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching locations with complete details for account:', accountName)
     
-    // Use comprehensive read mask to get all available business information
-    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,additionalCategories,regularHours,metadata,serviceArea,labels,adWordsLocationExtensions,latlng,openInfo,locationState,attributes,profile,relationshipData,moreHours,serviceItems'
+    // Use a more conservative read mask with commonly available fields
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,latlng,openInfo,locationState'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
       headers: {
@@ -530,8 +530,8 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching complete location details:', locationName)
     
-    // Use comprehensive read mask to get all available fields
-    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,additionalCategories,regularHours,metadata,serviceArea,labels,adWordsLocationExtensions,latlng,openInfo,locationState,attributes,profile,relationshipData,moreHours,serviceItems'
+    // Use a more conservative read mask with commonly available fields
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,latlng,openInfo,locationState'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}?readMask=${readMask}`, {
       headers: {
