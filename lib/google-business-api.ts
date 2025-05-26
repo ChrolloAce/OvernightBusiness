@@ -70,6 +70,7 @@ export interface BusinessLocation {
         placeId: string
       }>
     }
+    regionCode?: string
   }
   labels?: string[]
   latlng?: {
@@ -171,6 +172,17 @@ export interface BusinessLocation {
   phoneNumbers?: {
     primaryPhone?: string
     additionalPhones?: string[]
+  }
+  languageCode?: string
+  storeCode?: string
+  specialHours?: {
+    specialHourPeriods: Array<{
+      startDate: any
+      endDate?: any
+      openTime?: any
+      closeTime?: any
+      closed?: boolean
+    }>
   }
 }
 
@@ -560,8 +572,8 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching complete location details:', locationName)
     
-    // Use only basic, commonly available fields from the official API documentation
-    const readMask = 'name,title,storefrontAddress,websiteUri,phoneNumbers,categories,regularHours'
+    // Use comprehensive read mask to get all available business information
+    const readMask = 'name,title,languageCode,storeCode,storefrontAddress,websiteUri,phoneNumbers,categories,regularHours,specialHours,serviceArea,labels,latlng,openInfo,metadata,profile,relationshipData,moreHours,serviceItems'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}?readMask=${readMask}`, {
       headers: {
@@ -774,5 +786,157 @@ export class GoogleBusinessAPI {
     }
     
     return moreHoursTypes
+  }
+
+  // Get business language
+  static getLanguage(location: BusinessLocation): string {
+    return location.languageCode || 'Not specified'
+  }
+
+  // Get store code
+  static getStoreCode(location: BusinessLocation): string {
+    return location.storeCode || 'Not specified'
+  }
+
+  // Get business description
+  static getBusinessDescription(location: BusinessLocation): string {
+    return location.profile?.description || 'No description available'
+  }
+
+  // Get opening date
+  static getOpeningDate(location: BusinessLocation): string {
+    if (location.openInfo?.openingDate) {
+      const date = location.openInfo.openingDate
+      if (date.year && date.month && date.day) {
+        return `${date.year}-${date.month.toString().padStart(2, '0')}-${date.day.toString().padStart(2, '0')}`
+      } else if (date.year && date.month) {
+        return `${date.year}-${date.month.toString().padStart(2, '0')}`
+      } else if (date.year) {
+        return date.year.toString()
+      }
+    }
+    return 'Not specified'
+  }
+
+  // Get service area information
+  static getServiceArea(location: BusinessLocation): {
+    businessType?: string
+    places?: Array<{placeName: string, placeId: string}>
+    regionCode?: string
+  } {
+    const serviceArea: any = {}
+    
+    if (location.serviceArea) {
+      if (location.serviceArea.businessType) {
+        serviceArea.businessType = location.serviceArea.businessType
+      }
+      if (location.serviceArea.places?.placeInfos) {
+        serviceArea.places = location.serviceArea.places.placeInfos
+      }
+      if (location.serviceArea.regionCode) {
+        serviceArea.regionCode = location.serviceArea.regionCode
+      }
+    }
+    
+    return serviceArea
+  }
+
+  // Get special hours
+  static getSpecialHours(location: BusinessLocation): Array<{
+    startDate: any
+    endDate?: any
+    openTime?: any
+    closeTime?: any
+    closed?: boolean
+  }> {
+    const specialHours: Array<any> = []
+    
+    if (location.specialHours?.specialHourPeriods) {
+      specialHours.push(...location.specialHours.specialHourPeriods)
+    }
+    
+    return specialHours
+  }
+
+  // Get more hours (additional hour types)
+  static getMoreHours(location: BusinessLocation): Array<{
+    hoursTypeId: string
+    periods: Array<{
+      openDay: string
+      openTime: any
+      closeDay: string
+      closeTime: any
+    }>
+  }> {
+    const moreHours: Array<any> = []
+    
+    if (location.moreHours) {
+      moreHours.push(...location.moreHours)
+    }
+    
+    return moreHours
+  }
+
+  // Get service items
+  static getServiceItems(location: BusinessLocation): Array<{
+    price?: any
+    structuredServiceItem?: any
+    freeFormServiceItem?: any
+  }> {
+    const serviceItems: Array<any> = []
+    
+    if (location.serviceItems) {
+      serviceItems.push(...location.serviceItems)
+    }
+    
+    return serviceItems
+  }
+
+  // Get relationship data
+  static getRelationshipData(location: BusinessLocation): {
+    parentLocation?: any
+    childrenLocations?: any[]
+    parentChain?: string
+  } {
+    const relationshipData: any = {}
+    
+    if (location.relationshipData) {
+      if (location.relationshipData.parentLocation) {
+        relationshipData.parentLocation = location.relationshipData.parentLocation
+      }
+      if (location.relationshipData.childrenLocations) {
+        relationshipData.childrenLocations = location.relationshipData.childrenLocations
+      }
+      if (location.relationshipData.parentChain) {
+        relationshipData.parentChain = location.relationshipData.parentChain
+      }
+    }
+    
+    return relationshipData
+  }
+
+  // Get business status
+  static getBusinessStatus(location: BusinessLocation): {
+    status?: string
+    canReopen?: boolean
+    isOpen?: boolean
+  } {
+    const status: any = {}
+    
+    if (location.openInfo) {
+      if (location.openInfo.status) {
+        status.status = location.openInfo.status
+      }
+      if (location.openInfo.canReopen !== undefined) {
+        status.canReopen = location.openInfo.canReopen
+      }
+    }
+    
+    // Determine if currently open based on status
+    if (location.openInfo?.status) {
+      status.isOpen = location.openInfo.status === 'OPEN'
+    }
+    
+    return status
   }
 } 

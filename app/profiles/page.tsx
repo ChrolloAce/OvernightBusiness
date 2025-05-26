@@ -457,7 +457,18 @@ export default function ProfilesPage() {
           categories: completeLocation.categories,
           additionalPhones: GoogleBusinessAPI.getAdditionalPhones(completeLocation),
           serviceTypes: GoogleBusinessAPI.getServiceTypes(completeLocation),
-          moreHoursTypes: GoogleBusinessAPI.getMoreHoursTypes(completeLocation)
+          moreHoursTypes: GoogleBusinessAPI.getMoreHoursTypes(completeLocation),
+          // Additional comprehensive data
+          language: GoogleBusinessAPI.getLanguage(completeLocation),
+          storeCode: GoogleBusinessAPI.getStoreCode(completeLocation),
+          businessDescription: GoogleBusinessAPI.getBusinessDescription(completeLocation),
+          openingDate: GoogleBusinessAPI.getOpeningDate(completeLocation),
+          serviceAreaInfo: GoogleBusinessAPI.getServiceArea(completeLocation),
+          specialHours: GoogleBusinessAPI.getSpecialHours(completeLocation),
+          moreHoursData: GoogleBusinessAPI.getMoreHours(completeLocation),
+          serviceItemsData: GoogleBusinessAPI.getServiceItems(completeLocation),
+          relationshipInfo: GoogleBusinessAPI.getRelationshipData(completeLocation),
+          businessStatusInfo: GoogleBusinessAPI.getBusinessStatus(completeLocation)
         },
         isVerified: completeLocation.locationState?.isVerified || completeLocation.isVerified || false,
         totalReviews: completeLocation.reviewCount || 0,
@@ -984,16 +995,32 @@ export default function ProfilesPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-background rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto"
+            className="bg-background rounded-lg p-6 w-full max-w-6xl mx-4 max-h-[90vh] overflow-y-auto"
           >
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6 pb-4 border-b">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
                   {selectedProfile.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">{selectedProfile.name}</h2>
-                  <p className="text-muted-foreground">{selectedProfile.category}</p>
+                  <h2 className="text-3xl font-bold">{selectedProfile.name}</h2>
+                  <p className="text-lg text-muted-foreground">{selectedProfile.category}</p>
+                  <div className="flex items-center space-x-3 mt-2">
+                    <Badge className={getStatusColor(selectedProfile.status)}>
+                      {selectedProfile.status}
+                    </Badge>
+                    {selectedProfile.isVerified !== undefined && (
+                      <Badge className={selectedProfile.isVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                        {selectedProfile.isVerified ? '✓ Verified' : '⚠ Unverified'}
+                      </Badge>
+                    )}
+                    {selectedProfile.googleData?.businessStatusInfo?.isOpen !== undefined && (
+                      <Badge className={selectedProfile.googleData.businessStatusInfo.isOpen ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                        {selectedProfile.googleData.businessStatusInfo.isOpen ? '🟢 Open' : '🔴 Closed'}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setShowDetailView(false)}>
@@ -1001,344 +1028,393 @@ export default function ProfilesPage() {
               </Button>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Basic Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Building2 className="mr-2 h-5 w-5" />
-                    Basic Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-start space-x-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
+            {/* Main Content Grid */}
+            <div className="grid gap-6 lg:grid-cols-3">
+              
+              {/* Left Column - Basic Info & Contact */}
+              <div className="space-y-6">
+                
+                {/* Contact Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Phone className="mr-2 h-5 w-5" />
+                      Contact Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div>
-                      <p className="font-medium">Address</p>
-                      <p className="text-sm text-muted-foreground">{selectedProfile.address}</p>
+                      <p className="font-medium text-sm text-muted-foreground">Primary Phone</p>
+                      <p className="text-lg">{selectedProfile.phone}</p>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Primary Phone</p>
-                      <p className="text-sm text-muted-foreground">{selectedProfile.phone}</p>
-                    </div>
-                  </div>
-                  {selectedProfile.googleData?.additionalPhones && selectedProfile.googleData.additionalPhones.length > 0 && (
-                    <div className="flex items-start space-x-2">
-                      <Phone className="h-4 w-4 text-muted-foreground mt-1" />
+                    {selectedProfile.googleData?.additionalPhones && selectedProfile.googleData.additionalPhones.length > 0 && (
                       <div>
-                        <p className="font-medium">Additional Phones</p>
+                        <p className="font-medium text-sm text-muted-foreground">Additional Phones</p>
                         {selectedProfile.googleData.additionalPhones.map((phone, idx) => (
-                          <p key={idx} className="text-sm text-muted-foreground">{phone}</p>
+                          <p key={idx} className="text-lg">{phone}</p>
                         ))}
                       </div>
-                    </div>
-                  )}
-                  {selectedProfile.website && (
-                    <div className="flex items-center space-x-2">
-                      <Globe className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    {selectedProfile.website && (
                       <div>
-                        <p className="font-medium">Website</p>
+                        <p className="font-medium text-sm text-muted-foreground">Website</p>
                         <a 
                           href={selectedProfile.website} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:underline"
+                          className="text-blue-600 hover:underline break-all"
                         >
                           {selectedProfile.website}
                         </a>
                       </div>
-                    </div>
-                  )}
-                  <div className="flex items-center space-x-2">
-                    <Star className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Rating & Reviews</p>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedProfile.rating}/5 ({selectedProfile.reviewCount} reviews)
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Status & Verification */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <AlertCircle className="mr-2 h-5 w-5" />
-                    Status & Verification
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="font-medium">Business Status</p>
-                    <Badge className={getStatusColor(selectedProfile.status)}>
-                      {selectedProfile.status}
-                    </Badge>
-                  </div>
-                  {selectedProfile.isVerified !== undefined && (
-                    <div>
-                      <p className="font-medium">Verification Status</p>
-                      <Badge className={selectedProfile.isVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
-                        {selectedProfile.isVerified ? '✓ Verified' : '⚠ Unverified'}
-                      </Badge>
-                    </div>
-                  )}
-                  {selectedProfile.googleData?.isOpen !== undefined && (
-                    <div>
-                      <p className="font-medium">Currently Open</p>
-                      <Badge className={selectedProfile.googleData.isOpen ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                        {selectedProfile.googleData.isOpen ? '🟢 Open' : '🔴 Closed'}
-                      </Badge>
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-medium">Last Updated</p>
-                    <p className="text-sm text-muted-foreground">{selectedProfile.lastUpdated}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Last Synced</p>
-                    <p className="text-sm text-muted-foreground">{new Date(selectedProfile.lastSynced).toLocaleString()}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Categories */}
-              {selectedProfile.googleData?.allCategories && selectedProfile.googleData.allCategories.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Business Categories</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedProfile.googleData.allCategories.map((category, idx) => (
-                        <Badge key={idx} variant="outline">
-                          {category}
-                        </Badge>
-                      ))}
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
-              )}
 
-              {/* Business Hours */}
-              {selectedProfile.googleData?.businessHours && selectedProfile.googleData.businessHours.length > 0 && (
+                {/* Location & Address */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
-                      <Clock className="mr-2 h-5 w-5" />
-                      Business Hours
+                      <MapPin className="mr-2 h-5 w-5" />
+                      Location
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-1">
-                      {selectedProfile.googleData.businessHours.map((hour, idx) => (
-                        <p key={idx} className="text-sm">{hour}</p>
-                      ))}
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="font-medium text-sm text-muted-foreground">Address</p>
+                      <p className="text-sm">{selectedProfile.address}</p>
                     </div>
+                    {selectedProfile.googleData?.latlng && (
+                      <div>
+                        <p className="font-medium text-sm text-muted-foreground">Coordinates</p>
+                        <p className="text-sm font-mono">
+                          {selectedProfile.googleData.latlng.latitude}, {selectedProfile.googleData.latlng.longitude}
+                        </p>
+                      </div>
+                    )}
+                    {selectedProfile.googleData?.language && selectedProfile.googleData.language !== 'Not specified' && (
+                      <div>
+                        <p className="font-medium text-sm text-muted-foreground">Language</p>
+                        <p className="text-sm">{selectedProfile.googleData.language}</p>
+                      </div>
+                    )}
+                    {selectedProfile.googleData?.storeCode && selectedProfile.googleData.storeCode !== 'Not specified' && (
+                      <div>
+                        <p className="font-medium text-sm text-muted-foreground">Store Code</p>
+                        <p className="text-sm font-mono">{selectedProfile.googleData.storeCode}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
-              )}
 
-              {/* Business Capabilities */}
-              {selectedProfile.googleData?.capabilities && selectedProfile.googleData.capabilities.length > 0 && (
+                {/* Business Metrics */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Business Capabilities</CardTitle>
+                    <CardTitle className="flex items-center">
+                      <Star className="mr-2 h-5 w-5" />
+                      Performance
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedProfile.googleData.capabilities.map((capability, idx) => (
-                        <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700">
-                          {capability}
-                        </Badge>
-                      ))}
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                        <p className="text-2xl font-bold text-yellow-600">{selectedProfile.rating}</p>
+                        <p className="text-xs text-muted-foreground">Rating</p>
+                      </div>
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <p className="text-2xl font-bold text-blue-600">{selectedProfile.reviewCount}</p>
+                        <p className="text-xs text-muted-foreground">Reviews</p>
+                      </div>
                     </div>
+                    {selectedProfile.googleData?.openingDate && selectedProfile.googleData.openingDate !== 'Not specified' && (
+                      <div>
+                        <p className="font-medium text-sm text-muted-foreground">Opening Date</p>
+                        <p className="text-sm">{selectedProfile.googleData.openingDate}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
-              )}
+              </div>
 
-              {/* Service Types */}
-              {selectedProfile.googleData?.serviceTypes && selectedProfile.googleData.serviceTypes.length > 0 && (
-                <Card className="md:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Available Services</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                      {selectedProfile.googleData.serviceTypes.map((service, idx) => (
-                        <div key={idx} className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
-                          <p className="text-sm font-medium">{service.displayName}</p>
-                          <p className="text-xs text-muted-foreground">{service.serviceTypeId}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              {/* Middle Column - Business Details */}
+              <div className="space-y-6">
+                
+                {/* Business Description */}
+                {selectedProfile.googleData?.businessDescription && selectedProfile.googleData.businessDescription !== 'No description available' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>About This Business</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm leading-relaxed">{selectedProfile.googleData.businessDescription}</p>
+                    </CardContent>
+                  </Card>
+                )}
 
-              {/* More Hours Types */}
-              {selectedProfile.googleData?.moreHoursTypes && selectedProfile.googleData.moreHoursTypes.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Additional Hours Types</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {selectedProfile.googleData.moreHoursTypes.map((hoursType, idx) => (
-                        <div key={idx} className="flex justify-between items-center p-2 border rounded">
-                          <span className="text-sm font-medium">{hoursType.displayName}</span>
-                          <span className="text-xs text-muted-foreground">{hoursType.localizedDisplayName}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                {/* Categories */}
+                {selectedProfile.googleData?.allCategories && selectedProfile.googleData.allCategories.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Business Categories</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedProfile.googleData.allCategories.map((category, idx) => (
+                          <Badge key={idx} variant="outline" className={idx === 0 ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}>
+                            {category} {idx === 0 && '(Primary)'}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-              {/* Location Coordinates */}
-              {selectedProfile.googleData?.latlng && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Location Coordinates</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <p className="text-sm">
-                        <span className="font-medium">Latitude:</span> {selectedProfile.googleData.latlng.latitude}
-                      </p>
-                      <p className="text-sm">
-                        <span className="font-medium">Longitude:</span> {selectedProfile.googleData.latlng.longitude}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                {/* Business Hours */}
+                {selectedProfile.googleData?.businessHours && selectedProfile.googleData.businessHours.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Clock className="mr-2 h-5 w-5" />
+                        Business Hours
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {selectedProfile.googleData.businessHours.map((hour, idx) => (
+                          <div key={idx} className="flex justify-between items-center py-1 border-b border-gray-100 last:border-0">
+                            <span className="text-sm font-medium">{hour.split(':')[0]}</span>
+                            <span className="text-sm text-muted-foreground">{hour.split(':').slice(1).join(':')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-              {/* Business Description */}
-              {selectedProfile.googleData?.profile?.description && (
-                <Card className="md:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Business Description</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm">{selectedProfile.googleData.profile.description}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Metadata Information */}
-              {selectedProfile.googleData?.metadata && (
-                <Card className="md:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Google Business Profile Metadata</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      {selectedProfile.googleData.metadata.placeId && (
+                {/* Service Area */}
+                {selectedProfile.googleData?.serviceAreaInfo && Object.keys(selectedProfile.googleData.serviceAreaInfo).length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Service Area</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {selectedProfile.googleData.serviceAreaInfo.businessType && (
                         <div>
-                          <p className="font-medium">Place ID</p>
-                          <p className="text-sm text-muted-foreground font-mono">{selectedProfile.googleData.metadata.placeId}</p>
+                          <p className="font-medium text-sm text-muted-foreground">Business Type</p>
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                            {selectedProfile.googleData.serviceAreaInfo.businessType}
+                          </Badge>
                         </div>
                       )}
-                      {selectedProfile.googleData.metadata.mapsUri && (
+                      {selectedProfile.googleData.serviceAreaInfo.regionCode && (
                         <div>
-                          <p className="font-medium">Maps Link</p>
-                          <a 
-                            href={selectedProfile.googleData.metadata.mapsUri} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline"
-                          >
-                            View on Google Maps
-                          </a>
+                          <p className="font-medium text-sm text-muted-foreground">Region</p>
+                          <p className="text-sm">{selectedProfile.googleData.serviceAreaInfo.regionCode}</p>
                         </div>
                       )}
-                      {selectedProfile.googleData.metadata.newReviewUri && (
+                      {selectedProfile.googleData.serviceAreaInfo.places && selectedProfile.googleData.serviceAreaInfo.places.length > 0 && (
                         <div>
-                          <p className="font-medium">Review Link</p>
-                          <a 
-                            href={selectedProfile.googleData.metadata.newReviewUri} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline"
-                          >
-                            Leave a Review
-                          </a>
+                          <p className="font-medium text-sm text-muted-foreground">Service Areas</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {selectedProfile.googleData.serviceAreaInfo.places.map((place, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                {place.placeName}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
                       )}
-                    </div>
-                    
-                    <div className="mt-4 grid gap-2 md:grid-cols-2">
-                      <div className="flex items-center space-x-2">
-                        <span className={`w-2 h-2 rounded-full ${selectedProfile.googleData.metadata.hasGoogleUpdated ? 'bg-yellow-500' : 'bg-gray-300'}`}></span>
-                        <span className="text-sm">Has Google Updates</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`w-2 h-2 rounded-full ${selectedProfile.googleData.metadata.hasPendingEdits ? 'bg-orange-500' : 'bg-gray-300'}`}></span>
-                        <span className="text-sm">Has Pending Edits</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`w-2 h-2 rounded-full ${selectedProfile.googleData.metadata.canOperateLocalPost ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                        <span className="text-sm">Can Manage Posts</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`w-2 h-2 rounded-full ${selectedProfile.googleData.metadata.canHaveFoodMenus ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                        <span className="text-sm">Can Have Food Menus</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`w-2 h-2 rounded-full ${selectedProfile.googleData.metadata.canHaveBusinessCalls ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                        <span className="text-sm">Can Have Business Calls</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`w-2 h-2 rounded-full ${selectedProfile.googleData.metadata.hasVoiceOfMerchant ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                        <span className="text-sm">Has Voice of Merchant</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
 
-              {/* Service Area Business Type */}
-              {selectedProfile.googleData?.businessType && (
+              {/* Right Column - Advanced Features */}
+              <div className="space-y-6">
+                
+                {/* Available Services */}
+                {selectedProfile.googleData?.serviceTypes && selectedProfile.googleData.serviceTypes.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Available Services</CardTitle>
+                      <CardDescription>{selectedProfile.googleData.serviceTypes.length} services offered</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {selectedProfile.googleData.serviceTypes.map((service, idx) => (
+                          <div key={idx} className="p-2 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                            <p className="text-sm font-medium">{service.displayName}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Business Capabilities */}
+                {selectedProfile.googleData?.capabilities && selectedProfile.googleData.capabilities.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Platform Capabilities</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedProfile.googleData.capabilities.map((capability, idx) => (
+                          <Badge key={idx} variant="outline" className="bg-green-50 text-green-700">
+                            {capability}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Additional Hours Types */}
+                {selectedProfile.googleData?.moreHoursTypes && selectedProfile.googleData.moreHoursTypes.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Service Options</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {selectedProfile.googleData.moreHoursTypes.map((hoursType, idx) => (
+                          <div key={idx} className="flex justify-between items-center p-2 border rounded">
+                            <span className="text-sm font-medium">{hoursType.displayName}</span>
+                            <span className="text-xs text-muted-foreground">{hoursType.localizedDisplayName}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Business Labels */}
+                {selectedProfile.googleData?.labels && selectedProfile.googleData.labels.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Business Tags</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedProfile.googleData.labels.map((label, idx) => (
+                          <Badge key={idx} variant="outline" className="bg-gray-50">
+                            {label}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Timestamps */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Business Type</CardTitle>
+                    <CardTitle>Data Information</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <Badge variant="outline" className="bg-purple-50 text-purple-700">
-                      {selectedProfile.googleData.businessType}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Additional Labels */}
-              {selectedProfile.googleData?.labels && selectedProfile.googleData.labels.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Business Labels</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedProfile.googleData.labels.map((label, idx) => (
-                        <Badge key={idx} variant="outline" className="bg-gray-50">
-                          {label}
-                        </Badge>
-                      ))}
+                  <CardContent className="space-y-3">
+                    <div>
+                      <p className="font-medium text-sm text-muted-foreground">Last Updated</p>
+                      <p className="text-sm">{selectedProfile.lastUpdated}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-muted-foreground">Last Synced</p>
+                      <p className="text-sm">{new Date(selectedProfile.lastSynced).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-muted-foreground">Added</p>
+                      <p className="text-sm">{new Date(selectedProfile.createdAt).toLocaleString()}</p>
                     </div>
                   </CardContent>
                 </Card>
-              )}
+              </div>
             </div>
 
-            <div className="flex justify-end space-x-2 mt-6">
+            {/* Google Business Profile Metadata - Full Width */}
+            {selectedProfile.googleData?.metadata && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Google Business Profile Technical Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-3 mb-4">
+                    {selectedProfile.googleData.metadata.placeId && (
+                      <div>
+                        <p className="font-medium text-sm text-muted-foreground">Place ID</p>
+                        <p className="text-sm font-mono break-all">{selectedProfile.googleData.metadata.placeId}</p>
+                      </div>
+                    )}
+                    {selectedProfile.googleData.metadata.mapsUri && (
+                      <div>
+                        <p className="font-medium text-sm text-muted-foreground">Maps Link</p>
+                        <a 
+                          href={selectedProfile.googleData.metadata.mapsUri} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:underline"
+                        >
+                          View on Google Maps
+                        </a>
+                      </div>
+                    )}
+                    {selectedProfile.googleData.metadata.newReviewUri && (
+                      <div>
+                        <p className="font-medium text-sm text-muted-foreground">Review Link</p>
+                        <a 
+                          href={selectedProfile.googleData.metadata.newReviewUri} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:underline"
+                        >
+                          Leave a Review
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="grid gap-2 md:grid-cols-3">
+                    <div className="flex items-center space-x-2">
+                      <span className={`w-2 h-2 rounded-full ${selectedProfile.googleData.metadata.hasGoogleUpdated ? 'bg-yellow-500' : 'bg-gray-300'}`}></span>
+                      <span className="text-sm">Has Google Updates</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`w-2 h-2 rounded-full ${selectedProfile.googleData.metadata.hasPendingEdits ? 'bg-orange-500' : 'bg-gray-300'}`}></span>
+                      <span className="text-sm">Has Pending Edits</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`w-2 h-2 rounded-full ${selectedProfile.googleData.metadata.canOperateLocalPost ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                      <span className="text-sm">Can Manage Posts</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`w-2 h-2 rounded-full ${selectedProfile.googleData.metadata.canHaveFoodMenus ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                      <span className="text-sm">Can Have Food Menus</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`w-2 h-2 rounded-full ${selectedProfile.googleData.metadata.canHaveBusinessCalls ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                      <span className="text-sm">Can Have Business Calls</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`w-2 h-2 rounded-full ${selectedProfile.googleData.metadata.hasVoiceOfMerchant ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                      <span className="text-sm">Has Voice of Merchant</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
               <Button variant="outline" onClick={() => setShowDetailView(false)}>
                 Close
               </Button>
+              {selectedProfile.googleData?.metadata?.mapsUri && (
+                <Button 
+                  variant="outline"
+                  onClick={() => window.open(selectedProfile.googleData?.metadata?.mapsUri, '_blank')}
+                >
+                  <MapPin className="mr-2 h-4 w-4" />
+                  View on Maps
+                </Button>
+              )}
               {selectedProfile.googleBusinessId && (
                 <Button 
                   onClick={() => {
@@ -1349,7 +1425,7 @@ export default function ProfilesPage() {
                   }}
                 >
                   <ExternalLink className="mr-2 h-4 w-4" />
-                  View on Google Business
+                  Manage on Google
                 </Button>
               )}
             </div>

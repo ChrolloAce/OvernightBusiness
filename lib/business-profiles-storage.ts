@@ -68,6 +68,47 @@ export interface SavedBusinessProfile {
       displayName: string
       localizedDisplayName: string
     }>
+    // Additional comprehensive data
+    language?: string
+    storeCode?: string
+    businessDescription?: string
+    openingDate?: string
+    serviceAreaInfo?: {
+      businessType?: string
+      places?: Array<{placeName: string, placeId: string}>
+      regionCode?: string
+    }
+    specialHours?: Array<{
+      startDate: any
+      endDate?: any
+      openTime?: any
+      closeTime?: any
+      closed?: boolean
+    }>
+    moreHoursData?: Array<{
+      hoursTypeId: string
+      periods: Array<{
+        openDay: string
+        openTime: any
+        closeDay: string
+        closeTime: any
+      }>
+    }>
+    serviceItemsData?: Array<{
+      price?: any
+      structuredServiceItem?: any
+      freeFormServiceItem?: any
+    }>
+    relationshipInfo?: {
+      parentLocation?: any
+      childrenLocations?: any[]
+      parentChain?: string
+    }
+    businessStatusInfo?: {
+      status?: string
+      canReopen?: boolean
+      isOpen?: boolean
+    }
   }
   // Computed fields
   isVerified?: boolean
