@@ -94,8 +94,14 @@ export class GoogleAuthService {
 
     const newTokens = await response.json()
     this.tokens = { ...this.tokens, ...newTokens }
-    this.saveTokens(this.tokens)
-    return this.tokens
+    
+    // Type assertion since we know tokens is not null at this point
+    if (this.tokens) {
+      this.saveTokens(this.tokens)
+      return this.tokens
+    }
+    
+    throw new Error('Failed to update tokens')
   }
 
   // Get valid access token (refresh if needed)
@@ -117,7 +123,12 @@ export class GoogleAuthService {
       await this.refreshAccessToken()
     }
 
-    return this.tokens!.access_token
+    // Type assertion since we know tokens is not null at this point
+    if (!this.tokens) {
+      throw new Error('Failed to get valid access token')
+    }
+
+    return this.tokens.access_token
   }
 
   // Save tokens to localStorage
