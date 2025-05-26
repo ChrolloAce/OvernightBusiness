@@ -85,6 +85,26 @@ export interface BusinessAccount {
   }
 }
 
+export interface BusinessReview {
+  name: string
+  reviewId: string
+  reviewer: {
+    profilePhotoUrl?: string
+    displayName?: string
+    isAnonymous?: boolean
+  }
+  starRating: {
+    value: number
+  }
+  comment?: string
+  createTime: string
+  updateTime: string
+  reviewReply?: {
+    comment: string
+    updateTime: string
+  }
+}
+
 export interface BusinessPost {
   name: string
   languageCode: string
@@ -108,7 +128,7 @@ export class GoogleBusinessAPI {
   // Updated to use the correct Google Business Profile API endpoints
   private accountsBaseUrl = 'https://mybusinessaccountmanagement.googleapis.com/v1'
   private businessInfoBaseUrl = 'https://mybusinessbusinessinformation.googleapis.com/v1'
-  private postsBaseUrl = 'https://mybusiness.googleapis.com/v4'
+  private v4BaseUrl = 'https://mybusiness.googleapis.com/v4' // For reviews and other v4 endpoints
 
   constructor() {
     this.authService = GoogleAuthService.getInstance()
@@ -248,11 +268,70 @@ export class GoogleBusinessAPI {
     return await this.handleApiResponse(response, 'Fetch Location')
   }
 
+  // Get reviews for a location using the v4 API
+  async getReviews(locationName: string): Promise<BusinessReview[]> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching reviews for location:', locationName)
+    
+    // Use the v4 API for reviews
+    const response = await fetch(`${this.v4BaseUrl}/${locationName}/reviews`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const data = await this.handleApiResponse(response, 'Fetch Reviews')
+    return data.reviews || []
+  }
+
+  // Get reviews with pagination and additional options
+  async getReviewsWithOptions(locationName: string, options: {
+    pageSize?: number
+    pageToken?: string
+    orderBy?: string
+  } = {}): Promise<{
+    reviews: BusinessReview[]
+    averageRating: number
+    totalReviewCount: number
+    nextPageToken?: string
+  }> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching reviews with options for location:', locationName)
+    
+    // Build query parameters
+    const params = new URLSearchParams()
+    if (options.pageSize) params.append('pageSize', options.pageSize.toString())
+    if (options.pageToken) params.append('pageToken', options.pageToken)
+    if (options.orderBy) params.append('orderBy', options.orderBy)
+    
+    const queryString = params.toString() ? `?${params.toString()}` : ''
+    
+    // Use the v4 API for reviews
+    const response = await fetch(`${this.v4BaseUrl}/${locationName}/reviews${queryString}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const data = await this.handleApiResponse(response, 'Fetch Reviews with Options')
+    return {
+      reviews: data.reviews || [],
+      averageRating: data.averageRating || 0,
+      totalReviewCount: data.totalReviewCount || 0,
+      nextPageToken: data.nextPageToken
+    }
+  }
+
   // Test API connectivity and permissions
-  async testApiAccess(): Promise<{ accounts: boolean; locations: boolean; errors: string[] }> {
+  async testApiAccess(): Promise<{ accounts: boolean; locations: boolean; reviews: boolean; errors: string[] }> {
     const errors: string[] = []
     let accountsWorking = false
     let locationsWorking = false
+    let reviewsWorking = false
 
     try {
       console.log('[Google Business API] Testing API access...')
@@ -272,6 +351,18 @@ export class GoogleBusinessAPI {
             const locationsMinimal = await this.getLocationsMinimal(accountName)
             locationsWorking = true
             console.log('[Google Business API] Minimal Locations API working, found:', locationsMinimal.length, 'locations')
+            
+            // Test reviews endpoint if we have locations
+            if (locationsMinimal.length > 0) {
+              const locationName = locationsMinimal[0].name
+              try {
+                const reviews = await this.getReviews(locationName)
+                reviewsWorking = true
+                console.log('[Google Business API] Reviews API working, found:', reviews.length, 'reviews')
+              } catch (reviewError) {
+                errors.push(`Reviews API failed: ${reviewError instanceof Error ? reviewError.message : 'Unknown error'}`)
+              }
+            }
           } catch (error) {
             errors.push(`Minimal Locations API failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
             
@@ -306,6 +397,7 @@ export class GoogleBusinessAPI {
     return {
       accounts: accountsWorking,
       locations: locationsWorking,
+      reviews: reviewsWorking,
       errors
     }
   }
@@ -334,7 +426,7 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Creating post for location:', locationName)
     
-    const response = await fetch(`${this.postsBaseUrl}/${locationName}/localPosts`, {
+    const response = await fetch(`${this.v4BaseUrl}/${locationName}/localPosts`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -352,7 +444,7 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching posts for location:', locationName)
     
-    const response = await fetch(`${this.postsBaseUrl}/${locationName}/localPosts`, {
+    const response = await fetch(`${this.v4BaseUrl}/${locationName}/localPosts`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -363,30 +455,13 @@ export class GoogleBusinessAPI {
     return data.localPosts || []
   }
 
-  // Get reviews for a location
-  async getReviews(locationName: string): Promise<any[]> {
-    const accessToken = await this.authService.getValidAccessToken()
-    
-    console.log('[Google Business API] Fetching reviews for location:', locationName)
-    
-    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}/reviews`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    const data = await this.handleApiResponse(response, 'Fetch Reviews')
-    return data.reviews || []
-  }
-
   // Reply to a review
   async replyToReview(reviewName: string, reply: string): Promise<any> {
     const accessToken = await this.authService.getValidAccessToken()
     
     console.log('[Google Business API] Replying to review:', reviewName)
     
-    const response = await fetch(`${this.businessInfoBaseUrl}/${reviewName}/reply`, {
+    const response = await fetch(`${this.v4BaseUrl}/${reviewName}/reply`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -406,7 +481,7 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching insights for location:', locationName)
     
-    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}/reportInsights`, {
+    const response = await fetch(`${this.v4BaseUrl}/${locationName}/reportInsights`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -477,7 +552,7 @@ export class GoogleBusinessAPI {
   // Get comprehensive business data including reviews and ratings
   async getCompleteBusinessData(locationName: string): Promise<{
     location: BusinessLocation;
-    reviews: any[];
+    reviews: BusinessReview[];
     rating: number;
     reviewCount: number;
     totalReviews: number;
@@ -490,31 +565,24 @@ export class GoogleBusinessAPI {
       // Fetch location details
       const locationDetails = await this.getLocationDetails(locationName)
       
-      // Fetch reviews
-      let reviews: any[] = []
-      let rating = 0
-      let reviewCount = 0
-      let totalReviews = 0
+      // Fetch reviews with comprehensive data
+      let reviewsData = {
+        reviews: [] as BusinessReview[],
+        averageRating: 0,
+        totalReviewCount: 0
+      }
       
       try {
         console.log('[Google Business API] Fetching reviews for location:', locationName)
-        reviews = await this.getReviews(locationName)
-        
-        // Calculate rating and review metrics from actual reviews
-        if (reviews && reviews.length > 0) {
-          const validReviews = reviews.filter(review => review.starRating && review.starRating.value)
-          if (validReviews.length > 0) {
-            const totalRating = validReviews.reduce((sum, review) => sum + review.starRating.value, 0)
-            rating = totalRating / validReviews.length
-            reviewCount = validReviews.length
-            totalReviews = reviews.length
-          }
-        }
+        reviewsData = await this.getReviewsWithOptions(locationName, {
+          pageSize: 50, // Get up to 50 reviews
+          orderBy: 'updateTime desc' // Get most recent reviews first
+        })
         
         console.log('[Google Business API] Reviews data:', {
-          reviewsFound: reviews.length,
-          averageRating: rating,
-          validReviews: reviewCount
+          reviewsFound: reviewsData.reviews.length,
+          averageRating: reviewsData.averageRating,
+          totalReviewCount: reviewsData.totalReviewCount
         })
       } catch (reviewError) {
         console.warn('[Google Business API] Failed to fetch reviews:', reviewError)
@@ -523,10 +591,10 @@ export class GoogleBusinessAPI {
       
       return {
         location: locationDetails,
-        reviews,
-        rating: Math.round(rating * 10) / 10, // Round to 1 decimal place
-        reviewCount,
-        totalReviews
+        reviews: reviewsData.reviews,
+        rating: reviewsData.averageRating,
+        reviewCount: reviewsData.reviews.length,
+        totalReviews: reviewsData.totalReviewCount
       }
     } catch (error) {
       console.error('[Google Business API] Failed to fetch comprehensive business data:', error)

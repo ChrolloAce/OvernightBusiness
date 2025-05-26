@@ -17,7 +17,9 @@ import {
   Loader2,
   User,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  CheckCircle,
+  Users
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -53,7 +55,25 @@ interface GoogleBusinessLocation {
   hasReviews?: boolean
   lastFetched?: string
   isVerified?: boolean
-  reviews?: any[]
+  reviews?: Array<{
+    name: string
+    reviewId: string
+    reviewer: {
+      profilePhotoUrl?: string
+      displayName?: string
+      isAnonymous?: boolean
+    }
+    starRating: {
+      value: number
+    }
+    comment?: string
+    createTime: string
+    updateTime: string
+    reviewReply?: {
+      comment: string
+      updateTime: string
+    }
+  }>
   address?: {
     addressLines: string[]
     locality: string
@@ -245,6 +265,19 @@ export default function ProfilesPage() {
         console.log('[Profiles] Fetching comprehensive business data...')
         locations = await businessAPI.getLocationsWithRealTimeData(accountName)
         console.log('[Profiles] Comprehensive business data:', locations)
+        
+        // Log detailed information about each location
+        locations.forEach((location, index) => {
+          console.log(`[Profiles] Location ${index + 1}:`, {
+            name: location.title || location.displayName,
+            rating: location.rating,
+            reviewCount: location.reviewCount,
+            totalReviews: location.totalReviews,
+            hasReviews: location.hasReviews,
+            isVerified: location.isVerified,
+            reviewsLength: location.reviews?.length || 0
+          })
+        })
       } catch (comprehensiveError) {
         console.warn('[Profiles] Comprehensive data fetch failed, trying fallback methods...', comprehensiveError)
         
@@ -280,7 +313,12 @@ export default function ProfilesPage() {
       if (locations.length === 0) {
         setError('No business locations found in your Google Business Profile account. Make sure you have verified business locations set up.')
       } else {
-        console.log(`[Profiles] Successfully loaded ${locations.length} business locations with ${locations.filter(l => l.hasReviews).length} having reviews`)
+        const locationsWithReviews = locations.filter(l => l.hasReviews).length
+        const totalReviews = locations.reduce((sum, l) => sum + (l.totalReviews || 0), 0)
+        console.log(`[Profiles] Successfully loaded ${locations.length} business locations:`)
+        console.log(`- ${locationsWithReviews} locations have reviews`)
+        console.log(`- Total reviews across all locations: ${totalReviews}`)
+        console.log(`- Locations with real-time data: ${locations.filter(l => l.lastFetched).length}`)
       }
     } catch (error) {
       console.error('Error fetching Google Business Profiles:', error)
@@ -818,13 +856,39 @@ export default function ProfilesPage() {
                                 </div>
                                 <span>•</span>
                                 <span>{location.reviewCount || 0} reviews</span>
+                                {location.totalReviews && location.totalReviews !== location.reviewCount && (
+                                  <span className="text-xs">({location.totalReviews} total)</span>
+                                )}
                                 {location.hasReviews && (
                                   <span className="text-green-600 text-xs">• Verified Reviews</span>
                                 )}
                                 {location.lastFetched && (
                                   <span className="text-blue-600 text-xs">• Real-time Data</span>
                                 )}
+                                {location.isVerified && (
+                                  <span className="text-green-600 text-xs">• Verified Business</span>
+                                )}
                               </div>
+                              
+                              {/* Additional Review Details */}
+                              {location.reviews && location.reviews.length > 0 && (
+                                <div className="mt-2 text-xs text-muted-foreground">
+                                  <div className="flex items-center space-x-2">
+                                    <span>Recent reviews:</span>
+                                    <div className="flex space-x-1">
+                                      {location.reviews.slice(0, 5).map((review, idx) => (
+                                        <div key={idx} className="flex items-center">
+                                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                          <span className="ml-0.5">{review.starRating.value}</span>
+                                        </div>
+                                      ))}
+                                      {location.reviews.length > 5 && (
+                                        <span className="text-muted-foreground">+{location.reviews.length - 5} more</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                             
                             {/* Add Profile Button */}
