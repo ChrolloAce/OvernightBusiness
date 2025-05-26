@@ -3,6 +3,7 @@ import { GoogleAuthService } from './google-auth'
 export interface BusinessLocation {
   name: string
   locationName?: string
+  title?: string
   displayName?: string
   primaryPhone?: string
   websiteUri?: string
@@ -140,8 +141,11 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching locations for account:', accountName)
     
+    // The API requires a read_mask parameter - use basic fields
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory'
+    
     // Use the business information API for locations
-    const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations`, {
+    const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -156,10 +160,10 @@ export class GoogleBusinessAPI {
   async getLocationsWithReadMask(accountName: string): Promise<BusinessLocation[]> {
     const accessToken = await this.authService.getValidAccessToken()
     
-    console.log('[Google Business API] Fetching locations with read mask for account:', accountName)
+    console.log('[Google Business API] Fetching locations with comprehensive read mask for account:', accountName)
     
-    // Add read mask to specify which fields to return
-    const readMask = 'name,displayName,storefrontAddress,websiteUri,primaryPhone,primaryCategory'
+    // Use comprehensive read mask with correct field names
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
       headers: {
@@ -168,7 +172,27 @@ export class GoogleBusinessAPI {
       },
     })
 
-    const data = await this.handleApiResponse(response, 'Fetch Locations with Read Mask')
+    const data = await this.handleApiResponse(response, 'Fetch Locations with Comprehensive Read Mask')
+    return data.locations || []
+  }
+
+  // Get locations with minimal fields for testing
+  async getLocationsMinimal(accountName: string): Promise<BusinessLocation[]> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching locations with minimal read mask for account:', accountName)
+    
+    // Use minimal read mask to test basic connectivity
+    const readMask = 'name,title'
+    
+    const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const data = await this.handleApiResponse(response, 'Fetch Locations with Minimal Read Mask')
     return data.locations || []
   }
 
@@ -205,20 +229,32 @@ export class GoogleBusinessAPI {
         
         // Test locations endpoint if we have accounts
         if (accounts.length > 0) {
+          const accountName = accounts[0].name
+          
+          // Try minimal locations method first
           try {
-            const locations = await this.getLocations(accounts[0].name)
+            const locationsMinimal = await this.getLocationsMinimal(accountName)
             locationsWorking = true
-            console.log('[Google Business API] Locations API working, found:', locations.length, 'locations')
+            console.log('[Google Business API] Minimal Locations API working, found:', locationsMinimal.length, 'locations')
           } catch (error) {
-            errors.push(`Locations API failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            errors.push(`Minimal Locations API failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
             
-            // Try alternative locations method
+            // Try standard locations method
             try {
-              const locationsAlt = await this.getLocationsWithReadMask(accounts[0].name)
+              const locations = await this.getLocations(accountName)
               locationsWorking = true
-              console.log('[Google Business API] Alternative Locations API working, found:', locationsAlt.length, 'locations')
-            } catch (altError) {
-              errors.push(`Alternative Locations API also failed: ${altError instanceof Error ? altError.message : 'Unknown error'}`)
+              console.log('[Google Business API] Standard Locations API working, found:', locations.length, 'locations')
+            } catch (standardError) {
+              errors.push(`Standard Locations API failed: ${standardError instanceof Error ? standardError.message : 'Unknown error'}`)
+              
+              // Try comprehensive locations method as last resort
+              try {
+                const locationsComprehensive = await this.getLocationsWithReadMask(accountName)
+                locationsWorking = true
+                console.log('[Google Business API] Comprehensive Locations API working, found:', locationsComprehensive.length, 'locations')
+              } catch (comprehensiveError) {
+                errors.push(`Comprehensive Locations API also failed: ${comprehensiveError instanceof Error ? comprehensiveError.message : 'Unknown error'}`)
+              }
             }
           }
         } else {

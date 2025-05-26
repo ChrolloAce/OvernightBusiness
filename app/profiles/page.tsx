@@ -42,6 +42,7 @@ interface BusinessProfile {
 interface GoogleBusinessLocation {
   name: string
   locationName?: string
+  title?: string
   displayName?: string
   primaryPhone?: string
   websiteUri?: string
@@ -215,18 +216,27 @@ export default function ProfilesPage() {
       const accountName = accounts[0].name
       
       try {
-        locations = await businessAPI.getLocations(accountName)
-        console.log('Locations (standard method):', locations)
+        // Try minimal method first (most likely to work)
+        locations = await businessAPI.getLocationsMinimal(accountName)
+        console.log('Locations (minimal method):', locations)
       } catch (locationError) {
-        console.warn('Standard locations method failed, trying alternative...', locationError)
+        console.warn('Minimal locations method failed, trying standard...', locationError)
         
-        // Try alternative method with read mask
+        // Try standard method
         try {
-          locations = await businessAPI.getLocationsWithReadMask(accountName)
-          console.log('Locations (alternative method):', locations)
-        } catch (altError) {
-          console.error('Both location methods failed:', altError)
-          throw new Error(`Failed to fetch locations using both methods: ${altError instanceof Error ? altError.message : 'Unknown error'}`)
+          locations = await businessAPI.getLocations(accountName)
+          console.log('Locations (standard method):', locations)
+        } catch (standardError) {
+          console.warn('Standard locations method failed, trying comprehensive...', standardError)
+          
+          // Try comprehensive method as last resort
+          try {
+            locations = await businessAPI.getLocationsWithReadMask(accountName)
+            console.log('Locations (comprehensive method):', locations)
+          } catch (comprehensiveError) {
+            console.error('All location methods failed:', comprehensiveError)
+            throw new Error(`Failed to fetch locations using all methods: ${comprehensiveError instanceof Error ? comprehensiveError.message : 'Unknown error'}`)
+          }
         }
       }
 
@@ -274,7 +284,7 @@ export default function ProfilesPage() {
 
   const addGoogleProfile = (location: any) => {
     // Handle both old and new location data structures
-    const locationName = location.displayName || location.locationName || 'Unknown Business'
+    const locationName = location.title || location.displayName || location.locationName || 'Unknown Business'
     const address = location.storefrontAddress || location.address
     
     const newProfile: BusinessProfile = {
@@ -567,7 +577,7 @@ export default function ProfilesPage() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="font-medium">{location.displayName || location.locationName || 'Unknown Business'}</h3>
+                          <h3 className="font-medium">{location.title || location.displayName || location.locationName || 'Unknown Business'}</h3>
                           <p className="text-sm text-muted-foreground">
                             {(location.storefrontAddress || location.address)
                               ? `${(location.storefrontAddress || location.address)?.addressLines?.join(', ') || ''}, ${(location.storefrontAddress || location.address)?.locality || ''}`.trim()
