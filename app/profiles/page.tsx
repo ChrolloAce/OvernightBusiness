@@ -854,11 +854,11 @@ export default function ProfilesPage() {
                               )}
                               
                               {/* Phone Number */}
-                              {GoogleBusinessAPI.getPrimaryPhone(location) !== 'Phone not available' && (
+                              {GoogleBusinessAPI.getPrimaryPhone(location as any) !== 'Phone not available' && (
                                 <div className="flex items-center space-x-2 mb-2">
                                   <Phone className="h-4 w-4 text-muted-foreground" />
                                   <p className="text-sm text-muted-foreground">
-                                    {GoogleBusinessAPI.getPrimaryPhone(location)}
+                                    {GoogleBusinessAPI.getPrimaryPhone(location as any)}
                                   </p>
                                 </div>
                               )}
