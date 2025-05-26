@@ -257,9 +257,34 @@ export default function ProfilesPage() {
         return
       }
 
-      // Get locations with comprehensive real-time data
+      // Check each account's business capabilities
+      let workingAccount = null
+      let accountErrors: string[] = []
+      
+      for (const account of accounts) {
+        console.log(`[Profiles] Checking account: ${account.accountName} (${account.type})`)
+        
+        const capabilities = await businessAPI.checkAccountBusinessCapabilities(account.name)
+        console.log('[Profiles] Account capabilities:', capabilities)
+        
+        if (capabilities.canManageLocations) {
+          workingAccount = account
+          break
+        } else {
+          accountErrors.push(`Account "${account.accountName}" (${capabilities.accountType}, ${capabilities.verificationState}): ${capabilities.errorMessage || 'Cannot manage business locations'}`)
+        }
+      }
+      
+      if (!workingAccount) {
+        const errorMessage = `None of your Google accounts can manage business locations:\n\n${accountErrors.join('\n\n')}\n\n🔧 To fix this:\n1. Set up a Google Business Profile at https://business.google.com\n2. Add and verify your business locations\n3. Make sure you're using a business account (not personal)\n4. Ensure your account has proper permissions`
+        setError(errorMessage)
+        setLoadingLocations(false)
+        return
+      }
+
+      // Get locations with comprehensive real-time data from the working account
       let locations: any[] = []
-      const accountName = accounts[0].name
+      const accountName = workingAccount.name
       
       try {
         console.log('[Profiles] Fetching comprehensive business data...')
@@ -311,7 +336,7 @@ export default function ProfilesPage() {
       setGoogleLocations(locations)
       
       if (locations.length === 0) {
-        setError('No business locations found in your Google Business Profile account. Make sure you have verified business locations set up.')
+        setError(`No business locations found in account "${workingAccount.accountName}". Make sure you have verified business locations set up in your Google Business Profile.`)
       } else {
         const locationsWithReviews = locations.filter(l => l.hasReviews).length
         const totalReviews = locations.reduce((sum, l) => sum + (l.totalReviews || 0), 0)
@@ -338,6 +363,8 @@ export default function ProfilesPage() {
           return
         } else if (error.message.includes('404')) {
           errorMessage += '\n\n🔧 To fix this:\n1. Make sure you have Google Business Profile accounts set up\n2. Verify your business locations are claimed and verified\n3. Check that you\'re using the correct Google account'
+        } else if (error.message.includes('read_mask') || error.message.includes('invalid argument')) {
+          errorMessage += '\n\n🔧 This usually means:\n1. Your account is a personal account without business locations\n2. You need to set up a Google Business Profile first\n3. Your business locations need to be verified'
         }
       }
       

@@ -147,15 +147,32 @@ export class GoogleBusinessAPI {
       try {
         const errorData = JSON.parse(responseText)
         if (errorData.error) {
-          errorMessage = `${errorMessage} - ${errorData.error.message || errorData.error}`
+          errorMessage = `${errorData.error.message || errorData.error}`
           
           // Provide specific guidance for common errors
           if (errorData.error.code === 403) {
-            errorMessage += '\n\nThis usually means:\n1. The API is not enabled in Google Cloud Console\n2. You don\'t have permission to access this business account\n3. The business profile doesn\'t exist or isn\'t verified'
+            errorMessage += '\n\n🔧 This usually means:\n1. The API is not enabled in Google Cloud Console\n2. You don\'t have permission to access this business account\n3. The business profile doesn\'t exist or isn\'t verified\n4. Your account type might not support business locations'
           } else if (errorData.error.code === 404) {
-            errorMessage += '\n\nThis usually means:\n1. The business account or location doesn\'t exist\n2. You don\'t have access to this resource\n3. The resource ID is incorrect'
+            errorMessage += '\n\n🔧 This usually means:\n1. The business account or location doesn\'t exist\n2. You don\'t have access to this resource\n3. The resource ID is incorrect'
           } else if (errorData.error.code === 401) {
-            errorMessage += '\n\nThis usually means:\n1. Your access token has expired\n2. You don\'t have the required OAuth scopes\n3. Authentication failed'
+            errorMessage += '\n\n🔧 This usually means:\n1. Your access token has expired\n2. You don\'t have the required OAuth scopes\n3. Authentication failed'
+          } else if (errorData.error.code === 400) {
+            if (errorData.error.message?.includes('read_mask')) {
+              errorMessage += '\n\n🔧 Read mask error - this usually means:\n1. Invalid field names in the read_mask parameter\n2. The API endpoint doesn\'t support the requested fields\n3. Your account might not have business locations set up'
+            } else if (errorData.error.message?.includes('invalid argument')) {
+              errorMessage += '\n\n🔧 Invalid argument error - this usually means:\n1. The account might be a personal account without business locations\n2. Required parameters are missing or incorrect\n3. The account needs to be verified for business use'
+            }
+          }
+          
+          // Add details about field violations if available
+          if (errorData.error.details) {
+            errorData.error.details.forEach((detail: any) => {
+              if (detail.fieldViolations) {
+                detail.fieldViolations.forEach((violation: any) => {
+                  errorMessage += `\n- Field "${violation.field}": ${violation.description}`
+                })
+              }
+            })
           }
         }
       } catch (e) {
@@ -197,7 +214,7 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching locations for account:', accountName)
     
-    // The API requires a read_mask parameter - use basic fields
+    // Use correct field names based on Business Information API documentation
     const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory'
     
     // Use the business information API for locations
@@ -218,7 +235,7 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching locations with comprehensive read mask for account:', accountName)
     
-    // Use comprehensive read mask with correct field names
+    // Use comprehensive read mask with correct field names from Business Information API
     const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
@@ -238,7 +255,7 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching locations with minimal read mask for account:', accountName)
     
-    // Use minimal read mask to test basic connectivity
+    // Use minimal read mask to test basic connectivity - only essential fields
     const readMask = 'name,title'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
@@ -258,7 +275,10 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching location:', locationName)
     
-    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}`, {
+    // Use comprehensive read mask for single location
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata'
+    
+    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}?readMask=${readMask}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -342,50 +362,48 @@ export class GoogleBusinessAPI {
         accountsWorking = true
         console.log('[Google Business API] Accounts API working, found:', accounts.length, 'accounts')
         
-        // Test locations endpoint if we have accounts
+        // Test each account's business capabilities
         if (accounts.length > 0) {
-          const accountName = accounts[0].name
-          
-          // Try minimal locations method first
-          try {
-            const locationsMinimal = await this.getLocationsMinimal(accountName)
-            locationsWorking = true
-            console.log('[Google Business API] Minimal Locations API working, found:', locationsMinimal.length, 'locations')
+          for (const account of accounts) {
+            console.log(`[Google Business API] Checking account: ${account.accountName} (${account.type})`)
             
-            // Test reviews endpoint if we have locations
-            if (locationsMinimal.length > 0) {
-              const locationName = locationsMinimal[0].name
-              try {
-                const reviews = await this.getReviews(locationName)
-                reviewsWorking = true
-                console.log('[Google Business API] Reviews API working, found:', reviews.length, 'reviews')
-              } catch (reviewError) {
-                errors.push(`Reviews API failed: ${reviewError instanceof Error ? reviewError.message : 'Unknown error'}`)
-              }
-            }
-          } catch (error) {
-            errors.push(`Minimal Locations API failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            const capabilities = await this.checkAccountBusinessCapabilities(account.name)
+            console.log('[Google Business API] Account capabilities:', capabilities)
             
-            // Try standard locations method
-            try {
-              const locations = await this.getLocations(accountName)
-              locationsWorking = true
-              console.log('[Google Business API] Standard Locations API working, found:', locations.length, 'locations')
-            } catch (standardError) {
-              errors.push(`Standard Locations API failed: ${standardError instanceof Error ? standardError.message : 'Unknown error'}`)
-              
-              // Try comprehensive locations method as last resort
+            if (capabilities.canManageLocations) {
+              // Try to get locations for this account
               try {
-                const locationsComprehensive = await this.getLocationsWithReadMask(accountName)
+                const locations = await this.getLocationsMinimal(account.name)
                 locationsWorking = true
-                console.log('[Google Business API] Comprehensive Locations API working, found:', locationsComprehensive.length, 'locations')
-              } catch (comprehensiveError) {
-                errors.push(`Comprehensive Locations API also failed: ${comprehensiveError instanceof Error ? comprehensiveError.message : 'Unknown error'}`)
+                console.log('[Google Business API] Locations API working, found:', locations.length, 'locations')
+                
+                // Test reviews endpoint if we have locations
+                if (locations.length > 0) {
+                  const locationName = locations[0].name
+                  try {
+                    const reviews = await this.getReviews(locationName)
+                    reviewsWorking = true
+                    console.log('[Google Business API] Reviews API working, found:', reviews.length, 'reviews')
+                  } catch (reviewError) {
+                    errors.push(`Reviews API failed: ${reviewError instanceof Error ? reviewError.message : 'Unknown error'}`)
+                  }
+                } else {
+                  errors.push(`No business locations found in account "${account.accountName}". This account may not have any business profiles set up.`)
+                }
+                break // Found a working account, no need to test others
+              } catch (locationError) {
+                errors.push(`Locations API failed for account "${account.accountName}": ${locationError instanceof Error ? locationError.message : 'Unknown error'}`)
               }
+            } else {
+              errors.push(`Account "${account.accountName}" (${capabilities.accountType}, ${capabilities.verificationState}) cannot manage business locations: ${capabilities.errorMessage || 'Unknown reason'}`)
             }
           }
+          
+          if (!locationsWorking) {
+            errors.push('None of your Google accounts have business locations. To use this feature:\n1. Set up a Google Business Profile at https://business.google.com\n2. Add and verify your business locations\n3. Make sure your account type supports business management')
+          }
         } else {
-          errors.push('No business accounts found - make sure you have Google Business Profile accounts set up')
+          errors.push('No Google Business accounts found - make sure you have Google Business Profile accounts set up')
         }
       } catch (error) {
         errors.push(`Accounts API failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -516,8 +534,8 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching complete location details:', locationName)
     
-    // Use comprehensive read mask to get all available fields
-    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,serviceArea,labels,adWordsLocationExtensions,latlng,openInfo,locationState,attributes'
+    // Use comprehensive read mask with correct field names from Business Information API
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,serviceArea,labels,latlng,openInfo,locationState,attributes'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}?readMask=${readMask}`, {
       headers: {
@@ -535,8 +553,8 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching locations with complete details for account:', accountName)
     
-    // Use comprehensive read mask to get all available business information
-    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,serviceArea,labels,adWordsLocationExtensions,latlng,openInfo,locationState,attributes'
+    // Use comprehensive read mask with correct field names from Business Information API
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,serviceArea,labels,latlng,openInfo,locationState,attributes'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
       headers: {
@@ -652,6 +670,80 @@ export class GoogleBusinessAPI {
     } catch (error) {
       console.error('[Google Business API] Failed to fetch locations with real-time data:', error)
       throw error
+    }
+  }
+
+  // Check if an account has business capabilities
+  async checkAccountBusinessCapabilities(accountName: string): Promise<{
+    hasBusinessLocations: boolean;
+    accountType: string;
+    verificationState: string;
+    canManageLocations: boolean;
+    errorMessage?: string;
+  }> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Checking business capabilities for account:', accountName)
+    
+    try {
+      // First, get account details
+      const accountResponse = await fetch(`${this.accountsBaseUrl}/${accountName}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      const accountData = await this.handleApiResponse(accountResponse, 'Check Account Details')
+      
+      console.log('[Google Business API] Account details:', accountData)
+      
+      // Try to fetch locations with minimal read mask
+      try {
+        const locationsResponse = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=name`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        })
+        
+        if (locationsResponse.ok) {
+          const locationsData = await locationsResponse.json()
+          return {
+            hasBusinessLocations: (locationsData.locations?.length || 0) > 0,
+            accountType: accountData.type || 'UNKNOWN',
+            verificationState: accountData.verificationState || 'UNKNOWN',
+            canManageLocations: true
+          }
+        } else {
+          const errorText = await locationsResponse.text()
+          console.log('[Google Business API] Locations check failed:', errorText)
+          
+          return {
+            hasBusinessLocations: false,
+            accountType: accountData.type || 'UNKNOWN',
+            verificationState: accountData.verificationState || 'UNKNOWN',
+            canManageLocations: false,
+            errorMessage: `Cannot access business locations: ${errorText}`
+          }
+        }
+      } catch (locationError) {
+        return {
+          hasBusinessLocations: false,
+          accountType: accountData.type || 'UNKNOWN',
+          verificationState: accountData.verificationState || 'UNKNOWN',
+          canManageLocations: false,
+          errorMessage: `Location access error: ${locationError instanceof Error ? locationError.message : 'Unknown error'}`
+        }
+      }
+    } catch (error) {
+      return {
+        hasBusinessLocations: false,
+        accountType: 'UNKNOWN',
+        verificationState: 'UNKNOWN',
+        canManageLocations: false,
+        errorMessage: `Account check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      }
     }
   }
 } 
