@@ -411,7 +411,7 @@ export default function ProfilesPage() {
         id: profileId,
         name: locationName,
         address: formattedAddress,
-        phone: completeLocation.primaryPhone || 'Phone not available',
+        phone: GoogleBusinessAPI.getPrimaryPhone(completeLocation),
         website: completeLocation.websiteUri || '',
         category: allCategories[0] || 'Business',
         rating: completeLocation.rating || 0,
@@ -854,11 +854,11 @@ export default function ProfilesPage() {
                               )}
                               
                               {/* Phone Number */}
-                              {location.primaryPhone && (
+                              {GoogleBusinessAPI.getPrimaryPhone(location) !== 'Phone not available' && (
                                 <div className="flex items-center space-x-2 mb-2">
                                   <Phone className="h-4 w-4 text-muted-foreground" />
                                   <p className="text-sm text-muted-foreground">
-                                    {location.primaryPhone}
+                                    {GoogleBusinessAPI.getPrimaryPhone(location)}
                                   </p>
                                 </div>
                               )}

@@ -142,6 +142,17 @@ export interface BusinessLocation {
   isOpen?: boolean
   businessType?: string
   isVerified?: boolean
+  categories?: {
+    primaryCategory?: {
+      displayName: string
+    }
+    additionalCategories?: Array<{
+      displayName: string
+    }>
+  }
+  phoneNumbers?: {
+    primaryPhone?: string
+  }
 }
 
 export interface BusinessAccount {
@@ -510,8 +521,8 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching locations with complete details for account:', accountName)
     
-    // Use a more conservative read mask with commonly available fields
-    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,latlng,openInfo,locationState'
+    // Use only basic, commonly available fields from the official API documentation
+    const readMask = 'name,title,storefrontAddress,websiteUri,phoneNumbers,categories,regularHours'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
       headers: {
@@ -530,8 +541,8 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching complete location details:', locationName)
     
-    // Use a more conservative read mask with commonly available fields
-    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,latlng,openInfo,locationState'
+    // Use only basic, commonly available fields from the official API documentation
+    const readMask = 'name,title,storefrontAddress,websiteUri,phoneNumbers,categories,regularHours'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}?readMask=${readMask}`, {
       headers: {
@@ -594,6 +605,20 @@ export class GoogleBusinessAPI {
   static getAllCategories(location: BusinessLocation): string[] {
     const categories: string[] = []
     
+    // Handle the new categories structure
+    if (location.categories?.primaryCategory?.displayName) {
+      categories.push(location.categories.primaryCategory.displayName)
+    }
+    
+    if (location.categories?.additionalCategories) {
+      location.categories.additionalCategories.forEach(cat => {
+        if (cat.displayName) {
+          categories.push(cat.displayName)
+        }
+      })
+    }
+    
+    // Fallback to old structure for backward compatibility
     if (location.primaryCategory?.displayName) {
       categories.push(location.primaryCategory.displayName)
     }
@@ -640,5 +665,20 @@ export class GoogleBusinessAPI {
     }
     
     return capabilities
+  }
+
+  // Get primary phone number
+  static getPrimaryPhone(location: BusinessLocation): string {
+    // Handle the new phoneNumbers structure
+    if (location.phoneNumbers?.primaryPhone) {
+      return location.phoneNumbers.primaryPhone
+    }
+    
+    // Fallback to old structure for backward compatibility
+    if (location.primaryPhone) {
+      return location.primaryPhone
+    }
+    
+    return 'Phone not available'
   }
 } 
