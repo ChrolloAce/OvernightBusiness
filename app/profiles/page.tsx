@@ -17,9 +17,7 @@ import {
   Loader2,
   User,
   RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  Users
+  AlertCircle
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -51,29 +49,6 @@ interface GoogleBusinessLocation {
   websiteUri?: string
   rating?: number
   reviewCount?: number
-  totalReviews?: number
-  hasReviews?: boolean
-  lastFetched?: string
-  isVerified?: boolean
-  reviews?: Array<{
-    name: string
-    reviewId: string
-    reviewer: {
-      profilePhotoUrl?: string
-      displayName?: string
-      isAnonymous?: boolean
-    }
-    starRating: {
-      value: number
-    }
-    comment?: string
-    createTime: string
-    updateTime: string
-    reviewReply?: {
-      comment: string
-      updateTime: string
-    }
-  }>
   address?: {
     addressLines: string[]
     locality: string
@@ -94,6 +69,50 @@ interface GoogleBusinessLocation {
   locationState?: {
     isVerified: boolean
   }
+  openInfo?: {
+    status: 'OPEN' | 'CLOSED'
+  }
+  regularHours?: {
+    periods: Array<{
+      openDay: string
+      openTime: string
+      closeDay: string
+      closeTime: string
+    }>
+  }
+  moreHours?: Array<{
+    periods: Array<{
+      openDay: string
+      openTime: string
+      closeDay: string
+      closeTime: string
+    }>
+  }>
+  metadata?: {
+    canOperateLocalPost?: boolean
+    canHaveFoodMenus?: boolean
+    canOperateHealthData?: boolean
+    canOperateLodgingData?: boolean
+    canHaveBusinessCalls?: boolean
+    hasVoiceOfMerchant?: boolean
+  }
+  latlng?: {
+    latitude: number
+    longitude: number
+  }
+  attributes?: Array<{
+    attributeId: string
+    valueType: string
+    values: any[]
+  }>
+  profile?: {
+    description: string
+  }
+  relationshipData?: any
+  serviceItems?: any[]
+  additionalCategories?: Array<{
+    displayName: string
+  }>
 }
 
 export default function ProfilesPage() {
@@ -257,78 +276,31 @@ export default function ProfilesPage() {
         return
       }
 
-      // Check each account's business capabilities
-      let workingAccount = null
-      let accountErrors: string[] = []
-      
-      for (const account of accounts) {
-        console.log(`[Profiles] Checking account: ${account.accountName} (${account.type})`)
-        
-        const capabilities = await businessAPI.checkAccountBusinessCapabilities(account.name)
-        console.log('[Profiles] Account capabilities:', capabilities)
-        
-        if (capabilities.canManageLocations) {
-          workingAccount = account
-          break
-        } else {
-          accountErrors.push(`Account "${account.accountName}" (${capabilities.accountType}, ${capabilities.verificationState}): ${capabilities.errorMessage || 'Cannot manage business locations'}`)
-        }
-      }
-      
-      if (!workingAccount) {
-        const errorMessage = `None of your Google accounts can manage business locations:\n\n${accountErrors.join('\n\n')}\n\n🔧 To fix this:\n1. Set up a Google Business Profile at https://business.google.com\n2. Add and verify your business locations\n3. Make sure you're using a business account (not personal)\n4. Ensure your account has proper permissions`
-        setError(errorMessage)
-        setLoadingLocations(false)
-        return
-      }
-
-      // Get locations with comprehensive real-time data from the working account
+      // Try to get locations for the first account
       let locations: any[] = []
-      const accountName = workingAccount.name
+      const accountName = accounts[0].name
       
       try {
-        console.log('[Profiles] Fetching comprehensive business data...')
-        locations = await businessAPI.getLocationsWithRealTimeData(accountName)
-        console.log('[Profiles] Comprehensive business data:', locations)
+        // Try minimal method first (most likely to work)
+        locations = await businessAPI.getLocationsMinimal(accountName)
+        console.log('Locations (minimal method):', locations)
+      } catch (locationError) {
+        console.warn('Minimal locations method failed, trying standard...', locationError)
         
-        // Log detailed information about each location
-        locations.forEach((location, index) => {
-          console.log(`[Profiles] Location ${index + 1}:`, {
-            name: location.title || location.displayName,
-            rating: location.rating,
-            reviewCount: location.reviewCount,
-            totalReviews: location.totalReviews,
-            hasReviews: location.hasReviews,
-            isVerified: location.isVerified,
-            reviewsLength: location.reviews?.length || 0
-          })
-        })
-      } catch (comprehensiveError) {
-        console.warn('[Profiles] Comprehensive data fetch failed, trying fallback methods...', comprehensiveError)
-        
-        // Fallback to basic methods if comprehensive fetch fails
+        // Try standard method
         try {
-          // Try minimal method first (most likely to work)
-          locations = await businessAPI.getLocationsMinimal(accountName)
-          console.log('Locations (minimal method):', locations)
-        } catch (locationError) {
-          console.warn('Minimal locations method failed, trying standard...', locationError)
+          locations = await businessAPI.getLocations(accountName)
+          console.log('Locations (standard method):', locations)
+        } catch (standardError) {
+          console.warn('Standard locations method failed, trying comprehensive...', standardError)
           
-          // Try standard method
+          // Try comprehensive method as last resort
           try {
-            locations = await businessAPI.getLocations(accountName)
-            console.log('Locations (standard method):', locations)
-          } catch (standardError) {
-            console.warn('Standard locations method failed, trying comprehensive...', standardError)
-            
-            // Try comprehensive method as last resort
-            try {
-              locations = await businessAPI.getLocationsWithReadMask(accountName)
-              console.log('Locations (comprehensive method):', locations)
-            } catch (comprehensiveError) {
-              console.error('All location methods failed:', comprehensiveError)
-              throw new Error(`Failed to fetch locations using all methods: ${comprehensiveError instanceof Error ? comprehensiveError.message : 'Unknown error'}`)
-            }
+            locations = await businessAPI.getLocationsWithReadMask(accountName)
+            console.log('Locations (comprehensive method):', locations)
+          } catch (comprehensiveError) {
+            console.error('All location methods failed:', comprehensiveError)
+            throw new Error(`Failed to fetch locations using all methods: ${comprehensiveError instanceof Error ? comprehensiveError.message : 'Unknown error'}`)
           }
         }
       }
@@ -336,14 +308,7 @@ export default function ProfilesPage() {
       setGoogleLocations(locations)
       
       if (locations.length === 0) {
-        setError(`No business locations found in account "${workingAccount.accountName}". Make sure you have verified business locations set up in your Google Business Profile.`)
-      } else {
-        const locationsWithReviews = locations.filter(l => l.hasReviews).length
-        const totalReviews = locations.reduce((sum, l) => sum + (l.totalReviews || 0), 0)
-        console.log(`[Profiles] Successfully loaded ${locations.length} business locations:`)
-        console.log(`- ${locationsWithReviews} locations have reviews`)
-        console.log(`- Total reviews across all locations: ${totalReviews}`)
-        console.log(`- Locations with real-time data: ${locations.filter(l => l.lastFetched).length}`)
+        setError('No business locations found in your Google Business Profile account. Make sure you have verified business locations set up.')
       }
     } catch (error) {
       console.error('Error fetching Google Business Profiles:', error)
@@ -363,8 +328,6 @@ export default function ProfilesPage() {
           return
         } else if (error.message.includes('404')) {
           errorMessage += '\n\n🔧 To fix this:\n1. Make sure you have Google Business Profile accounts set up\n2. Verify your business locations are claimed and verified\n3. Check that you\'re using the correct Google account'
-        } else if (error.message.includes('read_mask') || error.message.includes('invalid argument')) {
-          errorMessage += '\n\n🔧 This usually means:\n1. Your account is a personal account without business locations\n2. You need to set up a Google Business Profile first\n3. Your business locations need to be verified'
         }
       }
       
@@ -396,55 +359,42 @@ export default function ProfilesPage() {
         return
       }
 
-      console.log('[Profiles] Adding profile with comprehensive data:', location.name)
+      console.log('[Profiles] Fetching complete details for location:', location.name)
       
-      // Use the comprehensive data if available, otherwise fetch it
+      // Fetch complete location details from Google API
+      const businessAPI = new GoogleBusinessAPI()
       let completeLocation = location
-      let comprehensiveData = null
       
-      if (!location.hasReviews && !location.lastFetched) {
-        // This location doesn't have comprehensive data yet, fetch it
-        try {
-          const businessAPI = new GoogleBusinessAPI()
-          comprehensiveData = await businessAPI.getCompleteBusinessData(location.name)
-          completeLocation = {
-            ...location,
-            ...comprehensiveData.location,
-            rating: comprehensiveData.rating,
-            reviewCount: comprehensiveData.reviewCount,
-            totalReviews: comprehensiveData.totalReviews,
-            reviews: comprehensiveData.reviews,
-            hasReviews: comprehensiveData.reviews.length > 0,
-            lastFetched: new Date().toISOString()
-          }
-          console.log('[Profiles] Fetched comprehensive data for profile:', comprehensiveData)
-        } catch (detailsError) {
-          console.warn('[Profiles] Failed to fetch comprehensive details, using available data:', detailsError)
-          // Continue with available location data
-        }
-      } else {
-        console.log('[Profiles] Using pre-fetched comprehensive data')
+      try {
+        completeLocation = await businessAPI.getLocationDetails(location.name)
+        // Enrich the location data with computed fields
+        completeLocation = GoogleBusinessAPI.enrichLocationData(completeLocation)
+        console.log('[Profiles] Complete location details:', completeLocation)
+      } catch (detailsError) {
+        console.warn('[Profiles] Failed to fetch complete details, using basic info:', detailsError)
+        // Continue with basic location data if detailed fetch fails
       }
 
       // Handle both old and new location data structures
       const locationName = completeLocation.title || completeLocation.displayName || completeLocation.locationName || 'Unknown Business'
-      const address = completeLocation.storefrontAddress || completeLocation.address
+      const formattedAddress = GoogleBusinessAPI.getFormattedAddress(completeLocation)
+      const allCategories = GoogleBusinessAPI.getAllCategories(completeLocation)
+      const businessHours = GoogleBusinessAPI.formatBusinessHours(completeLocation)
+      const capabilities = GoogleBusinessAPI.getBusinessCapabilities(completeLocation)
       
       const profileId = Date.now().toString()
       
-      // Create the business profile with comprehensive information
+      // Create the business profile with complete information
       const newProfile: BusinessProfile = {
         id: profileId,
         name: locationName,
-        address: address 
-          ? `${address.addressLines?.join(', ') || ''}, ${address.locality || ''}, ${address.administrativeArea || ''} ${address.postalCode || ''}`.trim()
-          : 'Address not available',
+        address: formattedAddress,
         phone: completeLocation.primaryPhone || 'Phone not available',
         website: completeLocation.websiteUri || '',
-        category: completeLocation.primaryCategory?.displayName || 'Business',
+        category: allCategories[0] || 'Business',
         rating: completeLocation.rating || 0,
         reviewCount: completeLocation.reviewCount || 0,
-        status: completeLocation.locationState?.isVerified || completeLocation.isVerified ? 'active' : 'pending',
+        status: completeLocation.isVerified ? 'active' : 'pending',
         lastUpdated: new Date().toISOString().split('T')[0],
         googleBusinessId: completeLocation.name || location.name || `temp_${profileId}`
       }
@@ -457,14 +407,29 @@ export default function ProfilesPage() {
           title: completeLocation.title,
           storefrontAddress: completeLocation.storefrontAddress,
           primaryCategory: completeLocation.primaryCategory,
+          additionalCategories: completeLocation.additionalCategories,
           regularHours: completeLocation.regularHours,
+          moreHours: completeLocation.moreHours,
           metadata: completeLocation.metadata,
           latlng: completeLocation.latlng,
           locationState: completeLocation.locationState,
-          attributes: completeLocation.attributes
+          attributes: completeLocation.attributes,
+          profile: completeLocation.profile,
+          relationshipData: completeLocation.relationshipData,
+          serviceItems: completeLocation.serviceItems,
+          openInfo: completeLocation.openInfo,
+          serviceArea: completeLocation.serviceArea,
+          labels: completeLocation.labels,
+          adWordsLocationExtensions: completeLocation.adWordsLocationExtensions,
+          // Computed fields
+          businessHours: businessHours,
+          allCategories: allCategories,
+          capabilities: capabilities,
+          isOpen: completeLocation.isOpen,
+          businessType: completeLocation.businessType
         },
-        isVerified: completeLocation.locationState?.isVerified || completeLocation.isVerified || false,
-        totalReviews: completeLocation.totalReviews || completeLocation.reviewCount || 0,
+        isVerified: completeLocation.isVerified || false,
+        totalReviews: completeLocation.reviewCount || 0,
         lastSynced: new Date().toISOString(),
         createdAt: new Date().toISOString()
       }
@@ -477,12 +442,7 @@ export default function ProfilesPage() {
       setShowAddForm(false)
       setGoogleLocations([])
       
-      console.log('[Profiles] Successfully added and saved profile with comprehensive data:', {
-        name: locationName,
-        rating: newProfile.rating,
-        reviewCount: newProfile.reviewCount,
-        hasReviews: completeLocation.hasReviews
-      })
+      console.log('[Profiles] Successfully added and saved profile:', locationName)
       
       // Show success message
       setError(null)
@@ -839,6 +799,28 @@ export default function ProfilesPage() {
                                 </div>
                               )}
                               
+                              {/* Verification Status */}
+                              {location.locationState?.isVerified !== undefined && (
+                                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mb-2 ml-2 ${
+                                  location.locationState.isVerified 
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                                }`}>
+                                  {location.locationState.isVerified ? '✓ Verified' : '⚠ Unverified'}
+                                </div>
+                              )}
+                              
+                              {/* Business Status */}
+                              {location.openInfo?.status && (
+                                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mb-2 ml-2 ${
+                                  location.openInfo.status === 'OPEN' 
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                }`}>
+                                  {location.openInfo.status === 'OPEN' ? '🟢 Open' : '🔴 Closed'}
+                                </div>
+                              )}
+                              
                               {/* Address */}
                               {(location.storefrontAddress || location.address) && (
                                 <div className="flex items-start space-x-2 mb-2">
@@ -875,44 +857,47 @@ export default function ProfilesPage() {
                                 </div>
                               )}
                               
+                              {/* Business Hours */}
+                              {location.regularHours?.periods && location.regularHours.periods.length > 0 && (
+                                <div className="flex items-start space-x-2 mb-2">
+                                  <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div className="text-sm text-muted-foreground">
+                                    <div className="font-medium">Business Hours:</div>
+                                    {GoogleBusinessAPI.formatBusinessHours(location).slice(0, 2).map((hour, idx) => (
+                                      <div key={idx} className="text-xs">{hour}</div>
+                                    ))}
+                                    {GoogleBusinessAPI.formatBusinessHours(location).length > 2 && (
+                                      <div className="text-xs text-blue-600">+{GoogleBusinessAPI.formatBusinessHours(location).length - 2} more</div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              
                               {/* Reviews Info */}
                               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                                 <div className="flex items-center space-x-1">
                                   <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                  <span>{location.rating ? location.rating.toFixed(1) : 'No rating'}</span>
+                                  <span>{location.rating || 'No rating'}</span>
                                 </div>
                                 <span>•</span>
                                 <span>{location.reviewCount || 0} reviews</span>
-                                {location.totalReviews && location.totalReviews !== location.reviewCount && (
-                                  <span className="text-xs">({location.totalReviews} total)</span>
-                                )}
-                                {location.hasReviews && (
-                                  <span className="text-green-600 text-xs">• Verified Reviews</span>
-                                )}
-                                {location.lastFetched && (
-                                  <span className="text-blue-600 text-xs">• Real-time Data</span>
-                                )}
-                                {location.isVerified && (
-                                  <span className="text-green-600 text-xs">• Verified Business</span>
-                                )}
                               </div>
                               
-                              {/* Additional Review Details */}
-                              {location.reviews && location.reviews.length > 0 && (
-                                <div className="mt-2 text-xs text-muted-foreground">
-                                  <div className="flex items-center space-x-2">
-                                    <span>Recent reviews:</span>
-                                    <div className="flex space-x-1">
-                                      {location.reviews.slice(0, 5).map((review, idx) => (
-                                        <div key={idx} className="flex items-center">
-                                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                          <span className="ml-0.5">{review.starRating.value}</span>
-                                        </div>
-                                      ))}
-                                      {location.reviews.length > 5 && (
-                                        <span className="text-muted-foreground">+{location.reviews.length - 5} more</span>
-                                      )}
-                                    </div>
+                              {/* Business Capabilities */}
+                              {location.metadata && GoogleBusinessAPI.getBusinessCapabilities(location).length > 0 && (
+                                <div className="mt-2">
+                                  <div className="text-xs font-medium text-muted-foreground mb-1">Capabilities:</div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {GoogleBusinessAPI.getBusinessCapabilities(location).slice(0, 3).map((capability, idx) => (
+                                      <span key={idx} className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                                        {capability}
+                                      </span>
+                                    ))}
+                                    {GoogleBusinessAPI.getBusinessCapabilities(location).length > 3 && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                                        +{GoogleBusinessAPI.getBusinessCapabilities(location).length - 3}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               )}

@@ -16,11 +16,26 @@ export interface SavedBusinessProfile {
     title?: string
     storefrontAddress?: any
     primaryCategory?: any
+    additionalCategories?: any[]
     regularHours?: any
+    moreHours?: any[]
     metadata?: any
     latlng?: any
     locationState?: any
     attributes?: any[]
+    profile?: any
+    relationshipData?: any
+    serviceItems?: any[]
+    openInfo?: any
+    serviceArea?: any
+    labels?: string[]
+    adWordsLocationExtensions?: any
+    // Computed fields
+    businessHours?: string[]
+    allCategories?: string[]
+    capabilities?: string[]
+    isOpen?: boolean
+    businessType?: string
   }
   // Computed fields
   isVerified?: boolean

@@ -33,15 +33,31 @@ export interface BusinessLocation {
     categoryId: string
     displayName: string
   }
+  additionalCategories?: Array<{
+    categoryId: string
+    displayName: string
+  }>
   metadata?: {
+    hasGoogleUpdated: boolean
+    hasPendingEdits: boolean
+    canDelete: boolean
+    canOperateLocalPost: boolean
+    canModifyServiceList: boolean
+    canHaveFoodMenus: boolean
+    canOperateHealthData: boolean
+    canOperateLodgingData: boolean
+    placeId: string
+    duplicateLocation?: string
     mapsUri: string
     newReviewUri: string
+    canHaveBusinessCalls: boolean
+    hasVoiceOfMerchant: boolean
   }
   serviceArea?: {
     businessType: string
     places?: {
       placeInfos: Array<{
-        name: string
+        placeName: string
         placeId: string
       }>
     }
@@ -54,6 +70,11 @@ export interface BusinessLocation {
   openInfo?: {
     status: string
     canReopen: boolean
+    openingDate?: {
+      year: number
+      month: number
+      day: number
+    }
   }
   locationState?: {
     isGoogleUpdated: boolean
@@ -69,10 +90,58 @@ export interface BusinessLocation {
     valueType: string
     values: any[]
   }>
+  profile?: {
+    description: string
+  }
+  relationshipData?: {
+    parentLocation?: {
+      placeId: string
+      relationType: string
+    }
+    childrenLocations?: Array<{
+      placeId: string
+      relationType: string
+    }>
+    parentChain?: string
+  }
+  moreHours?: Array<{
+    hoursTypeId: string
+    periods: Array<{
+      openDay: string
+      openTime: string
+      closeDay: string
+      closeTime: string
+    }>
+  }>
+  serviceItems?: Array<{
+    price?: {
+      currencyCode: string
+      units: string
+      nanos: number
+    }
+    structuredServiceItem?: {
+      serviceTypeId: string
+      description: string
+    }
+    freeFormServiceItem?: {
+      category: string
+      label: {
+        displayName: string
+        description: string
+        languageCode: string
+      }
+    }
+  }>
+  adWordsLocationExtensions?: {
+    adPhone: string
+  }
   // Additional computed fields for easier access
   rating?: number
   reviewCount?: number
   totalReviews?: number
+  isOpen?: boolean
+  businessType?: string
+  isVerified?: boolean
 }
 
 export interface BusinessAccount {
@@ -82,26 +151,6 @@ export interface BusinessAccount {
   role?: string
   state?: {
     status: string
-  }
-}
-
-export interface BusinessReview {
-  name: string
-  reviewId: string
-  reviewer: {
-    profilePhotoUrl?: string
-    displayName?: string
-    isAnonymous?: boolean
-  }
-  starRating: {
-    value: number
-  }
-  comment?: string
-  createTime: string
-  updateTime: string
-  reviewReply?: {
-    comment: string
-    updateTime: string
   }
 }
 
@@ -128,7 +177,7 @@ export class GoogleBusinessAPI {
   // Updated to use the correct Google Business Profile API endpoints
   private accountsBaseUrl = 'https://mybusinessaccountmanagement.googleapis.com/v1'
   private businessInfoBaseUrl = 'https://mybusinessbusinessinformation.googleapis.com/v1'
-  private v4BaseUrl = 'https://mybusiness.googleapis.com/v4' // For reviews and other v4 endpoints
+  private postsBaseUrl = 'https://mybusiness.googleapis.com/v4'
 
   constructor() {
     this.authService = GoogleAuthService.getInstance()
@@ -147,32 +196,15 @@ export class GoogleBusinessAPI {
       try {
         const errorData = JSON.parse(responseText)
         if (errorData.error) {
-          errorMessage = `${errorData.error.message || errorData.error}`
+          errorMessage = `${errorMessage} - ${errorData.error.message || errorData.error}`
           
           // Provide specific guidance for common errors
           if (errorData.error.code === 403) {
-            errorMessage += '\n\n🔧 This usually means:\n1. The API is not enabled in Google Cloud Console\n2. You don\'t have permission to access this business account\n3. The business profile doesn\'t exist or isn\'t verified\n4. Your account type might not support business locations'
+            errorMessage += '\n\nThis usually means:\n1. The API is not enabled in Google Cloud Console\n2. You don\'t have permission to access this business account\n3. The business profile doesn\'t exist or isn\'t verified'
           } else if (errorData.error.code === 404) {
-            errorMessage += '\n\n🔧 This usually means:\n1. The business account or location doesn\'t exist\n2. You don\'t have access to this resource\n3. The resource ID is incorrect'
+            errorMessage += '\n\nThis usually means:\n1. The business account or location doesn\'t exist\n2. You don\'t have access to this resource\n3. The resource ID is incorrect'
           } else if (errorData.error.code === 401) {
-            errorMessage += '\n\n🔧 This usually means:\n1. Your access token has expired\n2. You don\'t have the required OAuth scopes\n3. Authentication failed'
-          } else if (errorData.error.code === 400) {
-            if (errorData.error.message?.includes('read_mask')) {
-              errorMessage += '\n\n🔧 Read mask error - this usually means:\n1. Invalid field names in the read_mask parameter\n2. The API endpoint doesn\'t support the requested fields\n3. Your account might not have business locations set up'
-            } else if (errorData.error.message?.includes('invalid argument')) {
-              errorMessage += '\n\n🔧 Invalid argument error - this usually means:\n1. The account might be a personal account without business locations\n2. Required parameters are missing or incorrect\n3. The account needs to be verified for business use'
-            }
-          }
-          
-          // Add details about field violations if available
-          if (errorData.error.details) {
-            errorData.error.details.forEach((detail: any) => {
-              if (detail.fieldViolations) {
-                detail.fieldViolations.forEach((violation: any) => {
-                  errorMessage += `\n- Field "${violation.field}": ${violation.description}`
-                })
-              }
-            })
+            errorMessage += '\n\nThis usually means:\n1. Your access token has expired\n2. You don\'t have the required OAuth scopes\n3. Authentication failed'
           }
         }
       } catch (e) {
@@ -214,8 +246,8 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching locations for account:', accountName)
     
-    // Use correct field names based on Business Information API documentation
-    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory'
+    // The API requires a read_mask parameter - use comprehensive fields
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,openInfo,locationState'
     
     // Use the business information API for locations
     const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
@@ -235,8 +267,8 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching locations with comprehensive read mask for account:', accountName)
     
-    // Use comprehensive read mask with correct field names from Business Information API
-    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata'
+    // Use comprehensive read mask with correct field names
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,serviceArea,labels,latlng,openInfo,locationState,attributes'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
       headers: {
@@ -255,7 +287,7 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching locations with minimal read mask for account:', accountName)
     
-    // Use minimal read mask to test basic connectivity - only essential fields
+    // Use minimal read mask to test basic connectivity
     const readMask = 'name,title'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
@@ -275,10 +307,7 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching location:', locationName)
     
-    // Use comprehensive read mask for single location
-    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata'
-    
-    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}?readMask=${readMask}`, {
+    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -288,70 +317,11 @@ export class GoogleBusinessAPI {
     return await this.handleApiResponse(response, 'Fetch Location')
   }
 
-  // Get reviews for a location using the v4 API
-  async getReviews(locationName: string): Promise<BusinessReview[]> {
-    const accessToken = await this.authService.getValidAccessToken()
-    
-    console.log('[Google Business API] Fetching reviews for location:', locationName)
-    
-    // Use the v4 API for reviews
-    const response = await fetch(`${this.v4BaseUrl}/${locationName}/reviews`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    const data = await this.handleApiResponse(response, 'Fetch Reviews')
-    return data.reviews || []
-  }
-
-  // Get reviews with pagination and additional options
-  async getReviewsWithOptions(locationName: string, options: {
-    pageSize?: number
-    pageToken?: string
-    orderBy?: string
-  } = {}): Promise<{
-    reviews: BusinessReview[]
-    averageRating: number
-    totalReviewCount: number
-    nextPageToken?: string
-  }> {
-    const accessToken = await this.authService.getValidAccessToken()
-    
-    console.log('[Google Business API] Fetching reviews with options for location:', locationName)
-    
-    // Build query parameters
-    const params = new URLSearchParams()
-    if (options.pageSize) params.append('pageSize', options.pageSize.toString())
-    if (options.pageToken) params.append('pageToken', options.pageToken)
-    if (options.orderBy) params.append('orderBy', options.orderBy)
-    
-    const queryString = params.toString() ? `?${params.toString()}` : ''
-    
-    // Use the v4 API for reviews
-    const response = await fetch(`${this.v4BaseUrl}/${locationName}/reviews${queryString}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    const data = await this.handleApiResponse(response, 'Fetch Reviews with Options')
-    return {
-      reviews: data.reviews || [],
-      averageRating: data.averageRating || 0,
-      totalReviewCount: data.totalReviewCount || 0,
-      nextPageToken: data.nextPageToken
-    }
-  }
-
   // Test API connectivity and permissions
-  async testApiAccess(): Promise<{ accounts: boolean; locations: boolean; reviews: boolean; errors: string[] }> {
+  async testApiAccess(): Promise<{ accounts: boolean; locations: boolean; errors: string[] }> {
     const errors: string[] = []
     let accountsWorking = false
     let locationsWorking = false
-    let reviewsWorking = false
 
     try {
       console.log('[Google Business API] Testing API access...')
@@ -362,48 +332,38 @@ export class GoogleBusinessAPI {
         accountsWorking = true
         console.log('[Google Business API] Accounts API working, found:', accounts.length, 'accounts')
         
-        // Test each account's business capabilities
+        // Test locations endpoint if we have accounts
         if (accounts.length > 0) {
-          for (const account of accounts) {
-            console.log(`[Google Business API] Checking account: ${account.accountName} (${account.type})`)
+          const accountName = accounts[0].name
+          
+          // Try minimal locations method first
+          try {
+            const locationsMinimal = await this.getLocationsMinimal(accountName)
+            locationsWorking = true
+            console.log('[Google Business API] Minimal Locations API working, found:', locationsMinimal.length, 'locations')
+          } catch (error) {
+            errors.push(`Minimal Locations API failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
             
-            const capabilities = await this.checkAccountBusinessCapabilities(account.name)
-            console.log('[Google Business API] Account capabilities:', capabilities)
-            
-            if (capabilities.canManageLocations) {
-              // Try to get locations for this account
+            // Try standard locations method
+            try {
+              const locations = await this.getLocations(accountName)
+              locationsWorking = true
+              console.log('[Google Business API] Standard Locations API working, found:', locations.length, 'locations')
+            } catch (standardError) {
+              errors.push(`Standard Locations API failed: ${standardError instanceof Error ? standardError.message : 'Unknown error'}`)
+              
+              // Try comprehensive locations method as last resort
               try {
-                const locations = await this.getLocationsMinimal(account.name)
+                const locationsComprehensive = await this.getLocationsWithReadMask(accountName)
                 locationsWorking = true
-                console.log('[Google Business API] Locations API working, found:', locations.length, 'locations')
-                
-                // Test reviews endpoint if we have locations
-                if (locations.length > 0) {
-                  const locationName = locations[0].name
-                  try {
-                    const reviews = await this.getReviews(locationName)
-                    reviewsWorking = true
-                    console.log('[Google Business API] Reviews API working, found:', reviews.length, 'reviews')
-                  } catch (reviewError) {
-                    errors.push(`Reviews API failed: ${reviewError instanceof Error ? reviewError.message : 'Unknown error'}`)
-                  }
-                } else {
-                  errors.push(`No business locations found in account "${account.accountName}". This account may not have any business profiles set up.`)
-                }
-                break // Found a working account, no need to test others
-              } catch (locationError) {
-                errors.push(`Locations API failed for account "${account.accountName}": ${locationError instanceof Error ? locationError.message : 'Unknown error'}`)
+                console.log('[Google Business API] Comprehensive Locations API working, found:', locationsComprehensive.length, 'locations')
+              } catch (comprehensiveError) {
+                errors.push(`Comprehensive Locations API also failed: ${comprehensiveError instanceof Error ? comprehensiveError.message : 'Unknown error'}`)
               }
-            } else {
-              errors.push(`Account "${account.accountName}" (${capabilities.accountType}, ${capabilities.verificationState}) cannot manage business locations: ${capabilities.errorMessage || 'Unknown reason'}`)
             }
           }
-          
-          if (!locationsWorking) {
-            errors.push('None of your Google accounts have business locations. To use this feature:\n1. Set up a Google Business Profile at https://business.google.com\n2. Add and verify your business locations\n3. Make sure your account type supports business management')
-          }
         } else {
-          errors.push('No Google Business accounts found - make sure you have Google Business Profile accounts set up')
+          errors.push('No business accounts found - make sure you have Google Business Profile accounts set up')
         }
       } catch (error) {
         errors.push(`Accounts API failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -415,7 +375,6 @@ export class GoogleBusinessAPI {
     return {
       accounts: accountsWorking,
       locations: locationsWorking,
-      reviews: reviewsWorking,
       errors
     }
   }
@@ -444,7 +403,7 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Creating post for location:', locationName)
     
-    const response = await fetch(`${this.v4BaseUrl}/${locationName}/localPosts`, {
+    const response = await fetch(`${this.postsBaseUrl}/${locationName}/localPosts`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -462,7 +421,7 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching posts for location:', locationName)
     
-    const response = await fetch(`${this.v4BaseUrl}/${locationName}/localPosts`, {
+    const response = await fetch(`${this.postsBaseUrl}/${locationName}/localPosts`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -473,13 +432,30 @@ export class GoogleBusinessAPI {
     return data.localPosts || []
   }
 
+  // Get reviews for a location
+  async getReviews(locationName: string): Promise<any[]> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching reviews for location:', locationName)
+    
+    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}/reviews`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const data = await this.handleApiResponse(response, 'Fetch Reviews')
+    return data.reviews || []
+  }
+
   // Reply to a review
   async replyToReview(reviewName: string, reply: string): Promise<any> {
     const accessToken = await this.authService.getValidAccessToken()
     
     console.log('[Google Business API] Replying to review:', reviewName)
     
-    const response = await fetch(`${this.v4BaseUrl}/${reviewName}/reply`, {
+    const response = await fetch(`${this.businessInfoBaseUrl}/${reviewName}/reply`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -499,7 +475,7 @@ export class GoogleBusinessAPI {
     
     console.log('[Google Business API] Fetching insights for location:', locationName)
     
-    const response = await fetch(`${this.v4BaseUrl}/${locationName}/reportInsights`, {
+    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}/reportInsights`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -528,33 +504,14 @@ export class GoogleBusinessAPI {
     return await this.handleApiResponse(response, 'Fetch Insights')
   }
 
-  // Get complete location details with all available information
-  async getLocationDetails(locationName: string): Promise<BusinessLocation> {
-    const accessToken = await this.authService.getValidAccessToken()
-    
-    console.log('[Google Business API] Fetching complete location details:', locationName)
-    
-    // Use comprehensive read mask with correct field names from Business Information API
-    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,serviceArea,labels,latlng,openInfo,locationState,attributes'
-    
-    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}?readMask=${readMask}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    return await this.handleApiResponse(response, 'Fetch Complete Location Details')
-  }
-
   // Get all locations with complete details
   async getLocationsWithCompleteDetails(accountName: string): Promise<BusinessLocation[]> {
     const accessToken = await this.authService.getValidAccessToken()
     
     console.log('[Google Business API] Fetching locations with complete details for account:', accountName)
     
-    // Use comprehensive read mask with correct field names from Business Information API
-    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,serviceArea,labels,latlng,openInfo,locationState,attributes'
+    // Use comprehensive read mask to get all available business information
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,additionalCategories,regularHours,metadata,serviceArea,labels,adWordsLocationExtensions,latlng,openInfo,locationState,attributes,profile,relationshipData,moreHours,serviceItems'
     
     const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
       headers: {
@@ -567,183 +524,121 @@ export class GoogleBusinessAPI {
     return data.locations || []
   }
 
-  // Get comprehensive business data including reviews and ratings
-  async getCompleteBusinessData(locationName: string): Promise<{
-    location: BusinessLocation;
-    reviews: BusinessReview[];
-    rating: number;
-    reviewCount: number;
-    totalReviews: number;
-  }> {
+  // Get complete location details with all available information
+  async getLocationDetails(locationName: string): Promise<BusinessLocation> {
     const accessToken = await this.authService.getValidAccessToken()
     
-    console.log('[Google Business API] Fetching comprehensive business data for:', locationName)
+    console.log('[Google Business API] Fetching complete location details:', locationName)
     
-    try {
-      // Fetch location details
-      const locationDetails = await this.getLocationDetails(locationName)
-      
-      // Fetch reviews with comprehensive data
-      let reviewsData = {
-        reviews: [] as BusinessReview[],
-        averageRating: 0,
-        totalReviewCount: 0
-      }
-      
-      try {
-        console.log('[Google Business API] Fetching reviews for location:', locationName)
-        reviewsData = await this.getReviewsWithOptions(locationName, {
-          pageSize: 50, // Get up to 50 reviews
-          orderBy: 'updateTime desc' // Get most recent reviews first
-        })
-        
-        console.log('[Google Business API] Reviews data:', {
-          reviewsFound: reviewsData.reviews.length,
-          averageRating: reviewsData.averageRating,
-          totalReviewCount: reviewsData.totalReviewCount
-        })
-      } catch (reviewError) {
-        console.warn('[Google Business API] Failed to fetch reviews:', reviewError)
-        // Continue without reviews data
-      }
-      
-      return {
-        location: locationDetails,
-        reviews: reviewsData.reviews,
-        rating: reviewsData.averageRating,
-        reviewCount: reviewsData.reviews.length,
-        totalReviews: reviewsData.totalReviewCount
-      }
-    } catch (error) {
-      console.error('[Google Business API] Failed to fetch comprehensive business data:', error)
-      throw error
-    }
+    // Use comprehensive read mask to get all available fields
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,additionalCategories,regularHours,metadata,serviceArea,labels,adWordsLocationExtensions,latlng,openInfo,locationState,attributes,profile,relationshipData,moreHours,serviceItems'
+    
+    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}?readMask=${readMask}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    return await this.handleApiResponse(response, 'Fetch Complete Location Details')
   }
 
-  // Enhanced method to get locations with real-time data
-  async getLocationsWithRealTimeData(accountName: string): Promise<any[]> {
-    const accessToken = await this.authService.getValidAccessToken()
+  // Process and enrich business location data
+  static enrichLocationData(location: BusinessLocation): BusinessLocation {
+    const enriched = { ...location }
     
-    console.log('[Google Business API] Fetching locations with real-time data for account:', accountName)
-    
-    try {
-      // First get basic locations
-      const locations = await this.getLocationsMinimal(accountName)
-      
-      // Then enhance each location with comprehensive data
-      const enhancedLocations = await Promise.all(
-        locations.map(async (location) => {
-          try {
-            const comprehensiveData = await this.getCompleteBusinessData(location.name)
-            
-            return {
-              ...location,
-              ...comprehensiveData.location,
-              rating: comprehensiveData.rating,
-              reviewCount: comprehensiveData.reviewCount,
-              totalReviews: comprehensiveData.totalReviews,
-              reviews: comprehensiveData.reviews,
-              // Add computed fields
-              hasReviews: comprehensiveData.reviews.length > 0,
-              isVerified: comprehensiveData.location.locationState?.isVerified || false,
-              lastFetched: new Date().toISOString()
-            }
-          } catch (error) {
-            console.warn('[Google Business API] Failed to enhance location data for:', location.name, error)
-            // Return basic location data if enhancement fails
-            return {
-              ...location,
-              rating: 0,
-              reviewCount: 0,
-              totalReviews: 0,
-              reviews: [],
-              hasReviews: false,
-              isVerified: false,
-              lastFetched: new Date().toISOString()
-            }
-          }
-        })
-      )
-      
-      console.log('[Google Business API] Enhanced', enhancedLocations.length, 'locations with real-time data')
-      return enhancedLocations
-    } catch (error) {
-      console.error('[Google Business API] Failed to fetch locations with real-time data:', error)
-      throw error
+    // Compute isOpen status
+    if (location.openInfo?.status) {
+      enriched.isOpen = location.openInfo.status === 'OPEN'
     }
+    
+    // Extract business type from service area
+    if (location.serviceArea?.businessType) {
+      enriched.businessType = location.serviceArea.businessType
+    }
+    
+    // Set verification status from location state
+    if (location.locationState?.isVerified !== undefined) {
+      enriched.isVerified = location.locationState.isVerified
+    }
+    
+    // Extract rating and review count from metadata if available
+    // Note: These might come from separate reviews API calls
+    
+    return enriched
   }
 
-  // Check if an account has business capabilities
-  async checkAccountBusinessCapabilities(accountName: string): Promise<{
-    hasBusinessLocations: boolean;
-    accountType: string;
-    verificationState: string;
-    canManageLocations: boolean;
-    errorMessage?: string;
-  }> {
-    const accessToken = await this.authService.getValidAccessToken()
+  // Get business hours in a readable format
+  static formatBusinessHours(location: BusinessLocation): string[] {
+    const hours: string[] = []
     
-    console.log('[Google Business API] Checking business capabilities for account:', accountName)
-    
-    try {
-      // First, get account details
-      const accountResponse = await fetch(`${this.accountsBaseUrl}/${accountName}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      })
+    if (location.regularHours?.periods) {
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
       
-      const accountData = await this.handleApiResponse(accountResponse, 'Check Account Details')
-      
-      console.log('[Google Business API] Account details:', accountData)
-      
-      // Try to fetch locations with minimal read mask
-      try {
-        const locationsResponse = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=name`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        })
+      location.regularHours.periods.forEach(period => {
+        const openDay = dayNames[parseInt(period.openDay)] || period.openDay
+        const closeDay = dayNames[parseInt(period.closeDay)] || period.closeDay
         
-        if (locationsResponse.ok) {
-          const locationsData = await locationsResponse.json()
-          return {
-            hasBusinessLocations: (locationsData.locations?.length || 0) > 0,
-            accountType: accountData.type || 'UNKNOWN',
-            verificationState: accountData.verificationState || 'UNKNOWN',
-            canManageLocations: true
-          }
+        if (openDay === closeDay) {
+          hours.push(`${openDay}: ${period.openTime} - ${period.closeTime}`)
         } else {
-          const errorText = await locationsResponse.text()
-          console.log('[Google Business API] Locations check failed:', errorText)
-          
-          return {
-            hasBusinessLocations: false,
-            accountType: accountData.type || 'UNKNOWN',
-            verificationState: accountData.verificationState || 'UNKNOWN',
-            canManageLocations: false,
-            errorMessage: `Cannot access business locations: ${errorText}`
-          }
+          hours.push(`${openDay} ${period.openTime} - ${closeDay} ${period.closeTime}`)
         }
-      } catch (locationError) {
-        return {
-          hasBusinessLocations: false,
-          accountType: accountData.type || 'UNKNOWN',
-          verificationState: accountData.verificationState || 'UNKNOWN',
-          canManageLocations: false,
-          errorMessage: `Location access error: ${locationError instanceof Error ? locationError.message : 'Unknown error'}`
-        }
-      }
-    } catch (error) {
-      return {
-        hasBusinessLocations: false,
-        accountType: 'UNKNOWN',
-        verificationState: 'UNKNOWN',
-        canManageLocations: false,
-        errorMessage: `Account check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-      }
+      })
     }
+    
+    return hours
+  }
+
+  // Get all categories (primary + additional)
+  static getAllCategories(location: BusinessLocation): string[] {
+    const categories: string[] = []
+    
+    if (location.primaryCategory?.displayName) {
+      categories.push(location.primaryCategory.displayName)
+    }
+    
+    if (location.additionalCategories) {
+      location.additionalCategories.forEach(cat => {
+        if (cat.displayName) {
+          categories.push(cat.displayName)
+        }
+      })
+    }
+    
+    return categories
+  }
+
+  // Get formatted address
+  static getFormattedAddress(location: BusinessLocation): string {
+    const address = location.storefrontAddress || location.address
+    if (!address) return 'Address not available'
+    
+    const parts = []
+    if (address.addressLines?.length) {
+      parts.push(address.addressLines.join(', '))
+    }
+    if (address.locality) parts.push(address.locality)
+    if (address.administrativeArea) parts.push(address.administrativeArea)
+    if (address.postalCode) parts.push(address.postalCode)
+    
+    return parts.join(', ') || 'Address not available'
+  }
+
+  // Get business capabilities
+  static getBusinessCapabilities(location: BusinessLocation): string[] {
+    const capabilities: string[] = []
+    
+    if (location.metadata) {
+      const meta = location.metadata
+      if (meta.canOperateLocalPost) capabilities.push('Local Posts')
+      if (meta.canHaveFoodMenus) capabilities.push('Food Menus')
+      if (meta.canOperateHealthData) capabilities.push('Health Data')
+      if (meta.canOperateLodgingData) capabilities.push('Lodging Data')
+      if (meta.canHaveBusinessCalls) capabilities.push('Business Calls')
+      if (meta.hasVoiceOfMerchant) capabilities.push('Voice of Merchant')
+    }
+    
+    return capabilities
   }
 } 
