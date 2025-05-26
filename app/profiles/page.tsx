@@ -49,6 +49,11 @@ interface GoogleBusinessLocation {
   websiteUri?: string
   rating?: number
   reviewCount?: number
+  totalReviews?: number
+  hasReviews?: boolean
+  lastFetched?: string
+  isVerified?: boolean
+  reviews?: any[]
   address?: {
     addressLines: string[]
     locality: string
@@ -65,6 +70,9 @@ interface GoogleBusinessLocation {
   }
   primaryCategory?: {
     displayName: string
+  }
+  locationState?: {
+    isVerified: boolean
   }
 }
 
@@ -229,31 +237,40 @@ export default function ProfilesPage() {
         return
       }
 
-      // Try to get locations for the first account
+      // Get locations with comprehensive real-time data
       let locations: any[] = []
       const accountName = accounts[0].name
       
       try {
-        // Try minimal method first (most likely to work)
-        locations = await businessAPI.getLocationsMinimal(accountName)
-        console.log('Locations (minimal method):', locations)
-      } catch (locationError) {
-        console.warn('Minimal locations method failed, trying standard...', locationError)
+        console.log('[Profiles] Fetching comprehensive business data...')
+        locations = await businessAPI.getLocationsWithRealTimeData(accountName)
+        console.log('[Profiles] Comprehensive business data:', locations)
+      } catch (comprehensiveError) {
+        console.warn('[Profiles] Comprehensive data fetch failed, trying fallback methods...', comprehensiveError)
         
-        // Try standard method
+        // Fallback to basic methods if comprehensive fetch fails
         try {
-          locations = await businessAPI.getLocations(accountName)
-          console.log('Locations (standard method):', locations)
-        } catch (standardError) {
-          console.warn('Standard locations method failed, trying comprehensive...', standardError)
+          // Try minimal method first (most likely to work)
+          locations = await businessAPI.getLocationsMinimal(accountName)
+          console.log('Locations (minimal method):', locations)
+        } catch (locationError) {
+          console.warn('Minimal locations method failed, trying standard...', locationError)
           
-          // Try comprehensive method as last resort
+          // Try standard method
           try {
-            locations = await businessAPI.getLocationsWithReadMask(accountName)
-            console.log('Locations (comprehensive method):', locations)
-          } catch (comprehensiveError) {
-            console.error('All location methods failed:', comprehensiveError)
-            throw new Error(`Failed to fetch locations using all methods: ${comprehensiveError instanceof Error ? comprehensiveError.message : 'Unknown error'}`)
+            locations = await businessAPI.getLocations(accountName)
+            console.log('Locations (standard method):', locations)
+          } catch (standardError) {
+            console.warn('Standard locations method failed, trying comprehensive...', standardError)
+            
+            // Try comprehensive method as last resort
+            try {
+              locations = await businessAPI.getLocationsWithReadMask(accountName)
+              console.log('Locations (comprehensive method):', locations)
+            } catch (comprehensiveError) {
+              console.error('All location methods failed:', comprehensiveError)
+              throw new Error(`Failed to fetch locations using all methods: ${comprehensiveError instanceof Error ? comprehensiveError.message : 'Unknown error'}`)
+            }
           }
         }
       }
@@ -262,6 +279,8 @@ export default function ProfilesPage() {
       
       if (locations.length === 0) {
         setError('No business locations found in your Google Business Profile account. Make sure you have verified business locations set up.')
+      } else {
+        console.log(`[Profiles] Successfully loaded ${locations.length} business locations with ${locations.filter(l => l.hasReviews).length} having reviews`)
       }
     } catch (error) {
       console.error('Error fetching Google Business Profiles:', error)
@@ -312,18 +331,34 @@ export default function ProfilesPage() {
         return
       }
 
-      console.log('[Profiles] Fetching complete details for location:', location.name)
+      console.log('[Profiles] Adding profile with comprehensive data:', location.name)
       
-      // Fetch complete location details from Google API
-      const businessAPI = new GoogleBusinessAPI()
+      // Use the comprehensive data if available, otherwise fetch it
       let completeLocation = location
+      let comprehensiveData = null
       
-      try {
-        completeLocation = await businessAPI.getLocationDetails(location.name)
-        console.log('[Profiles] Complete location details:', completeLocation)
-      } catch (detailsError) {
-        console.warn('[Profiles] Failed to fetch complete details, using basic info:', detailsError)
-        // Continue with basic location data if detailed fetch fails
+      if (!location.hasReviews && !location.lastFetched) {
+        // This location doesn't have comprehensive data yet, fetch it
+        try {
+          const businessAPI = new GoogleBusinessAPI()
+          comprehensiveData = await businessAPI.getCompleteBusinessData(location.name)
+          completeLocation = {
+            ...location,
+            ...comprehensiveData.location,
+            rating: comprehensiveData.rating,
+            reviewCount: comprehensiveData.reviewCount,
+            totalReviews: comprehensiveData.totalReviews,
+            reviews: comprehensiveData.reviews,
+            hasReviews: comprehensiveData.reviews.length > 0,
+            lastFetched: new Date().toISOString()
+          }
+          console.log('[Profiles] Fetched comprehensive data for profile:', comprehensiveData)
+        } catch (detailsError) {
+          console.warn('[Profiles] Failed to fetch comprehensive details, using available data:', detailsError)
+          // Continue with available location data
+        }
+      } else {
+        console.log('[Profiles] Using pre-fetched comprehensive data')
       }
 
       // Handle both old and new location data structures
@@ -332,7 +367,7 @@ export default function ProfilesPage() {
       
       const profileId = Date.now().toString()
       
-      // Create the business profile with complete information
+      // Create the business profile with comprehensive information
       const newProfile: BusinessProfile = {
         id: profileId,
         name: locationName,
@@ -344,9 +379,9 @@ export default function ProfilesPage() {
         category: completeLocation.primaryCategory?.displayName || 'Business',
         rating: completeLocation.rating || 0,
         reviewCount: completeLocation.reviewCount || 0,
-        status: completeLocation.locationState?.isVerified ? 'active' : 'pending',
+        status: completeLocation.locationState?.isVerified || completeLocation.isVerified ? 'active' : 'pending',
         lastUpdated: new Date().toISOString().split('T')[0],
-        googleBusinessId: completeLocation.name
+        googleBusinessId: completeLocation.name || location.name || `temp_${profileId}`
       }
 
       // Create the saved profile with complete Google data
@@ -363,8 +398,8 @@ export default function ProfilesPage() {
           locationState: completeLocation.locationState,
           attributes: completeLocation.attributes
         },
-        isVerified: completeLocation.locationState?.isVerified || false,
-        totalReviews: completeLocation.reviewCount || 0,
+        isVerified: completeLocation.locationState?.isVerified || completeLocation.isVerified || false,
+        totalReviews: completeLocation.totalReviews || completeLocation.reviewCount || 0,
         lastSynced: new Date().toISOString(),
         createdAt: new Date().toISOString()
       }
@@ -377,7 +412,12 @@ export default function ProfilesPage() {
       setShowAddForm(false)
       setGoogleLocations([])
       
-      console.log('[Profiles] Successfully added and saved profile:', locationName)
+      console.log('[Profiles] Successfully added and saved profile with comprehensive data:', {
+        name: locationName,
+        rating: newProfile.rating,
+        reviewCount: newProfile.reviewCount,
+        hasReviews: completeLocation.hasReviews
+      })
       
       // Show success message
       setError(null)
@@ -774,10 +814,16 @@ export default function ProfilesPage() {
                               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                                 <div className="flex items-center space-x-1">
                                   <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                  <span>{location.rating || 'No rating'}</span>
+                                  <span>{location.rating ? location.rating.toFixed(1) : 'No rating'}</span>
                                 </div>
                                 <span>•</span>
                                 <span>{location.reviewCount || 0} reviews</span>
+                                {location.hasReviews && (
+                                  <span className="text-green-600 text-xs">• Verified Reviews</span>
+                                )}
+                                {location.lastFetched && (
+                                  <span className="text-blue-600 text-xs">• Real-time Data</span>
+                                )}
                               </div>
                             </div>
                             

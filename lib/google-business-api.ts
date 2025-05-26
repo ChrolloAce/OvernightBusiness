@@ -473,4 +473,117 @@ export class GoogleBusinessAPI {
     const data = await this.handleApiResponse(response, 'Fetch Locations with Complete Details')
     return data.locations || []
   }
+
+  // Get comprehensive business data including reviews and ratings
+  async getCompleteBusinessData(locationName: string): Promise<{
+    location: BusinessLocation;
+    reviews: any[];
+    rating: number;
+    reviewCount: number;
+    totalReviews: number;
+  }> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching comprehensive business data for:', locationName)
+    
+    try {
+      // Fetch location details
+      const locationDetails = await this.getLocationDetails(locationName)
+      
+      // Fetch reviews
+      let reviews: any[] = []
+      let rating = 0
+      let reviewCount = 0
+      let totalReviews = 0
+      
+      try {
+        console.log('[Google Business API] Fetching reviews for location:', locationName)
+        reviews = await this.getReviews(locationName)
+        
+        // Calculate rating and review metrics from actual reviews
+        if (reviews && reviews.length > 0) {
+          const validReviews = reviews.filter(review => review.starRating && review.starRating.value)
+          if (validReviews.length > 0) {
+            const totalRating = validReviews.reduce((sum, review) => sum + review.starRating.value, 0)
+            rating = totalRating / validReviews.length
+            reviewCount = validReviews.length
+            totalReviews = reviews.length
+          }
+        }
+        
+        console.log('[Google Business API] Reviews data:', {
+          reviewsFound: reviews.length,
+          averageRating: rating,
+          validReviews: reviewCount
+        })
+      } catch (reviewError) {
+        console.warn('[Google Business API] Failed to fetch reviews:', reviewError)
+        // Continue without reviews data
+      }
+      
+      return {
+        location: locationDetails,
+        reviews,
+        rating: Math.round(rating * 10) / 10, // Round to 1 decimal place
+        reviewCount,
+        totalReviews
+      }
+    } catch (error) {
+      console.error('[Google Business API] Failed to fetch comprehensive business data:', error)
+      throw error
+    }
+  }
+
+  // Enhanced method to get locations with real-time data
+  async getLocationsWithRealTimeData(accountName: string): Promise<any[]> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching locations with real-time data for account:', accountName)
+    
+    try {
+      // First get basic locations
+      const locations = await this.getLocationsMinimal(accountName)
+      
+      // Then enhance each location with comprehensive data
+      const enhancedLocations = await Promise.all(
+        locations.map(async (location) => {
+          try {
+            const comprehensiveData = await this.getCompleteBusinessData(location.name)
+            
+            return {
+              ...location,
+              ...comprehensiveData.location,
+              rating: comprehensiveData.rating,
+              reviewCount: comprehensiveData.reviewCount,
+              totalReviews: comprehensiveData.totalReviews,
+              reviews: comprehensiveData.reviews,
+              // Add computed fields
+              hasReviews: comprehensiveData.reviews.length > 0,
+              isVerified: comprehensiveData.location.locationState?.isVerified || false,
+              lastFetched: new Date().toISOString()
+            }
+          } catch (error) {
+            console.warn('[Google Business API] Failed to enhance location data for:', location.name, error)
+            // Return basic location data if enhancement fails
+            return {
+              ...location,
+              rating: 0,
+              reviewCount: 0,
+              totalReviews: 0,
+              reviews: [],
+              hasReviews: false,
+              isVerified: false,
+              lastFetched: new Date().toISOString()
+            }
+          }
+        })
+      )
+      
+      console.log('[Google Business API] Enhanced', enhancedLocations.length, 'locations with real-time data')
+      return enhancedLocations
+    } catch (error) {
+      console.error('[Google Business API] Failed to fetch locations with real-time data:', error)
+      throw error
+    }
+  }
 } 
