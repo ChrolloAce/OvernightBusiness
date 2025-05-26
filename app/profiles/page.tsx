@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { GoogleAuthService } from '@/lib/google-auth'
 import { GoogleBusinessAPI } from '@/lib/google-business-api'
+import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
 
 interface BusinessProfile {
   id: string
@@ -95,8 +96,23 @@ export default function ProfilesPage() {
       setUserInfo(user)
       setSessionInfo(session)
       
-      // Clear template data when connected
-      setProfiles([])
+      // Load saved profiles from storage
+      const savedProfiles = BusinessProfilesStorage.getAllProfiles()
+      const convertedProfiles: BusinessProfile[] = savedProfiles.map(saved => ({
+        id: saved.id,
+        name: saved.name,
+        address: saved.address,
+        phone: saved.phone,
+        website: saved.website,
+        category: saved.category,
+        rating: saved.rating,
+        reviewCount: saved.reviewCount,
+        status: saved.status,
+        lastUpdated: saved.lastUpdated,
+        googleBusinessId: saved.googleBusinessId
+      }))
+      setProfiles(convertedProfiles)
+      console.log('[Profiles] Loaded', savedProfiles.length, 'saved profiles from storage')
     } else {
       // Show template data when not connected
       setUserInfo(null)
@@ -282,30 +298,94 @@ export default function ProfilesPage() {
     fetchGoogleBusinessProfiles()
   }
 
-  const addGoogleProfile = (location: any) => {
-    // Handle both old and new location data structures
-    const locationName = location.title || location.displayName || location.locationName || 'Unknown Business'
-    const address = location.storefrontAddress || location.address
-    
-    const newProfile: BusinessProfile = {
-      id: Date.now().toString(),
-      name: locationName,
-      address: address 
-        ? `${address.addressLines?.join(', ') || ''}, ${address.locality || ''}, ${address.administrativeArea || ''} ${address.postalCode || ''}`.trim()
-        : 'Address not available',
-      phone: location.primaryPhone || 'Phone not available',
-      website: location.websiteUri || '',
-      category: location.primaryCategory?.displayName || 'Business',
-      rating: 0, // Would need to fetch from reviews API
-      reviewCount: 0, // Would need to fetch from reviews API
-      status: 'active',
-      lastUpdated: new Date().toISOString().split('T')[0],
-      googleBusinessId: location.name
-    }
+  const addGoogleProfile = async (location: any) => {
+    try {
+      setLoadingLocations(true)
+      setError(null)
+      
+      // Check if this profile already exists
+      if (BusinessProfilesStorage.profileExistsByGoogleId(location.name)) {
+        setError('This business profile has already been added.')
+        setLoadingLocations(false)
+        return
+      }
 
-    setProfiles(prev => [...prev, newProfile])
-    setShowAddForm(false)
-    setGoogleLocations([])
+      console.log('[Profiles] Fetching complete details for location:', location.name)
+      
+      // Fetch complete location details from Google API
+      const businessAPI = new GoogleBusinessAPI()
+      let completeLocation = location
+      
+      try {
+        completeLocation = await businessAPI.getLocationDetails(location.name)
+        console.log('[Profiles] Complete location details:', completeLocation)
+      } catch (detailsError) {
+        console.warn('[Profiles] Failed to fetch complete details, using basic info:', detailsError)
+        // Continue with basic location data if detailed fetch fails
+      }
+
+      // Handle both old and new location data structures
+      const locationName = completeLocation.title || completeLocation.displayName || completeLocation.locationName || 'Unknown Business'
+      const address = completeLocation.storefrontAddress || completeLocation.address
+      
+      const profileId = Date.now().toString()
+      
+      // Create the business profile with complete information
+      const newProfile: BusinessProfile = {
+        id: profileId,
+        name: locationName,
+        address: address 
+          ? `${address.addressLines?.join(', ') || ''}, ${address.locality || ''}, ${address.administrativeArea || ''} ${address.postalCode || ''}`.trim()
+          : 'Address not available',
+        phone: completeLocation.primaryPhone || 'Phone not available',
+        website: completeLocation.websiteUri || '',
+        category: completeLocation.primaryCategory?.displayName || 'Business',
+        rating: completeLocation.rating || 0,
+        reviewCount: completeLocation.reviewCount || 0,
+        status: completeLocation.locationState?.isVerified ? 'active' : 'pending',
+        lastUpdated: new Date().toISOString().split('T')[0],
+        googleBusinessId: completeLocation.name
+      }
+
+      // Create the saved profile with complete Google data
+      const savedProfile: SavedBusinessProfile = {
+        ...newProfile,
+        googleBusinessId: completeLocation.name || location.name || `temp_${profileId}`,
+        googleData: {
+          title: completeLocation.title,
+          storefrontAddress: completeLocation.storefrontAddress,
+          primaryCategory: completeLocation.primaryCategory,
+          regularHours: completeLocation.regularHours,
+          metadata: completeLocation.metadata,
+          latlng: completeLocation.latlng,
+          locationState: completeLocation.locationState,
+          attributes: completeLocation.attributes
+        },
+        isVerified: completeLocation.locationState?.isVerified || false,
+        totalReviews: completeLocation.reviewCount || 0,
+        lastSynced: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      }
+
+      // Save to local storage
+      BusinessProfilesStorage.saveProfile(savedProfile)
+      
+      // Update the UI
+      setProfiles(prev => [...prev, newProfile])
+      setShowAddForm(false)
+      setGoogleLocations([])
+      
+      console.log('[Profiles] Successfully added and saved profile:', locationName)
+      
+      // Show success message
+      setError(null)
+      
+    } catch (error) {
+      console.error('[Profiles] Error adding profile:', error)
+      setError(`Failed to add business profile: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setLoadingLocations(false)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -327,6 +407,26 @@ export default function ProfilesPage() {
     const timeUntilExpiry = sessionInfo.expires_at - now
     const fiveMinutes = 5 * 60 * 1000
     return timeUntilExpiry < fiveMinutes && timeUntilExpiry > 0
+  }
+
+  const handleDeleteProfile = (profileId: string) => {
+    if (confirm('Are you sure you want to delete this business profile?')) {
+      BusinessProfilesStorage.deleteProfile(profileId)
+      setProfiles(prev => prev.filter(p => p.id !== profileId))
+      console.log('[Profiles] Deleted profile:', profileId)
+    }
+  }
+
+  const handleRefreshProfiles = () => {
+    checkAuthStatus() // This will reload profiles from storage
+  }
+
+  const handleClearAllProfiles = () => {
+    if (confirm('Are you sure you want to clear all saved business profiles? This action cannot be undone.')) {
+      BusinessProfilesStorage.clearAllProfiles()
+      setProfiles([])
+      console.log('[Profiles] Cleared all profiles')
+    }
   }
 
   return (
@@ -519,7 +619,7 @@ export default function ProfilesPage() {
                     <Button variant="outline" size="sm">
                       <ExternalLink className="h-3 w-3" />
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => handleDeleteProfile(profile.id)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>

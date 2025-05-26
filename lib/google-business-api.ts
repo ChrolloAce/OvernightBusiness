@@ -22,6 +22,13 @@ export interface BusinessLocation {
     postalCode: string
     regionCode: string
   }
+  storefrontAddress?: {
+    addressLines: string[]
+    locality: string
+    administrativeArea: string
+    postalCode: string
+    regionCode: string
+  }
   primaryCategory?: {
     categoryId: string
     displayName: string
@@ -30,13 +37,42 @@ export interface BusinessLocation {
     mapsUri: string
     newReviewUri: string
   }
-  storefrontAddress?: {
-    addressLines: string[]
-    locality: string
-    administrativeArea: string
-    postalCode: string
-    regionCode: string
+  serviceArea?: {
+    businessType: string
+    places?: {
+      placeInfos: Array<{
+        name: string
+        placeId: string
+      }>
+    }
   }
+  labels?: string[]
+  latlng?: {
+    latitude: number
+    longitude: number
+  }
+  openInfo?: {
+    status: string
+    canReopen: boolean
+  }
+  locationState?: {
+    isGoogleUpdated: boolean
+    isDuplicate: boolean
+    isSuspended: boolean
+    canUpdate: boolean
+    canDelete: boolean
+    isVerified: boolean
+    needsReverification: boolean
+  }
+  attributes?: Array<{
+    attributeId: string
+    valueType: string
+    values: any[]
+  }>
+  // Additional computed fields for easier access
+  rating?: number
+  reviewCount?: number
+  totalReviews?: number
 }
 
 export interface BusinessAccount {
@@ -397,5 +433,44 @@ export class GoogleBusinessAPI {
     })
 
     return await this.handleApiResponse(response, 'Fetch Insights')
+  }
+
+  // Get complete location details with all available information
+  async getLocationDetails(locationName: string): Promise<BusinessLocation> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching complete location details:', locationName)
+    
+    // Use comprehensive read mask to get all available fields
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,serviceArea,labels,adWordsLocationExtensions,latlng,openInfo,locationState,attributes'
+    
+    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}?readMask=${readMask}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    return await this.handleApiResponse(response, 'Fetch Complete Location Details')
+  }
+
+  // Get all locations with complete details
+  async getLocationsWithCompleteDetails(accountName: string): Promise<BusinessLocation[]> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching locations with complete details for account:', accountName)
+    
+    // Use comprehensive read mask to get all available business information
+    const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,serviceArea,labels,adWordsLocationExtensions,latlng,openInfo,locationState,attributes'
+    
+    const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const data = await this.handleApiResponse(response, 'Fetch Locations with Complete Details')
+    return data.locations || []
   }
 } 
