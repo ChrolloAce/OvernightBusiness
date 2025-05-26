@@ -32,16 +32,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create the request body with exact redirect URI (no additional encoding)
-    const tokenRequestBody = new URLSearchParams({
-      client_id: GOOGLE_CONFIG.clientId,
-      client_secret: GOOGLE_CONFIG.clientSecret,
-      code: code,
-      grant_type: 'authorization_code',
-      redirect_uri: GOOGLE_CONFIG.redirectUri, // Use exact URI without additional encoding
-    })
+    // Manually construct the request body to avoid encoding issues
+    const requestBody = [
+      `client_id=${encodeURIComponent(GOOGLE_CONFIG.clientId)}`,
+      `client_secret=${encodeURIComponent(GOOGLE_CONFIG.clientSecret)}`,
+      `code=${encodeURIComponent(code)}`,
+      `grant_type=authorization_code`,
+      `redirect_uri=${encodeURIComponent(GOOGLE_CONFIG.redirectUri)}`
+    ].join('&')
 
-    console.log('Token request body:', tokenRequestBody.toString())
+    console.log('Token request body:', requestBody)
     console.log('Redirect URI being sent:', GOOGLE_CONFIG.redirectUri)
 
     // Exchange authorization code for tokens
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: tokenRequestBody,
+      body: requestBody,
     })
 
     const responseText = await tokenResponse.text()
