@@ -666,31 +666,31 @@ export class GoogleBusinessAPI {
     return hours
   }
 
-  // Get all categories (primary + additional)
+  // Get all categories (primary + additional) - always show all
   static getAllCategories(location: BusinessLocation): string[] {
     const categories: string[] = []
     
-    // Handle the new categories structure
+    // Handle the new categories structure first
     if (location.categories?.primaryCategory?.displayName) {
       categories.push(location.categories.primaryCategory.displayName)
     }
     
     if (location.categories?.additionalCategories) {
       location.categories.additionalCategories.forEach(cat => {
-        if (cat.displayName) {
+        if (cat.displayName && !categories.includes(cat.displayName)) {
           categories.push(cat.displayName)
         }
       })
     }
     
     // Fallback to old structure for backward compatibility
-    if (location.primaryCategory?.displayName) {
+    if (location.primaryCategory?.displayName && !categories.includes(location.primaryCategory.displayName)) {
       categories.push(location.primaryCategory.displayName)
     }
     
     if (location.additionalCategories) {
       location.additionalCategories.forEach(cat => {
-        if (cat.displayName) {
+        if (cat.displayName && !categories.includes(cat.displayName)) {
           categories.push(cat.displayName)
         }
       })
@@ -776,8 +776,10 @@ export class GoogleBusinessAPI {
     return serviceTypes
   }
 
-  // Get more hours types available for this business
+  // Get more hours types available for this business - DON'T USE THIS FOR DISPLAY
   static getMoreHoursTypes(location: BusinessLocation): Array<{hoursTypeId: string, displayName: string, localizedDisplayName: string}> {
+    // This method returns available types, not configured ones
+    // Use getMoreHours() instead for actual configured hours
     const moreHoursTypes: Array<{hoursTypeId: string, displayName: string, localizedDisplayName: string}> = []
     
     // Handle the new categories structure
@@ -858,9 +860,10 @@ export class GoogleBusinessAPI {
     return specialHours
   }
 
-  // Get more hours (additional hour types)
+  // Get more hours (additional hour types) - only configured ones
   static getMoreHours(location: BusinessLocation): Array<{
     hoursTypeId: string
+    displayName?: string
     periods: Array<{
       openDay: string
       openTime: any
@@ -871,7 +874,12 @@ export class GoogleBusinessAPI {
     const moreHours: Array<any> = []
     
     if (location.moreHours) {
-      moreHours.push(...location.moreHours)
+      // Only return hours that actually have periods configured
+      location.moreHours.forEach(hourType => {
+        if (hourType.periods && hourType.periods.length > 0) {
+          moreHours.push(hourType)
+        }
+      })
     }
     
     return moreHours
