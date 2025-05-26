@@ -32,15 +32,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create the request body with exact redirect URI (no additional encoding)
     const tokenRequestBody = new URLSearchParams({
       client_id: GOOGLE_CONFIG.clientId,
       client_secret: GOOGLE_CONFIG.clientSecret,
-      code,
+      code: code,
       grant_type: 'authorization_code',
-      redirect_uri: GOOGLE_CONFIG.redirectUri,
+      redirect_uri: GOOGLE_CONFIG.redirectUri, // Use exact URI without additional encoding
     })
 
     console.log('Token request body:', tokenRequestBody.toString())
+    console.log('Redirect URI being sent:', GOOGLE_CONFIG.redirectUri)
 
     // Exchange authorization code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -60,18 +62,30 @@ export async function POST(request: NextRequest) {
       
       // Try to parse error details
       let errorDetails = responseText
+      let specificError = 'Failed to exchange code for tokens'
+      
       try {
         const errorJson = JSON.parse(responseText)
         errorDetails = errorJson.error_description || errorJson.error || responseText
+        
+        // Provide specific error messages for common issues
+        if (errorJson.error === 'invalid_grant') {
+          specificError = 'Authorization code is invalid, expired, or already used. Please try connecting again.'
+        } else if (errorJson.error === 'invalid_client') {
+          specificError = 'Invalid client credentials. Please check your Google Cloud Console setup.'
+        } else if (errorJson.error === 'redirect_uri_mismatch') {
+          specificError = 'Redirect URI mismatch. Please verify your Google Cloud Console settings.'
+        }
       } catch (e) {
         // Keep original response text
       }
 
       return NextResponse.json(
         { 
-          error: 'Failed to exchange code for tokens', 
+          error: specificError, 
           details: errorDetails,
-          status: tokenResponse.status 
+          status: tokenResponse.status,
+          hint: 'Try disconnecting and reconnecting your Google account'
         },
         { status: 400 }
       )

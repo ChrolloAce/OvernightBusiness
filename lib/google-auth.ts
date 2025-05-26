@@ -56,6 +56,12 @@ export class GoogleAuthService {
 
       if (!response.ok) {
         const errorData = await response.json()
+        
+        // If it's an invalid_grant error, clear any existing tokens
+        if (errorData.details && errorData.details.includes('invalid_grant')) {
+          this.logout()
+        }
+        
         throw new Error(errorData.error || 'Failed to exchange code for tokens')
       }
 
@@ -67,6 +73,10 @@ export class GoogleAuthService {
       return tokens
     } catch (error) {
       console.error('Token exchange error:', error)
+      
+      // Clear tokens on any authentication error
+      this.logout()
+      
       throw new Error(`Failed to exchange code for tokens: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -77,33 +87,44 @@ export class GoogleAuthService {
       throw new Error('No refresh token available')
     }
 
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: GOOGLE_CONFIG.clientId,
-        client_secret: GOOGLE_CONFIG.clientSecret,
-        refresh_token: this.tokens.refresh_token,
-        grant_type: 'refresh_token',
-      }),
-    })
+    try {
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: GOOGLE_CONFIG.clientId,
+          client_secret: GOOGLE_CONFIG.clientSecret,
+          refresh_token: this.tokens.refresh_token,
+          grant_type: 'refresh_token',
+        }),
+      })
 
-    if (!response.ok) {
-      throw new Error('Failed to refresh access token')
-    }
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Refresh token failed:', errorText)
+        
+        // If refresh fails, clear tokens and require re-authentication
+        this.logout()
+        throw new Error('Failed to refresh access token. Please reconnect your Google account.')
+      }
 
-    const newTokens = await response.json()
-    this.tokens = { ...this.tokens, ...newTokens }
-    
-    // Type assertion since we know tokens is not null at this point
-    if (this.tokens) {
-      this.saveTokens(this.tokens)
-      return this.tokens
+      const newTokens = await response.json()
+      this.tokens = { ...this.tokens, ...newTokens }
+      
+      // Type assertion since we know tokens is not null at this point
+      if (this.tokens) {
+        this.saveTokens(this.tokens)
+        return this.tokens
+      }
+      
+      throw new Error('Failed to update tokens')
+    } catch (error) {
+      // Clear tokens on refresh failure
+      this.logout()
+      throw error
     }
-    
-    throw new Error('Failed to update tokens')
   }
 
   // Get valid access token (refresh if needed)
