@@ -2,10 +2,11 @@ import { GoogleAuthService } from './google-auth'
 
 export interface BusinessLocation {
   name: string
-  locationName: string
-  primaryPhone: string
-  websiteUri: string
-  regularHours: {
+  locationName?: string
+  displayName?: string
+  primaryPhone?: string
+  websiteUri?: string
+  regularHours?: {
     periods: Array<{
       openDay: string
       openTime: string
@@ -13,20 +14,37 @@ export interface BusinessLocation {
       closeTime: string
     }>
   }
-  address: {
+  address?: {
     addressLines: string[]
     locality: string
     administrativeArea: string
     postalCode: string
     regionCode: string
   }
-  primaryCategory: {
+  primaryCategory?: {
     categoryId: string
     displayName: string
   }
-  metadata: {
+  metadata?: {
     mapsUri: string
     newReviewUri: string
+  }
+  storefrontAddress?: {
+    addressLines: string[]
+    locality: string
+    administrativeArea: string
+    postalCode: string
+    regionCode: string
+  }
+}
+
+export interface BusinessAccount {
+  name: string
+  accountName?: string
+  type?: string
+  role?: string
+  state?: {
+    status: string
   }
 }
 
@@ -50,48 +68,107 @@ export interface BusinessPost {
 
 export class GoogleBusinessAPI {
   private authService: GoogleAuthService
-  private baseUrl = 'https://mybusinessbusinessinformation.googleapis.com/v1'
+  // Updated to use the correct Google Business Profile API endpoints
+  private accountsBaseUrl = 'https://mybusinessaccountmanagement.googleapis.com/v1'
+  private businessInfoBaseUrl = 'https://mybusinessbusinessinformation.googleapis.com/v1'
   private postsBaseUrl = 'https://mybusiness.googleapis.com/v4'
 
   constructor() {
     this.authService = GoogleAuthService.getInstance()
   }
 
-  // Get all business accounts
-  async getAccounts(): Promise<any[]> {
+  // Enhanced error handling with detailed logging
+  private async handleApiResponse(response: Response, operation: string): Promise<any> {
+    const responseText = await response.text()
+    
+    console.log(`[Google Business API] ${operation} - Status:`, response.status)
+    console.log(`[Google Business API] ${operation} - Response:`, responseText)
+    
+    if (!response.ok) {
+      let errorMessage = `Failed to ${operation.toLowerCase()}: ${response.status} ${response.statusText}`
+      
+      try {
+        const errorData = JSON.parse(responseText)
+        if (errorData.error) {
+          errorMessage = `${errorMessage} - ${errorData.error.message || errorData.error}`
+          
+          // Provide specific guidance for common errors
+          if (errorData.error.code === 403) {
+            errorMessage += '\n\nThis usually means:\n1. The API is not enabled in Google Cloud Console\n2. You don\'t have permission to access this business account\n3. The business profile doesn\'t exist or isn\'t verified'
+          } else if (errorData.error.code === 404) {
+            errorMessage += '\n\nThis usually means:\n1. The business account or location doesn\'t exist\n2. You don\'t have access to this resource\n3. The resource ID is incorrect'
+          } else if (errorData.error.code === 401) {
+            errorMessage += '\n\nThis usually means:\n1. Your access token has expired\n2. You don\'t have the required OAuth scopes\n3. Authentication failed'
+          }
+        }
+      } catch (e) {
+        // If response is not JSON, use the raw text
+        errorMessage += ` - ${responseText}`
+      }
+      
+      throw new Error(errorMessage)
+    }
+
+    try {
+      return JSON.parse(responseText)
+    } catch (e) {
+      console.warn(`[Google Business API] ${operation} - Response is not valid JSON:`, responseText)
+      return { rawResponse: responseText }
+    }
+  }
+
+  // Get all business accounts using the correct endpoint
+  async getAccounts(): Promise<BusinessAccount[]> {
     const accessToken = await this.authService.getValidAccessToken()
     
-    const response = await fetch(`${this.baseUrl}/accounts`, {
+    console.log('[Google Business API] Fetching accounts...')
+    
+    const response = await fetch(`${this.accountsBaseUrl}/accounts`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     })
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch accounts: ${response.statusText}`)
-    }
-
-    const data = await response.json()
+    const data = await this.handleApiResponse(response, 'Fetch Accounts')
     return data.accounts || []
   }
 
-  // Get all locations for an account
+  // Get all locations for an account using the correct endpoint
   async getLocations(accountName: string): Promise<BusinessLocation[]> {
     const accessToken = await this.authService.getValidAccessToken()
     
-    const response = await fetch(`${this.baseUrl}/${accountName}/locations`, {
+    console.log('[Google Business API] Fetching locations for account:', accountName)
+    
+    // Use the business information API for locations
+    const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     })
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch locations: ${response.statusText}`)
-    }
+    const data = await this.handleApiResponse(response, 'Fetch Locations')
+    return data.locations || []
+  }
 
-    const data = await response.json()
+  // Alternative method to get locations with different parameters
+  async getLocationsWithReadMask(accountName: string): Promise<BusinessLocation[]> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching locations with read mask for account:', accountName)
+    
+    // Add read mask to specify which fields to return
+    const readMask = 'name,displayName,storefrontAddress,websiteUri,primaryPhone,primaryCategory'
+    
+    const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const data = await this.handleApiResponse(response, 'Fetch Locations with Read Mask')
     return data.locations || []
   }
 
@@ -99,25 +176,75 @@ export class GoogleBusinessAPI {
   async getLocation(locationName: string): Promise<BusinessLocation> {
     const accessToken = await this.authService.getValidAccessToken()
     
-    const response = await fetch(`${this.baseUrl}/${locationName}`, {
+    console.log('[Google Business API] Fetching location:', locationName)
+    
+    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     })
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch location: ${response.statusText}`)
+    return await this.handleApiResponse(response, 'Fetch Location')
+  }
+
+  // Test API connectivity and permissions
+  async testApiAccess(): Promise<{ accounts: boolean; locations: boolean; errors: string[] }> {
+    const errors: string[] = []
+    let accountsWorking = false
+    let locationsWorking = false
+
+    try {
+      console.log('[Google Business API] Testing API access...')
+      
+      // Test accounts endpoint
+      try {
+        const accounts = await this.getAccounts()
+        accountsWorking = true
+        console.log('[Google Business API] Accounts API working, found:', accounts.length, 'accounts')
+        
+        // Test locations endpoint if we have accounts
+        if (accounts.length > 0) {
+          try {
+            const locations = await this.getLocations(accounts[0].name)
+            locationsWorking = true
+            console.log('[Google Business API] Locations API working, found:', locations.length, 'locations')
+          } catch (error) {
+            errors.push(`Locations API failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            
+            // Try alternative locations method
+            try {
+              const locationsAlt = await this.getLocationsWithReadMask(accounts[0].name)
+              locationsWorking = true
+              console.log('[Google Business API] Alternative Locations API working, found:', locationsAlt.length, 'locations')
+            } catch (altError) {
+              errors.push(`Alternative Locations API also failed: ${altError instanceof Error ? altError.message : 'Unknown error'}`)
+            }
+          }
+        } else {
+          errors.push('No business accounts found - make sure you have Google Business Profile accounts set up')
+        }
+      } catch (error) {
+        errors.push(`Accounts API failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    } catch (error) {
+      errors.push(`General API test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
 
-    return await response.json()
+    return {
+      accounts: accountsWorking,
+      locations: locationsWorking,
+      errors
+    }
   }
 
   // Update a location
   async updateLocation(locationName: string, location: Partial<BusinessLocation>): Promise<BusinessLocation> {
     const accessToken = await this.authService.getValidAccessToken()
     
-    const response = await fetch(`${this.baseUrl}/${locationName}`, {
+    console.log('[Google Business API] Updating location:', locationName)
+    
+    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}`, {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -126,16 +253,14 @@ export class GoogleBusinessAPI {
       body: JSON.stringify(location),
     })
 
-    if (!response.ok) {
-      throw new Error(`Failed to update location: ${response.statusText}`)
-    }
-
-    return await response.json()
+    return await this.handleApiResponse(response, 'Update Location')
   }
 
   // Create a new post
   async createPost(locationName: string, post: Partial<BusinessPost>): Promise<BusinessPost> {
     const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Creating post for location:', locationName)
     
     const response = await fetch(`${this.postsBaseUrl}/${locationName}/localPosts`, {
       method: 'POST',
@@ -146,16 +271,14 @@ export class GoogleBusinessAPI {
       body: JSON.stringify(post),
     })
 
-    if (!response.ok) {
-      throw new Error(`Failed to create post: ${response.statusText}`)
-    }
-
-    return await response.json()
+    return await this.handleApiResponse(response, 'Create Post')
   }
 
   // Get posts for a location
   async getPosts(locationName: string): Promise<BusinessPost[]> {
     const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching posts for location:', locationName)
     
     const response = await fetch(`${this.postsBaseUrl}/${locationName}/localPosts`, {
       headers: {
@@ -164,11 +287,7 @@ export class GoogleBusinessAPI {
       },
     })
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch posts: ${response.statusText}`)
-    }
-
-    const data = await response.json()
+    const data = await this.handleApiResponse(response, 'Fetch Posts')
     return data.localPosts || []
   }
 
@@ -176,18 +295,16 @@ export class GoogleBusinessAPI {
   async getReviews(locationName: string): Promise<any[]> {
     const accessToken = await this.authService.getValidAccessToken()
     
-    const response = await fetch(`${this.baseUrl}/${locationName}/reviews`, {
+    console.log('[Google Business API] Fetching reviews for location:', locationName)
+    
+    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}/reviews`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     })
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch reviews: ${response.statusText}`)
-    }
-
-    const data = await response.json()
+    const data = await this.handleApiResponse(response, 'Fetch Reviews')
     return data.reviews || []
   }
 
@@ -195,7 +312,9 @@ export class GoogleBusinessAPI {
   async replyToReview(reviewName: string, reply: string): Promise<any> {
     const accessToken = await this.authService.getValidAccessToken()
     
-    const response = await fetch(`${this.baseUrl}/${reviewName}/reply`, {
+    console.log('[Google Business API] Replying to review:', reviewName)
+    
+    const response = await fetch(`${this.businessInfoBaseUrl}/${reviewName}/reply`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -206,18 +325,16 @@ export class GoogleBusinessAPI {
       }),
     })
 
-    if (!response.ok) {
-      throw new Error(`Failed to reply to review: ${response.statusText}`)
-    }
-
-    return await response.json()
+    return await this.handleApiResponse(response, 'Reply to Review')
   }
 
   // Get insights for a location
   async getInsights(locationName: string, startDate: string, endDate: string): Promise<any> {
     const accessToken = await this.authService.getValidAccessToken()
     
-    const response = await fetch(`${this.baseUrl}/${locationName}/reportInsights`, {
+    console.log('[Google Business API] Fetching insights for location:', locationName)
+    
+    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}/reportInsights`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -243,10 +360,6 @@ export class GoogleBusinessAPI {
       }),
     })
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch insights: ${response.statusText}`)
-    }
-
-    return await response.json()
+    return await this.handleApiResponse(response, 'Fetch Insights')
   }
 } 

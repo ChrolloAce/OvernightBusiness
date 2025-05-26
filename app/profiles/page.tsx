@@ -41,10 +41,18 @@ interface BusinessProfile {
 
 interface GoogleBusinessLocation {
   name: string
-  locationName: string
+  locationName?: string
+  displayName?: string
   primaryPhone?: string
   websiteUri?: string
   address?: {
+    addressLines: string[]
+    locality: string
+    administrativeArea: string
+    postalCode: string
+    regionCode: string
+  }
+  storefrontAddress?: {
     addressLines: string[]
     locality: string
     administrativeArea: string
@@ -182,36 +190,73 @@ export default function ProfilesPage() {
     try {
       const businessAPI = new GoogleBusinessAPI()
       
-      // First, get all accounts
+      // First, test API access to get better error information
+      console.log('Testing API access...')
+      const apiTest = await businessAPI.testApiAccess()
+      
+      if (!apiTest.accounts) {
+        setError(`API Access Test Failed:\n${apiTest.errors.join('\n')}`)
+        setLoadingLocations(false)
+        return
+      }
+      
+      // Get all accounts
       const accounts = await businessAPI.getAccounts()
       console.log('Accounts:', accounts)
 
       if (accounts.length === 0) {
-        setError('No Google Business accounts found. Make sure you have access to Google Business Profile.')
+        setError('No Google Business accounts found. Make sure you have access to Google Business Profile and have business profiles set up.')
         setLoadingLocations(false)
         return
       }
 
-      // Get locations for the first account (you can modify this to handle multiple accounts)
+      // Try to get locations for the first account
+      let locations: any[] = []
       const accountName = accounts[0].name
-      const locations = await businessAPI.getLocations(accountName)
-      console.log('Locations:', locations)
+      
+      try {
+        locations = await businessAPI.getLocations(accountName)
+        console.log('Locations (standard method):', locations)
+      } catch (locationError) {
+        console.warn('Standard locations method failed, trying alternative...', locationError)
+        
+        // Try alternative method with read mask
+        try {
+          locations = await businessAPI.getLocationsWithReadMask(accountName)
+          console.log('Locations (alternative method):', locations)
+        } catch (altError) {
+          console.error('Both location methods failed:', altError)
+          throw new Error(`Failed to fetch locations using both methods: ${altError instanceof Error ? altError.message : 'Unknown error'}`)
+        }
+      }
 
       setGoogleLocations(locations)
       
       if (locations.length === 0) {
-        setError('No business locations found in your Google Business Profile account.')
+        setError('No business locations found in your Google Business Profile account. Make sure you have verified business locations set up.')
       }
     } catch (error) {
       console.error('Error fetching Google Business Profiles:', error)
       
-      // Check if it's an authentication error
-      if (error instanceof Error && error.message.includes('authenticate')) {
-        setError('Your session has expired. Please reconnect your Google account.')
-        checkAuthStatus() // This will update the connection status
-      } else {
-        setError(`Failed to fetch business profiles: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      // Enhanced error handling with more specific messages
+      let errorMessage = 'Failed to fetch business profiles'
+      
+      if (error instanceof Error) {
+        errorMessage = error.message
+        
+        // Check for specific error types and provide guidance
+        if (error.message.includes('403')) {
+          errorMessage += '\n\n🔧 To fix this:\n1. Go to Google Cloud Console\n2. Enable "My Business Account Management API" and "My Business Business Information API"\n3. Make sure your OAuth consent screen is properly configured\n4. Verify you have admin access to your Google Business Profile'
+        } else if (error.message.includes('401')) {
+          setError('Your session has expired. Please reconnect your Google account.')
+          checkAuthStatus()
+          return
+        } else if (error.message.includes('404')) {
+          errorMessage += '\n\n🔧 To fix this:\n1. Make sure you have Google Business Profile accounts set up\n2. Verify your business locations are claimed and verified\n3. Check that you\'re using the correct Google account'
+        }
       }
+      
+      setError(errorMessage)
     } finally {
       setLoadingLocations(false)
     }
@@ -227,12 +272,16 @@ export default function ProfilesPage() {
     fetchGoogleBusinessProfiles()
   }
 
-  const addGoogleProfile = (location: GoogleBusinessLocation) => {
+  const addGoogleProfile = (location: any) => {
+    // Handle both old and new location data structures
+    const locationName = location.displayName || location.locationName || 'Unknown Business'
+    const address = location.storefrontAddress || location.address
+    
     const newProfile: BusinessProfile = {
       id: Date.now().toString(),
-      name: location.locationName || 'Unknown Business',
-      address: location.address 
-        ? `${location.address.addressLines.join(', ')}, ${location.address.locality}, ${location.address.administrativeArea} ${location.address.postalCode}`
+      name: locationName,
+      address: address 
+        ? `${address.addressLines?.join(', ') || ''}, ${address.locality || ''}, ${address.administrativeArea || ''} ${address.postalCode || ''}`.trim()
         : 'Address not available',
       phone: location.primaryPhone || 'Phone not available',
       website: location.websiteUri || '',
@@ -518,16 +567,26 @@ export default function ProfilesPage() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="font-medium">{location.locationName || 'Unknown Business'}</h3>
+                          <h3 className="font-medium">{location.displayName || location.locationName || 'Unknown Business'}</h3>
                           <p className="text-sm text-muted-foreground">
-                            {location.address 
-                              ? `${location.address.addressLines.join(', ')}, ${location.address.locality}`
+                            {(location.storefrontAddress || location.address)
+                              ? `${(location.storefrontAddress || location.address)?.addressLines?.join(', ') || ''}, ${(location.storefrontAddress || location.address)?.locality || ''}`.trim()
                               : 'Address not available'
                             }
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {location.primaryCategory?.displayName || 'Business'}
                           </p>
+                          {location.primaryPhone && (
+                            <p className="text-xs text-muted-foreground">
+                              📞 {location.primaryPhone}
+                            </p>
+                          )}
+                          {location.websiteUri && (
+                            <p className="text-xs text-muted-foreground">
+                              🌐 {location.websiteUri}
+                            </p>
+                          )}
                         </div>
                         <Button size="sm">
                           Add Profile
