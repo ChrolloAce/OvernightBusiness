@@ -1162,14 +1162,11 @@ export default function ProfilesPage() {
                       <CardDescription>{selectedProfile.googleData.allCategories.length} categories</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {selectedProfile.googleData.allCategories.map((category, idx) => (
-                          <div key={idx} className={`p-3 rounded-lg border-2 ${idx === 0 ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium">{category}</span>
-                              {idx === 0 && <Badge className="bg-blue-600 text-white">Primary</Badge>}
-                            </div>
-                          </div>
+                          <Badge key={idx} className={idx === 0 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}>
+                            {category} {idx === 0 && '(Primary)'}
+                          </Badge>
                         ))}
                       </div>
                     </CardContent>
@@ -1187,15 +1184,41 @@ export default function ProfilesPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {selectedProfile.googleData.businessHours.map((hour, idx) => {
-                          const [day, time] = hour.split(': ')
-                          return (
-                            <div key={idx} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg">
-                              <span className="font-medium text-gray-700">{day}</span>
-                              <span className="text-gray-600">{time}</span>
-                            </div>
-                          )
-                        })}
+                        {(() => {
+                          // Group consecutive days with same hours
+                          const groupedHours: { [key: string]: string[] } = {}
+                          
+                          selectedProfile.googleData.businessHours.forEach(hour => {
+                            const [day, time] = hour.split(': ')
+                            if (!groupedHours[time]) {
+                              groupedHours[time] = []
+                            }
+                            groupedHours[time].push(day)
+                          })
+                          
+                          return Object.entries(groupedHours).map(([time, days], idx) => {
+                            // Format consecutive days
+                            let dayRange = ''
+                            if (days.length === 1) {
+                              dayRange = days[0]
+                            } else if (days.length === 5 && days.includes('Monday') && days.includes('Friday')) {
+                              dayRange = 'Mon-Fri'
+                            } else if (days.length === 7) {
+                              dayRange = 'Every day'
+                            } else if (days.length === 2 && days.includes('Saturday') && days.includes('Sunday')) {
+                              dayRange = 'Weekends'
+                            } else {
+                              dayRange = days.join(', ')
+                            }
+                            
+                            return (
+                              <div key={idx} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg">
+                                <span className="font-medium text-gray-700">{dayRange}</span>
+                                <span className="text-gray-600">{time}</span>
+                              </div>
+                            )
+                          })
+                        })()}
                       </div>
                     </CardContent>
                   </Card>
@@ -1209,30 +1232,14 @@ export default function ProfilesPage() {
                         <Clock className="mr-2 h-5 w-5" />
                         Special Service Hours
                       </CardTitle>
-                      <CardDescription>{selectedProfile.googleData.moreHoursData.length} special hour types configured</CardDescription>
+                      <CardDescription>{selectedProfile.googleData.moreHoursData.length} special services</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-4">
+                      <div className="flex flex-wrap gap-2">
                         {selectedProfile.googleData.moreHoursData.map((hoursType, idx) => (
-                          <div key={idx} className="p-4 border rounded-lg bg-green-50 border-green-200">
-                            <h4 className="font-medium text-green-800 mb-2">{(hoursType as any).displayName || hoursType.hoursTypeId}</h4>
-                            <div className="space-y-1">
-                              {hoursType.periods.map((period, periodIdx) => {
-                                const openTime = typeof period.openTime === 'object' && period.openTime.hours !== undefined 
-                                  ? `${period.openTime.hours.toString().padStart(2, '0')}:${(period.openTime.minutes || 0).toString().padStart(2, '0')}`
-                                  : period.openTime
-                                const closeTime = typeof period.closeTime === 'object' && period.closeTime.hours !== undefined 
-                                  ? `${period.closeTime.hours.toString().padStart(2, '0')}:${(period.closeTime.minutes || 0).toString().padStart(2, '0')}`
-                                  : period.closeTime
-                                return (
-                                  <div key={periodIdx} className="flex justify-between text-sm">
-                                    <span className="text-green-700">{period.openDay}</span>
-                                    <span className="text-green-600">{openTime} - {closeTime}</span>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
+                          <Badge key={idx} variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            {(hoursType as any).displayName || hoursType.hoursTypeId}
+                          </Badge>
                         ))}
                       </div>
                     </CardContent>
@@ -1254,11 +1261,11 @@ export default function ProfilesPage() {
                       <CardDescription>{selectedProfile.googleData.serviceTypes.length} services offered</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                      <div className="flex flex-wrap gap-2">
                         {selectedProfile.googleData.serviceTypes.map((service, idx) => (
-                          <div key={idx} className="p-3 border-2 border-blue-100 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
-                            <p className="font-medium text-blue-800">{service.displayName}</p>
-                          </div>
+                          <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {service.displayName}
+                          </Badge>
                         ))}
                       </div>
                     </CardContent>
@@ -1275,11 +1282,11 @@ export default function ProfilesPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {selectedProfile.googleData.capabilities.map((capability, idx) => (
-                          <div key={idx} className="p-2 bg-green-50 border border-green-200 rounded text-center">
-                            <span className="text-green-700 font-medium text-sm">{capability}</span>
-                          </div>
+                          <Badge key={idx} className="bg-green-100 text-green-700">
+                            {capability}
+                          </Badge>
                         ))}
                       </div>
                     </CardContent>
@@ -1296,11 +1303,11 @@ export default function ProfilesPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {selectedProfile.googleData.labels.map((label, idx) => (
-                          <div key={idx} className="p-2 bg-gray-50 border border-gray-200 rounded text-center">
-                            <span className="text-gray-700 font-medium text-sm">{label}</span>
-                          </div>
+                          <Badge key={idx} variant="outline" className="bg-gray-100 text-gray-700">
+                            {label}
+                          </Badge>
                         ))}
                       </div>
                     </CardContent>
@@ -1337,31 +1344,24 @@ export default function ProfilesPage() {
                         Service Area
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      {selectedProfile.googleData.serviceAreaInfo.businessType && (
-                        <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                          <p className="font-medium text-sm text-purple-700 mb-1">Business Type</p>
-                          <p className="text-purple-800 font-medium">{selectedProfile.googleData.serviceAreaInfo.businessType}</p>
-                        </div>
-                      )}
-                      {selectedProfile.googleData.serviceAreaInfo.regionCode && (
-                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <p className="font-medium text-sm text-blue-700 mb-1">Region</p>
-                          <p className="text-blue-800 font-medium">{selectedProfile.googleData.serviceAreaInfo.regionCode}</p>
-                        </div>
-                      )}
-                      {selectedProfile.googleData.serviceAreaInfo.places && selectedProfile.googleData.serviceAreaInfo.places.length > 0 && (
-                        <div>
-                          <p className="font-medium text-sm text-muted-foreground mb-2">Service Areas</p>
-                          <div className="grid gap-2">
-                            {selectedProfile.googleData.serviceAreaInfo.places.map((place, idx) => (
-                              <div key={idx} className="p-2 bg-green-50 border border-green-200 rounded text-center">
-                                <span className="text-green-800 font-medium text-sm">{place.placeName}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedProfile.googleData.serviceAreaInfo.businessType && (
+                          <Badge className="bg-purple-100 text-purple-800">
+                            {selectedProfile.googleData.serviceAreaInfo.businessType}
+                          </Badge>
+                        )}
+                        {selectedProfile.googleData.serviceAreaInfo.regionCode && (
+                          <Badge className="bg-blue-100 text-blue-800">
+                            {selectedProfile.googleData.serviceAreaInfo.regionCode}
+                          </Badge>
+                        )}
+                        {selectedProfile.googleData.serviceAreaInfo.places && selectedProfile.googleData.serviceAreaInfo.places.map((place, idx) => (
+                          <Badge key={idx} variant="outline" className="bg-green-50 text-green-700">
+                            {place.placeName}
+                          </Badge>
+                        ))}
+                      </div>
                     </CardContent>
                   </Card>
                 )}

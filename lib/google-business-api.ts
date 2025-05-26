@@ -638,22 +638,32 @@ export class GoogleBusinessAPI {
         else if (closeDay === 'SATURDAY') closeDay = 'Saturday'
         else if (closeDay === 'SUNDAY') closeDay = 'Sunday'
         
-        // Handle time objects properly
+        // Handle time objects properly and prevent [object Object]
         let openTime = period.openTime
         let closeTime = period.closeTime
         
         // If time is an object with hours property, format it
-        if (typeof openTime === 'object' && openTime.hours !== undefined) {
+        if (typeof openTime === 'object' && openTime !== null && openTime.hours !== undefined) {
           const hours = openTime.hours
           const minutes = openTime.minutes || 0
           openTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+        } else if (typeof openTime === 'object') {
+          // Fallback for any other object format
+          openTime = 'Open'
         }
         
-        if (typeof closeTime === 'object' && closeTime.hours !== undefined) {
+        if (typeof closeTime === 'object' && closeTime !== null && closeTime.hours !== undefined) {
           const hours = closeTime.hours
           const minutes = closeTime.minutes || 0
           closeTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+        } else if (typeof closeTime === 'object') {
+          // Fallback for any other object format
+          closeTime = 'Close'
         }
+        
+        // Ensure we have string values
+        openTime = String(openTime)
+        closeTime = String(closeTime)
         
         if (openDay === closeDay) {
           hours.push(`${openDay}: ${openTime} - ${closeTime}`)
