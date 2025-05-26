@@ -43,30 +43,32 @@ export class GoogleAuthService {
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
   }
 
-  // Exchange authorization code for tokens
+  // Exchange authorization code for tokens using server-side API
   async exchangeCodeForTokens(code: string): Promise<GoogleTokens> {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: GOOGLE_CONFIG.clientId,
-        client_secret: GOOGLE_CONFIG.clientSecret,
-        code,
-        grant_type: 'authorization_code',
-        redirect_uri: GOOGLE_CONFIG.redirectUri,
-      }),
-    })
+    try {
+      const response = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code }),
+      })
 
-    if (!response.ok) {
-      throw new Error('Failed to exchange code for tokens')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to exchange code for tokens')
+      }
+
+      const data = await response.json()
+      const tokens = data.tokens
+
+      this.tokens = tokens
+      this.saveTokens(tokens)
+      return tokens
+    } catch (error) {
+      console.error('Token exchange error:', error)
+      throw new Error(`Failed to exchange code for tokens: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
-
-    const tokens = await response.json()
-    this.tokens = tokens
-    this.saveTokens(tokens)
-    return tokens
   }
 
   // Refresh access token using refresh token
