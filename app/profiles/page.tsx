@@ -47,6 +47,8 @@ interface GoogleBusinessLocation {
   displayName?: string
   primaryPhone?: string
   websiteUri?: string
+  rating?: number
+  reviewCount?: number
   address?: {
     addressLines: string[]
     locality: string
@@ -561,11 +563,20 @@ export default function ProfilesPage() {
               <Card className="h-full">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg">{profile.name}</CardTitle>
-                      <CardDescription className="text-sm">
-                        {profile.category}
-                      </CardDescription>
+                    <div className="flex items-start space-x-3">
+                      {/* Business Avatar */}
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                          {profile.name.charAt(0).toUpperCase()}
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1 flex-1">
+                        <CardTitle className="text-lg">{profile.name}</CardTitle>
+                        <CardDescription className="text-sm">
+                          {profile.category}
+                        </CardDescription>
+                      </div>
                     </div>
                     <Badge className={getStatusColor(profile.status)}>
                       {profile.status}
@@ -616,11 +627,36 @@ export default function ProfilesPage() {
                       <Edit className="mr-2 h-3 w-3" />
                       Edit
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <ExternalLink className="h-3 w-3" />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="rounded-full w-10 h-10 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (profile.googleBusinessId && profile.googleBusinessId.includes('accounts/')) {
+                          // Open Google Business Profile in new tab
+                          const businessUrl = `https://business.google.com/dashboard/l/${profile.googleBusinessId.split('/').pop()}`
+                          window.open(businessUrl, '_blank')
+                        } else if (profile.website) {
+                          // Fallback to business website
+                          window.open(profile.website, '_blank')
+                        }
+                      }}
+                      title="View on Google Business"
+                    >
+                      <ExternalLink className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDeleteProfile(profile.id)}>
-                      <Trash2 className="h-3 w-3" />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="rounded-full w-10 h-10 p-0 hover:bg-red-50 hover:border-red-200 hover:text-red-600"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteProfile(profile.id)
+                      }}
+                      title="Delete Profile"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardContent>
@@ -673,34 +709,91 @@ export default function ProfilesPage() {
                   Select a business profile from your Google Business account:
                 </p>
                 {googleLocations.map((location, index) => (
-                  <Card key={index} className="cursor-pointer hover:bg-accent" onClick={() => addGoogleProfile(location)}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium">{location.title || location.displayName || location.locationName || 'Unknown Business'}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {(location.storefrontAddress || location.address)
-                              ? `${(location.storefrontAddress || location.address)?.addressLines?.join(', ') || ''}, ${(location.storefrontAddress || location.address)?.locality || ''}`.trim()
-                              : 'Address not available'
-                            }
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {location.primaryCategory?.displayName || 'Business'}
-                          </p>
-                          {location.primaryPhone && (
-                            <p className="text-xs text-muted-foreground">
-                              📞 {location.primaryPhone}
-                            </p>
-                          )}
-                          {location.websiteUri && (
-                            <p className="text-xs text-muted-foreground">
-                              🌐 {location.websiteUri}
-                            </p>
-                          )}
+                  <Card key={index} className="cursor-pointer hover:bg-accent transition-colors border-2 hover:border-primary/20">
+                    <CardContent className="p-6">
+                      <div className="flex items-start space-x-4">
+                        {/* Business Image/Avatar */}
+                        <div className="flex-shrink-0">
+                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                            {(location.title || location.displayName || location.locationName || 'B').charAt(0).toUpperCase()}
+                          </div>
                         </div>
-                        <Button size="sm">
-                          Add Profile
-                        </Button>
+                        
+                        {/* Business Information */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-lg text-foreground mb-1">
+                                {location.title || location.displayName || location.locationName || 'Unknown Business'}
+                              </h3>
+                              
+                              {/* Business Category */}
+                              {location.primaryCategory?.displayName && (
+                                <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 mb-2">
+                                  {location.primaryCategory.displayName}
+                                </div>
+                              )}
+                              
+                              {/* Address */}
+                              {(location.storefrontAddress || location.address) && (
+                                <div className="flex items-start space-x-2 mb-2">
+                                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                  <p className="text-sm text-muted-foreground">
+                                    {(location.storefrontAddress || location.address)?.addressLines?.join(', ') || ''}{(location.storefrontAddress || location.address)?.addressLines?.length ? ', ' : ''}{(location.storefrontAddress || location.address)?.locality || ''} {(location.storefrontAddress || location.address)?.administrativeArea || ''} {(location.storefrontAddress || location.address)?.postalCode || ''}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              {/* Phone Number */}
+                              {location.primaryPhone && (
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <Phone className="h-4 w-4 text-muted-foreground" />
+                                  <p className="text-sm text-muted-foreground">
+                                    {location.primaryPhone}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              {/* Website */}
+                              {location.websiteUri && (
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <Globe className="h-4 w-4 text-muted-foreground" />
+                                  <a 
+                                    href={location.websiteUri} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-blue-600 hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {location.websiteUri}
+                                  </a>
+                                </div>
+                              )}
+                              
+                              {/* Reviews Info */}
+                              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                                <div className="flex items-center space-x-1">
+                                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                  <span>{location.rating || 'No rating'}</span>
+                                </div>
+                                <span>•</span>
+                                <span>{location.reviewCount || 0} reviews</span>
+                              </div>
+                            </div>
+                            
+                            {/* Add Profile Button */}
+                            <Button 
+                              size="lg" 
+                              className="rounded-full w-12 h-12 p-0 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                addGoogleProfile(location)
+                              }}
+                            >
+                              <Plus className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
