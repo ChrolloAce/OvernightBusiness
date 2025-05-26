@@ -10,74 +10,70 @@ export async function POST(request: NextRequest) {
   try {
     const { code } = await request.json()
 
-    console.log('Received authorization code:', code ? 'Present' : 'Missing')
-    console.log('Environment check:', {
+    console.log('[API Route] Received authorization code:', code ? 'Present' : 'Missing');
+    console.log('[API Route] Environment check:', {
       clientId: GOOGLE_CONFIG.clientId ? 'Present' : 'Missing',
       clientSecret: GOOGLE_CONFIG.clientSecret ? 'Present' : 'Missing',
       redirectUri: GOOGLE_CONFIG.redirectUri,
-    })
+    });
 
     if (!code) {
+      console.error('[API Route] Authorization code is missing from request body');
       return NextResponse.json(
         { error: 'Authorization code is required' },
         { status: 400 }
-      )
+      );
     }
 
     if (!GOOGLE_CONFIG.clientId || !GOOGLE_CONFIG.clientSecret) {
-      console.error('Missing required environment variables')
+      console.error('[API Route] Server configuration error: Missing OAuth credentials from env');
       return NextResponse.json(
         { error: 'Server configuration error: Missing OAuth credentials' },
         { status: 500 }
-      )
+      );
     }
 
-    // Manually construct the request body to avoid encoding issues
-    const requestBody = [
-      `client_id=${encodeURIComponent(GOOGLE_CONFIG.clientId)}`,
-      `client_secret=${encodeURIComponent(GOOGLE_CONFIG.clientSecret)}`,
-      `code=${encodeURIComponent(code)}`,
-      `grant_type=authorization_code`,
-      `redirect_uri=${encodeURIComponent(GOOGLE_CONFIG.redirectUri)}`
-    ].join('&')
+    const tokenRequestBody = new URLSearchParams();
+    tokenRequestBody.append('client_id', GOOGLE_CONFIG.clientId);
+    tokenRequestBody.append('client_secret', GOOGLE_CONFIG.clientSecret);
+    tokenRequestBody.append('code', code as string); // Explicitly treat code as string
+    tokenRequestBody.append('grant_type', 'authorization_code');
+    tokenRequestBody.append('redirect_uri', GOOGLE_CONFIG.redirectUri);
 
-    console.log('Token request body:', requestBody)
-    console.log('Redirect URI being sent:', GOOGLE_CONFIG.redirectUri)
+    console.log('[API Route] Token request body being sent:', tokenRequestBody.toString());
+    console.log('[API Route] Redirect URI being sent to Google:', GOOGLE_CONFIG.redirectUri);
 
-    // Exchange authorization code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: requestBody,
-    })
+      body: tokenRequestBody,
+    });
 
-    const responseText = await tokenResponse.text()
-    console.log('Google response status:', tokenResponse.status)
-    console.log('Google response:', responseText)
+    const responseText = await tokenResponse.text();
+    console.log('[API Route] Google token endpoint response status:', tokenResponse.status);
+    console.log('[API Route] Google token endpoint response body:', responseText);
 
     if (!tokenResponse.ok) {
-      console.error('Token exchange failed:', responseText)
+      console.error('[API Route] Token exchange failed with Google. Response:', responseText);
       
-      // Try to parse error details
-      let errorDetails = responseText
-      let specificError = 'Failed to exchange code for tokens'
+      let errorDetails = responseText;
+      let specificError = 'Failed to exchange code for tokens';
       
       try {
-        const errorJson = JSON.parse(responseText)
-        errorDetails = errorJson.error_description || errorJson.error || responseText
+        const errorJson = JSON.parse(responseText);
+        errorDetails = errorJson.error_description || errorJson.error || responseText;
         
-        // Provide specific error messages for common issues
         if (errorJson.error === 'invalid_grant') {
-          specificError = 'Authorization code is invalid, expired, or already used. Please try connecting again.'
+          specificError = 'Authorization code is invalid, expired, or already used. Please disconnect and try connecting again.';
         } else if (errorJson.error === 'invalid_client') {
-          specificError = 'Invalid client credentials. Please check your Google Cloud Console setup.'
+          specificError = 'Invalid client credentials. Please check your Google Cloud Console setup and Vercel environment variables.';
         } else if (errorJson.error === 'redirect_uri_mismatch') {
-          specificError = 'Redirect URI mismatch. Please verify your Google Cloud Console settings.'
+          specificError = 'Redirect URI mismatch. Please ensure the Redirect URI in Google Cloud Console matches the one configured in your application exactly.';
         }
       } catch (e) {
-        // Keep original response text
+        // Keep original response text if not JSON
       }
 
       return NextResponse.json(
@@ -85,24 +81,24 @@ export async function POST(request: NextRequest) {
           error: specificError, 
           details: errorDetails,
           status: tokenResponse.status,
-          hint: 'Try disconnecting and reconnecting your Google account'
+          hint: 'Try disconnecting and reconnecting your Google account. Ensure your Google Cloud Console redirect URIs are correct.'
         },
         { status: 400 }
-      )
+      );
     }
 
-    const tokens = JSON.parse(responseText)
-    console.log('Successfully exchanged tokens')
+    const tokens = JSON.parse(responseText);
+    console.log('[API Route] Successfully exchanged tokens with Google.');
 
-    return NextResponse.json({ tokens })
+    return NextResponse.json({ tokens });
   } catch (error) {
-    console.error('Token exchange error:', error)
+    console.error('[API Route] Unexpected error during token exchange:', error);
     return NextResponse.json(
       { 
-        error: 'Internal server error', 
+        error: 'Internal server error during token exchange', 
         details: error instanceof Error ? error.message : 'Unknown error' 
       },
       { status: 500 }
-    )
+    );
   }
 } 

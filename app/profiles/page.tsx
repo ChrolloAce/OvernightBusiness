@@ -14,10 +14,14 @@ import {
   Trash2,
   ExternalLink,
   LogOut,
-  Loader2
+  Loader2,
+  User,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { GoogleAuthService } from '@/lib/google-auth'
 import { GoogleBusinessAPI } from '@/lib/google-business-api'
 
@@ -60,16 +64,34 @@ export default function ProfilesPage() {
   const [googleLocations, setGoogleLocations] = useState<GoogleBusinessLocation[]>([])
   const [loadingLocations, setLoadingLocations] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [userInfo, setUserInfo] = useState<{ email: string; name: string; picture?: string } | null>(null)
+  const [sessionInfo, setSessionInfo] = useState<{ created_at: number; last_refreshed: number; expires_at: number } | null>(null)
+  const [refreshingToken, setRefreshingToken] = useState(false)
 
   // Check connection status after component mounts
   useEffect(() => {
     setMounted(true)
+    checkAuthStatus()
+  }, [])
+
+  const checkAuthStatus = () => {
     const authService = GoogleAuthService.getInstance()
     const connected = authService.isAuthenticated()
     setIsConnected(connected)
     
-    // Only show template data if not connected
-    if (!connected) {
+    if (connected) {
+      // Get user info and session details
+      const user = authService.getUserInfo()
+      const session = authService.getSessionInfo()
+      setUserInfo(user)
+      setSessionInfo(session)
+      
+      // Clear template data when connected
+      setProfiles([])
+    } else {
+      // Show template data when not connected
+      setUserInfo(null)
+      setSessionInfo(null)
       setProfiles([
         {
           id: '1',
@@ -111,7 +133,7 @@ export default function ProfilesPage() {
         }
       ])
     }
-  }, [])
+  }
 
   const handleConnectGoogle = () => {
     const authService = GoogleAuthService.getInstance()
@@ -119,15 +141,36 @@ export default function ProfilesPage() {
     window.location.href = authUrl
   }
 
-  const handleDisconnect = () => {
+  const handleDisconnect = async () => {
     const authService = GoogleAuthService.getInstance()
-    authService.logout()
-    setIsConnected(false)
-    setProfiles([])
-    setGoogleLocations([])
+    await authService.forceReauth() // This will revoke tokens and clear session
+    checkAuthStatus() // Refresh the UI
+  }
+
+  const handleRefreshToken = async () => {
+    if (!isConnected) return
+    
+    setRefreshingToken(true)
     setError(null)
-    // Reload the page to reset everything
-    window.location.reload()
+    
+    try {
+      const authService = GoogleAuthService.getInstance()
+      await authService.refreshAccessToken()
+      
+      // Update session info
+      const session = authService.getSessionInfo()
+      setSessionInfo(session)
+      
+      console.log('Token refreshed successfully')
+    } catch (error) {
+      console.error('Failed to refresh token:', error)
+      setError(`Failed to refresh token: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      
+      // If refresh fails, the auth service will automatically log out
+      checkAuthStatus()
+    } finally {
+      setRefreshingToken(false)
+    }
   }
 
   const fetchGoogleBusinessProfiles = async () => {
@@ -161,7 +204,14 @@ export default function ProfilesPage() {
       }
     } catch (error) {
       console.error('Error fetching Google Business Profiles:', error)
-      setError(`Failed to fetch business profiles: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      
+      // Check if it's an authentication error
+      if (error instanceof Error && error.message.includes('authenticate')) {
+        setError('Your session has expired. Please reconnect your Google account.')
+        checkAuthStatus() // This will update the connection status
+      } else {
+        setError(`Failed to fetch business profiles: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
     } finally {
       setLoadingLocations(false)
     }
@@ -208,6 +258,18 @@ export default function ProfilesPage() {
     }
   }
 
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString()
+  }
+
+  const isTokenExpiringSoon = () => {
+    if (!sessionInfo) return false
+    const now = Date.now()
+    const timeUntilExpiry = sessionInfo.expires_at - now
+    const fiveMinutes = 5 * 60 * 1000
+    return timeUntilExpiry < fiveMinutes && timeUntilExpiry > 0
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -236,33 +298,79 @@ export default function ProfilesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${mounted && isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-sm">
-                {mounted ? (isConnected ? 'Connected' : 'Not Connected') : 'Checking...'}
-              </span>
+          <div className="space-y-4">
+            {/* Connection Status Row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className={`w-3 h-3 rounded-full ${mounted && isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="text-sm font-medium">
+                  {mounted ? (isConnected ? 'Connected' : 'Not Connected') : 'Checking...'}
+                </span>
+                {isTokenExpiringSoon() && (
+                  <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                    <AlertCircle className="w-3 h-3 mr-1" />
+                    Token Expiring Soon
+                  </Badge>
+                )}
+              </div>
+              <div className="flex space-x-2">
+                {mounted && !isConnected && (
+                  <Button variant="outline" onClick={handleConnectGoogle}>
+                    Connect Google Account
+                  </Button>
+                )}
+                {mounted && isConnected && (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleRefreshToken}
+                      disabled={refreshingToken}
+                    >
+                      {refreshingToken ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                      )}
+                      Refresh Token
+                    </Button>
+                    <Button variant="outline" onClick={handleDisconnect}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Disconnect
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="flex space-x-2">
-              {mounted && !isConnected && (
-                <Button variant="outline" onClick={handleConnectGoogle}>
-                  Connect Google Account
-                </Button>
-              )}
-              {mounted && isConnected && (
-                <Button variant="outline" onClick={handleDisconnect}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Disconnect
-                </Button>
-              )}
-            </div>
+
+            {/* User Info (when connected) */}
+            {mounted && isConnected && userInfo && (
+              <div className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <User className="h-4 w-4" />
+                  <span className="text-sm font-medium">{userInfo.name}</span>
+                  <span className="text-sm text-muted-foreground">({userInfo.email})</span>
+                </div>
+              </div>
+            )}
+
+            {/* Session Info (when connected) */}
+            {mounted && isConnected && sessionInfo && (
+              <div className="text-xs text-muted-foreground space-y-1">
+                <div>Connected: {formatDate(sessionInfo.created_at)}</div>
+                <div>Last Refreshed: {formatDate(sessionInfo.last_refreshed)}</div>
+                <div>Token Expires: {formatDate(sessionInfo.expires_at)}</div>
+              </div>
+            )}
+
+            {/* Status Description */}
+            <p className="text-xs text-muted-foreground">
+              {mounted && isConnected 
+                ? 'Your Google account is connected and ready to manage business profiles.'
+                : 'You need to connect your Google account to sync business profiles and manage posts.'
+              }
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            {mounted && isConnected 
-              ? 'Your Google account is connected and ready to manage business profiles.'
-              : 'You need to connect your Google account to sync business profiles and manage posts.'
-            }
-          </p>
         </CardContent>
       </Card>
 
@@ -270,7 +378,13 @@ export default function ProfilesPage() {
       {error && (
         <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
           <CardContent className="pt-6">
-            <p className="text-red-600 dark:text-red-400">{error}</p>
+            <div className="flex items-start space-x-2">
+              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+              <div>
+                <p className="text-red-600 dark:text-red-400 font-medium">Error</p>
+                <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -288,48 +402,54 @@ export default function ProfilesPage() {
               <Card className="h-full">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div>
+                    <div className="space-y-1">
                       <CardTitle className="text-lg">{profile.name}</CardTitle>
-                      <CardDescription>{profile.category}</CardDescription>
+                      <CardDescription className="text-sm">
+                        {profile.category}
+                      </CardDescription>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(profile.status)}`}>
+                    <Badge className={getStatusColor(profile.status)}>
                       {profile.status}
-                    </span>
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <MapPin className="mr-2 h-4 w-4" />
-                      <span className="truncate">{profile.address}</span>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start space-x-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <span className="text-muted-foreground">{profile.address}</span>
                     </div>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Phone className="mr-2 h-4 w-4" />
-                      <span>{profile.phone}</span>
+                    <div className="flex items-center space-x-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">{profile.phone}</span>
                     </div>
                     {profile.website && (
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Globe className="mr-2 h-4 w-4" />
-                        <a href={profile.website} target="_blank" rel="noopener noreferrer" 
-                           className="text-primary hover:underline truncate">
+                      <div className="flex items-center space-x-2">
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                        <a 
+                          href={profile.website} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline text-sm"
+                        >
                           {profile.website}
                         </a>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                      <span className="ml-1 text-sm font-medium">{profile.rating}</span>
-                      <span className="ml-1 text-sm text-muted-foreground">
-                        ({profile.reviewCount} reviews)
-                      </span>
+                  <div className="flex items-center space-x-4 text-sm">
+                    <div className="flex items-center space-x-1">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      <span>{profile.rating}</span>
                     </div>
+                    <span className="text-muted-foreground">
+                      {profile.reviewCount} reviews
+                    </span>
                   </div>
 
                   <div className="text-xs text-muted-foreground">
-                    Last updated: {new Date(profile.lastUpdated).toLocaleDateString()}
+                    Last updated: {profile.lastUpdated}
                   </div>
 
                   <div className="flex space-x-2 pt-2">
@@ -426,12 +546,6 @@ export default function ProfilesPage() {
                 </p>
               </div>
             )}
-
-            <div className="flex justify-end mt-6">
-              <Button variant="outline" onClick={() => setShowAddForm(false)}>
-                Cancel
-              </Button>
-            </div>
           </motion.div>
         </div>
       )}
