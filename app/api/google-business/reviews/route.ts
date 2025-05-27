@@ -25,15 +25,52 @@ export async function GET(request: NextRequest) {
 
     const accessToken = authHeader.substring(7)
 
-    // Build the Google API URL
-    let apiUrl = `https://mybusinessbusinessinformation.googleapis.com/v1/${locationName}/reviews?pageSize=${pageSize}`
+    // Extract account and location IDs from the location name
+    // locationName format: "locations/16888103425774150266"
+    // We need to convert this to: "accounts/{accountId}/locations/{locationId}"
+    
+    // For now, we'll need to get the account ID first
+    // Let's get the accounts and find the one that contains this location
+    console.log('[Reviews API] Getting accounts to find the correct account for location:', locationName)
+    
+    const accountsResponse = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!accountsResponse.ok) {
+      const accountsError = await accountsResponse.text()
+      return NextResponse.json(
+        { error: `Failed to get accounts: ${accountsError}` },
+        { status: accountsResponse.status }
+      )
+    }
+
+    const accountsData = await accountsResponse.json()
+    const accounts = accountsData.accounts || []
+    
+    if (accounts.length === 0) {
+      return NextResponse.json(
+        { error: 'No business accounts found' },
+        { status: 404 }
+      )
+    }
+
+    // Use the first account (most common case)
+    const accountName = accounts[0].name
+    const locationId = locationName.split('/')[1] // Extract just the ID part
+    
+    // Build the correct v4 API URL
+    let apiUrl = `https://mybusiness.googleapis.com/v4/${accountName}/locations/${locationId}/reviews?pageSize=${pageSize}`
     if (pageToken) {
       apiUrl += `&pageToken=${pageToken}`
     }
 
-    console.log('[Reviews API] Fetching reviews for:', locationName)
+    console.log('[Reviews API] Fetching reviews from v4 API:', apiUrl)
 
-    // Make the API call to Google
+    // Make the API call to Google v4 API
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
