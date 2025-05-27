@@ -118,6 +118,9 @@ export interface SavedBusinessProfile {
       totalReviews: number
       lastUpdated: string
     }
+    // Performance analytics data
+    performanceData?: any
+    lastPerformanceUpdate?: string
   }
   // Computed fields
   isVerified?: boolean

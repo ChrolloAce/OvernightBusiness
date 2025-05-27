@@ -243,12 +243,82 @@ export interface ReviewsResponse {
   nextPageToken?: string
 }
 
+// Performance Analytics Interfaces
+export interface DailyMetricTimeSeries {
+  dailyMetric: 'BUSINESS_IMPRESSIONS' | 'BUSINESS_DIRECTION_REQUESTS' | 'CALL_CLICKS' | 'WEBSITE_CLICKS' | 'BUSINESS_BOOKINGS' | 'BUSINESS_FOOD_ORDERS' | 'BUSINESS_FOOD_MENU_CLICKS'
+  dailySubEntityType?: {
+    timeOfDay?: 'TIME_OF_DAY_UNSPECIFIED' | 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT'
+    dayOfWeek?: 'DAY_OF_WEEK_UNSPECIFIED' | 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY'
+  }
+  timeSeries: {
+    datedValues: Array<{
+      date: {
+        year: number
+        month: number
+        day: number
+      }
+      value: string
+    }>
+  }
+}
+
+export interface MultiDailyMetricTimeSeries {
+  dailyMetricTimeSeries: DailyMetricTimeSeries[]
+}
+
+export interface PerformanceMetricsResponse {
+  multiDailyMetricTimeSeries: MultiDailyMetricTimeSeries[]
+}
+
+export interface DailyRange {
+  start_date: {
+    year: number
+    month: number
+    day: number
+  }
+  end_date: {
+    year: number
+    month: number
+    day: number
+  }
+}
+
+// Verification Interfaces
+export interface VerificationOption {
+  verificationMethod: 'VERIFICATION_METHOD_UNSPECIFIED' | 'ADDRESS' | 'EMAIL' | 'PHONE_CALL' | 'SMS' | 'AUTO' | 'VETTED_PARTNER'
+  phoneNumber?: string
+  addressData?: {
+    businessName: string
+    address: {
+      addressLines: string[]
+      locality: string
+      administrativeArea: string
+      postalCode: string
+      regionCode: string
+    }
+  }
+}
+
+export interface VerificationState {
+  method: string
+  state: 'STATE_UNSPECIFIED' | 'PENDING' | 'COMPLETED' | 'FAILED'
+}
+
+export interface VoiceOfMerchantState {
+  hasVoiceOfMerchant: boolean
+  hasBusinessAuthority: boolean
+  complyWithGuidelines: boolean
+  waitingForVoiceOfMerchant: boolean
+}
+
 export class GoogleBusinessAPI {
   private authService: GoogleAuthService
   // Updated to use the correct Google Business Profile API endpoints
   private accountsBaseUrl = 'https://mybusinessaccountmanagement.googleapis.com/v1'
   private businessInfoBaseUrl = 'https://mybusinessbusinessinformation.googleapis.com/v1'
   private postsBaseUrl = 'https://mybusiness.googleapis.com/v4'
+  private performanceBaseUrl = 'https://businessprofileperformance.googleapis.com/v1'
+  private verificationsBaseUrl = 'https://mybusinessverifications.googleapis.com/v1'
 
   constructor() {
     this.authService = GoogleAuthService.getInstance()
@@ -1108,22 +1178,194 @@ export class GoogleBusinessAPI {
     canReopen?: boolean
     isOpen?: boolean
   } {
-    const status: any = {}
+    const openInfo = location.openInfo
+    if (!openInfo) return {}
+
+    return {
+      status: openInfo.status,
+      canReopen: openInfo.canReopen,
+      isOpen: openInfo.status === 'OPEN'
+    }
+  }
+
+  // Performance Analytics Methods
+  async fetchMultiDailyMetricsTimeSeries(
+    locationId: string,
+    metrics: string[],
+    startDate: { year: number; month: number; day: number },
+    endDate: { year: number; month: number; day: number }
+  ): Promise<PerformanceMetricsResponse> {
+    const accessToken = await this.authService.getValidAccessToken()
     
-    if (location.openInfo) {
-      if (location.openInfo.status) {
-        status.status = location.openInfo.status
+    console.log('[Google Business API] Fetching performance metrics for location:', locationId)
+    
+    // Build query parameters
+    const params = new URLSearchParams()
+    metrics.forEach(metric => params.append('dailyMetrics', metric))
+    params.append('dailyRange.start_date.year', startDate.year.toString())
+    params.append('dailyRange.start_date.month', startDate.month.toString())
+    params.append('dailyRange.start_date.day', startDate.day.toString())
+    params.append('dailyRange.end_date.year', endDate.year.toString())
+    params.append('dailyRange.end_date.month', endDate.month.toString())
+    params.append('dailyRange.end_date.day', endDate.day.toString())
+    
+    const response = await fetch(
+      `${this.performanceBaseUrl}/locations/${locationId}:fetchMultiDailyMetricsTimeSeries?${params.toString()}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
       }
-      if (location.openInfo.canReopen !== undefined) {
-        status.canReopen = location.openInfo.canReopen
+    )
+
+    return await this.handleApiResponse(response, 'Fetch Performance Metrics')
+  }
+
+  // Get performance metrics for the last 30 days
+  async getRecentPerformanceMetrics(locationId: string): Promise<PerformanceMetricsResponse> {
+    const endDate = new Date()
+    const startDate = new Date()
+    startDate.setDate(endDate.getDate() - 30)
+
+    const metrics = [
+      'BUSINESS_IMPRESSIONS',
+      'BUSINESS_DIRECTION_REQUESTS', 
+      'CALL_CLICKS',
+      'WEBSITE_CLICKS',
+      'BUSINESS_BOOKINGS'
+    ]
+
+    return this.fetchMultiDailyMetricsTimeSeries(
+      locationId,
+      metrics,
+      {
+        year: startDate.getFullYear(),
+        month: startDate.getMonth() + 1,
+        day: startDate.getDate()
+      },
+      {
+        year: endDate.getFullYear(),
+        month: endDate.getMonth() + 1,
+        day: endDate.getDate()
+      }
+    )
+  }
+
+  // Verification Methods
+  async fetchVerificationOptions(locationName: string): Promise<VerificationOption[]> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching verification options for location:', locationName)
+    
+    const response = await fetch(
+      `${this.verificationsBaseUrl}/${locationName}:fetchVerificationOptions`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          languageCode: 'en-US'
+        })
+      }
+    )
+
+    const data = await this.handleApiResponse(response, 'Fetch Verification Options')
+    return data.options || []
+  }
+
+  async getVoiceOfMerchantState(locationName: string): Promise<VoiceOfMerchantState> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching Voice of Merchant state for location:', locationName)
+    
+    const response = await fetch(
+      `${this.verificationsBaseUrl}/${locationName}/VoiceOfMerchantState`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+
+    return await this.handleApiResponse(response, 'Get Voice of Merchant State')
+  }
+
+  async listVerifications(locationName: string): Promise<VerificationState[]> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Listing verifications for location:', locationName)
+    
+    const response = await fetch(
+      `${this.verificationsBaseUrl}/${locationName}/verifications`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+
+    const data = await this.handleApiResponse(response, 'List Verifications')
+    return data.verifications || []
+  }
+
+  // Enhanced verification status check
+  async getVerificationStatus(locationName: string): Promise<{
+    isVerified: boolean
+    verificationMethod?: string
+    verificationState?: string
+    hasVoiceOfMerchant?: boolean
+    verificationOptions?: VerificationOption[]
+  }> {
+    try {
+      // Get verification state from location data
+      const location = await this.getLocationDetails(locationName)
+      const isVerifiedFromLocation = location.locationState?.isVerified || false
+
+      // Get Voice of Merchant state
+      let voiceOfMerchantState: VoiceOfMerchantState | null = null
+      try {
+        voiceOfMerchantState = await this.getVoiceOfMerchantState(locationName)
+      } catch (error) {
+        console.warn('Could not fetch Voice of Merchant state:', error)
+      }
+
+      // Get verification history
+      let verifications: VerificationState[] = []
+      try {
+        verifications = await this.listVerifications(locationName)
+      } catch (error) {
+        console.warn('Could not fetch verification history:', error)
+      }
+
+      // Get verification options if not verified
+      let verificationOptions: VerificationOption[] = []
+      if (!isVerifiedFromLocation) {
+        try {
+          verificationOptions = await this.fetchVerificationOptions(locationName)
+        } catch (error) {
+          console.warn('Could not fetch verification options:', error)
+        }
+      }
+
+      const latestVerification = verifications.length > 0 ? verifications[0] : null
+
+      return {
+        isVerified: isVerifiedFromLocation,
+        verificationMethod: latestVerification?.method,
+        verificationState: latestVerification?.state,
+        hasVoiceOfMerchant: voiceOfMerchantState?.hasVoiceOfMerchant,
+        verificationOptions: verificationOptions
+      }
+    } catch (error) {
+      console.error('Error getting verification status:', error)
+      return {
+        isVerified: false
       }
     }
-    
-    // Determine if currently open based on status
-    if (location.openInfo?.status) {
-      status.isOpen = location.openInfo.status === 'OPEN'
-    }
-    
-    return status
   }
 } 

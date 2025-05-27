@@ -26,7 +26,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { GoogleAuthService } from '@/lib/google-auth'
-import { GoogleBusinessAPI } from '@/lib/google-business-api'
+import { GoogleBusinessAPI, BusinessLocation } from '@/lib/google-business-api'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
 
 interface BusinessProfile {
@@ -41,104 +41,6 @@ interface BusinessProfile {
   status: 'active' | 'pending' | 'suspended'
   lastUpdated: string
   googleBusinessId?: string
-}
-
-interface GoogleBusinessLocation {
-  name: string
-  locationName?: string
-  title?: string
-  displayName?: string
-  primaryPhone?: string
-  websiteUri?: string
-  rating?: number
-  reviewCount?: number
-  totalReviews?: number
-  address?: {
-    addressLines: string[]
-    locality: string
-    administrativeArea: string
-    postalCode: string
-    regionCode: string
-  }
-  storefrontAddress?: {
-    addressLines: string[]
-    locality: string
-    administrativeArea: string
-    postalCode: string
-    regionCode: string
-  }
-  primaryCategory?: {
-    categoryId: string
-    displayName: string
-  }
-  locationState?: {
-    isGoogleUpdated: boolean
-    isDuplicate: boolean
-    isSuspended: boolean
-    canUpdate: boolean
-    canDelete: boolean
-    isVerified: boolean
-    needsReverification: boolean
-  }
-  openInfo?: {
-    status: string
-    canReopen: boolean
-    openingDate?: {
-      year: number
-      month: number
-      day: number
-    }
-  }
-  regularHours?: {
-    periods: Array<{
-      openDay: string
-      openTime: string
-      closeDay: string
-      closeTime: string
-    }>
-  }
-  moreHours?: Array<{
-    periods: Array<{
-      openDay: string
-      openTime: string
-      closeDay: string
-      closeTime: string
-    }>
-  }>
-  metadata?: {
-    hasGoogleUpdated: boolean
-    hasPendingEdits: boolean
-    canDelete: boolean
-    canOperateLocalPost: boolean
-    canModifyServiceList: boolean
-    canHaveFoodMenus: boolean
-    canOperateHealthData: boolean
-    canOperateLodgingData: boolean
-    placeId: string
-    duplicateLocation?: string
-    mapsUri: string
-    newReviewUri: string
-    canHaveBusinessCalls: boolean
-    hasVoiceOfMerchant: boolean
-  }
-  latlng?: {
-    latitude: number
-    longitude: number
-  }
-  attributes?: Array<{
-    attributeId: string
-    valueType: string
-    values: any[]
-  }>
-  profile?: {
-    description: string
-  }
-  relationshipData?: any
-  serviceItems?: any[]
-  additionalCategories?: Array<{
-    categoryId: string
-    displayName: string
-  }>
 }
 
 // Business Logo Component with fallback
@@ -244,7 +146,7 @@ export default function ProfilesPage() {
   const [isConnected, setIsConnected] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [googleLocations, setGoogleLocations] = useState<GoogleBusinessLocation[]>([])
+  const [googleLocations, setGoogleLocations] = useState<BusinessLocation[]>([])
   const [loadingLocations, setLoadingLocations] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userInfo, setUserInfo] = useState<{ email: string; name: string; picture?: string } | null>(null)
@@ -252,6 +154,8 @@ export default function ProfilesPage() {
   const [refreshingToken, setRefreshingToken] = useState(false)
   const [selectedProfile, setSelectedProfile] = useState<SavedBusinessProfile | null>(null)
   const [showDetailView, setShowDetailView] = useState(false)
+
+  const googleAPI = new GoogleBusinessAPI()
 
   // Check connection status after component mounts
   useEffect(() => {
@@ -379,114 +283,75 @@ export default function ProfilesPage() {
     }
   }
 
-  const fetchGoogleBusinessProfiles = async () => {
-    if (!isConnected) return
-
+  const loadBusinessProfiles = async () => {
     setLoadingLocations(true)
-    setError(null)
-
+    setError('')
+    
     try {
-      const businessAPI = new GoogleBusinessAPI()
+      console.log('Loading business profiles...')
       
-      // First, test API access to get better error information
-      console.log('Testing API access...')
-      const apiTest = await businessAPI.testApiAccess()
+      // Test API access first
+      const apiTest = await googleAPI.testApiAccess()
+      console.log('API Test Results:', apiTest)
       
       if (!apiTest.accounts) {
-        setError(`API Access Test Failed:\n${apiTest.errors.join('\n')}`)
-        setLoadingLocations(false)
-        return
+        throw new Error('Cannot access Google Business accounts. Please check your OAuth permissions.')
       }
       
-      // Get all accounts
-      const accounts = await businessAPI.getAccounts()
-      console.log('Accounts:', accounts)
-
+      if (!apiTest.locations) {
+        throw new Error('Cannot access business locations. Please check your API permissions.')
+      }
+      
+      // Get accounts
+      const accounts = await googleAPI.getAccounts()
+      console.log('Found accounts:', accounts.length)
+      
       if (accounts.length === 0) {
-        setError('No Google Business accounts found. Make sure you have access to Google Business Profile and have business profiles set up.')
-        setLoadingLocations(false)
+        setError('No Google Business accounts found. Please make sure you have Google Business Profile accounts set up.')
         return
       }
-
-      // Try to get locations for the first account
-      let locations: any[] = []
-      const accountName = accounts[0].name
       
-      try {
-        // Try minimal method first (most likely to work)
-        locations = await businessAPI.getLocationsMinimal(accountName)
-        console.log('Locations (minimal method):', locations)
-      } catch (locationError) {
-        console.warn('Minimal locations method failed, trying standard...', locationError)
-        
-        // Try standard method
+      // Get locations for each account
+      let allLocations: BusinessLocation[] = []
+      for (const account of accounts) {
         try {
-          locations = await businessAPI.getLocations(accountName)
-          console.log('Locations (standard method):', locations)
-        } catch (standardError) {
-          console.warn('Standard locations method failed, trying comprehensive...', standardError)
-          
-          // Try comprehensive method as last resort
+          console.log('Fetching locations for account:', account.name)
+          const locations = await googleAPI.getLocationsWithCompleteDetails(account.name)
+          console.log(`Found ${locations.length} locations for account ${account.name}`)
+          allLocations = [...allLocations, ...locations]
+        } catch (error) {
+          console.error(`Failed to load locations for account ${account.name}:`, error)
+        }
+      }
+      
+      console.log('Total locations found:', allLocations.length)
+      
+      if (allLocations.length === 0) {
+        setError('No business locations found. Please make sure you have business locations set up in Google Business Profile.')
+        return
+      }
+      
+      // Enhanced verification status checking for each location
+      const locationsWithVerification = await Promise.all(
+        allLocations.map(async (location) => {
           try {
-            locations = await businessAPI.getLocationsWithReadMask(accountName)
-            console.log('Locations (comprehensive method):', locations)
-          } catch (comprehensiveError) {
-            console.error('All location methods failed:', comprehensiveError)
-            throw new Error(`Failed to fetch locations using all methods: ${comprehensiveError instanceof Error ? comprehensiveError.message : 'Unknown error'}`)
-          }
-        }
-      }
-
-      setGoogleLocations(locations)
-      
-      // Fetch review summary for each location
-      if (locations.length > 0) {
-        console.log('[Profiles] Fetching review summaries for locations...')
-        const locationsWithReviews = await Promise.all(
-          locations.map(async (location) => {
-            try {
-              const reviewSummary = await businessAPI.getReviewSummary(location.name)
-              return {
-                ...location,
-                rating: reviewSummary.averageRating,
-                reviewCount: reviewSummary.totalReviews,
-                totalReviews: reviewSummary.totalReviews
-              }
-            } catch (error) {
-              console.warn('[Profiles] Failed to fetch review summary for location:', location.name, error)
-              return location
+            const verificationStatus = await googleAPI.getVerificationStatus(location.name)
+            return {
+              ...location,
+              verificationStatus
             }
-          })
-        )
-        setGoogleLocations(locationsWithReviews)
-        console.log('[Profiles] Updated locations with review data')
-      }
+          } catch (error) {
+            console.warn('Could not get verification status for location:', location.name, error)
+            return location
+          }
+        })
+      )
       
-      if (locations.length === 0) {
-        setError('No business locations found in your Google Business Profile account. Make sure you have verified business locations set up.')
-      }
+      setGoogleLocations(locationsWithVerification)
+      
     } catch (error) {
-      console.error('Error fetching Google Business Profiles:', error)
-      
-      // Enhanced error handling with more specific messages
-      let errorMessage = 'Failed to fetch business profiles'
-      
-      if (error instanceof Error) {
-        errorMessage = error.message
-        
-        // Check for specific error types and provide guidance
-        if (error.message.includes('403')) {
-          errorMessage += '\n\n🔧 To fix this:\n1. Go to Google Cloud Console\n2. Enable "My Business Account Management API" and "My Business Business Information API"\n3. Make sure your OAuth consent screen is properly configured\n4. Verify you have admin access to your Google Business Profile'
-        } else if (error.message.includes('401')) {
-          setError('Your session has expired. Please reconnect your Google account.')
-          checkAuthStatus()
-          return
-        } else if (error.message.includes('404')) {
-          errorMessage += '\n\n🔧 To fix this:\n1. Make sure you have Google Business Profile accounts set up\n2. Verify your business locations are claimed and verified\n3. Check that you\'re using the correct Google account'
-        }
-      }
-      
-      setError(errorMessage)
+      console.error('Failed to load business profiles:', error)
+      setError(error instanceof Error ? error.message : 'Failed to load business profiles')
     } finally {
       setLoadingLocations(false)
     }
@@ -499,7 +364,7 @@ export default function ProfilesPage() {
     }
     
     setShowAddForm(true)
-    fetchGoogleBusinessProfiles()
+    loadBusinessProfiles()
   }
 
   const addGoogleProfile = async (location: any) => {
