@@ -172,19 +172,25 @@ export default function ProfilesPage() {
       
       // Load saved profiles from storage
       const savedProfiles = BusinessProfilesStorage.getAllProfiles()
-      const convertedProfiles: BusinessProfile[] = savedProfiles.map(saved => ({
-        id: saved.id,
-        name: saved.name,
-        address: saved.address,
-        phone: saved.phone,
-        website: saved.website,
-        category: saved.category,
-        rating: saved.rating,
-        reviewCount: saved.reviewCount,
-        status: saved.status,
-        lastUpdated: saved.lastUpdated,
-        googleBusinessId: saved.googleBusinessId
-      }))
+      const convertedProfiles: BusinessProfile[] = savedProfiles.map(saved => {
+        // Use cached reviews data if available, otherwise fall back to stored values
+        const actualReviewCount = saved.googleData?.reviewsSummary?.totalReviews ?? saved.reviewCount
+        const actualRating = saved.googleData?.reviewsSummary?.averageRating ?? saved.rating
+        
+        return {
+          id: saved.id,
+          name: saved.name,
+          address: saved.address,
+          phone: saved.phone,
+          website: saved.website,
+          category: saved.category,
+          rating: actualRating,
+          reviewCount: actualReviewCount,
+          status: saved.status,
+          lastUpdated: saved.lastUpdated,
+          googleBusinessId: saved.googleBusinessId
+        }
+      })
       setProfiles(convertedProfiles)
       console.log('[Profiles] Loaded', savedProfiles.length, 'saved profiles from storage')
     } else {
@@ -527,7 +533,7 @@ export default function ProfilesPage() {
   }
 
   const handleRefreshProfiles = () => {
-    checkAuthStatus() // This will reload profiles from storage
+    checkAuthStatus() // This will reload profiles with updated review counts
   }
 
   const handleViewProfileDetails = (profileId: string) => {
@@ -556,10 +562,16 @@ export default function ProfilesPage() {
             Manage your Google Business Profile locations and settings.
           </p>
         </div>
-        <Button onClick={handleAddProfile} disabled={!isConnected}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add New Profile
-        </Button>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={handleRefreshProfiles}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+          <Button onClick={handleAddProfile} disabled={!isConnected}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Profile
+          </Button>
+        </div>
       </div>
 
       {/* Connection Status */}
