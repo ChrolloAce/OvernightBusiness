@@ -389,21 +389,12 @@ export default function ProfilesPage() {
       // Fetch complete location details from Google API
       const businessAPI = new GoogleBusinessAPI()
       let completeLocation = location
-      let reviewsData = null
       
       try {
         completeLocation = await businessAPI.getLocationDetails(location.name)
         // Enrich the location data with computed fields
         completeLocation = GoogleBusinessAPI.enrichLocationData(completeLocation)
         console.log('[Profiles] Complete location details:', completeLocation)
-        
-        // Fetch real review data
-        try {
-          reviewsData = await businessAPI.getReviewsWithDetails(location.name)
-          console.log('[Profiles] Reviews data:', reviewsData)
-        } catch (reviewError) {
-          console.warn('[Profiles] Failed to fetch reviews:', reviewError)
-        }
       } catch (detailsError) {
         console.warn('[Profiles] Failed to fetch complete details, using basic info:', detailsError)
         // Continue with basic location data if detailed fetch fails
@@ -426,8 +417,8 @@ export default function ProfilesPage() {
         phone: GoogleBusinessAPI.getPrimaryPhone(completeLocation),
         website: completeLocation.websiteUri || '',
         category: allCategories[0] || 'Business',
-        rating: reviewsData?.averageRating || 0,
-        reviewCount: reviewsData?.totalReviews || 0,
+        rating: completeLocation.rating || 0,
+        reviewCount: completeLocation.reviewCount || 0,
         status: (completeLocation.locationState?.isVerified || completeLocation.isVerified) ? 'active' : 'pending',
         lastUpdated: new Date().toISOString().split('T')[0],
         googleBusinessId: completeLocation.name || location.name || `temp_${profileId}`
@@ -480,14 +471,9 @@ export default function ProfilesPage() {
           businessStatusInfo: GoogleBusinessAPI.getBusinessStatus(completeLocation)
         },
         isVerified: completeLocation.locationState?.isVerified || completeLocation.isVerified || false,
-        totalReviews: reviewsData?.totalReviews || 0,
+        totalReviews: completeLocation.reviewCount || 0,
         lastSynced: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        // Add real review data
-        reviewsData: reviewsData ? {
-          ...reviewsData,
-          lastFetched: new Date().toISOString()
-        } : undefined
+        createdAt: new Date().toISOString()
       }
 
       // Save to local storage
@@ -1126,60 +1112,24 @@ export default function ProfilesPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <Star className="mr-2 h-5 w-5" />
-                      Reviews & Rating
+                      Performance
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="text-center p-3 bg-yellow-50 rounded-lg">
                         <p className="text-2xl font-bold text-yellow-600">{selectedProfile.rating}</p>
-                        <p className="text-xs text-muted-foreground">Average Rating</p>
+                        <p className="text-xs text-muted-foreground">Rating</p>
                       </div>
                       <div className="text-center p-3 bg-blue-50 rounded-lg">
                         <p className="text-2xl font-bold text-blue-600">{selectedProfile.reviewCount}</p>
-                        <p className="text-xs text-muted-foreground">Total Reviews</p>
+                        <p className="text-xs text-muted-foreground">Reviews</p>
                       </div>
                     </div>
-                    
-                    {/* Rating Distribution */}
-                    {selectedProfile.reviewsData?.ratingDistribution && (
-                      <div>
-                        <p className="font-medium text-sm text-muted-foreground mb-2">Rating Distribution</p>
-                        <div className="space-y-1">
-                          {[5, 4, 3, 2, 1].map((rating) => {
-                            const count = selectedProfile.reviewsData?.ratingDistribution[rating] || 0
-                            const percentage = selectedProfile.reviewsData?.totalReviews 
-                              ? (count / selectedProfile.reviewsData.totalReviews) * 100 
-                              : 0
-                            return (
-                              <div key={rating} className="flex items-center space-x-2 text-xs">
-                                <span className="w-4">{rating}</span>
-                                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                  <div 
-                                    className="bg-yellow-400 h-2 rounded-full" 
-                                    style={{ width: `${percentage}%` }}
-                                  ></div>
-                                </div>
-                                <span className="w-8 text-right">{count}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-                    
                     {selectedProfile.googleData?.openingDate && selectedProfile.googleData.openingDate !== 'Not specified' && (
                       <div>
                         <p className="font-medium text-sm text-muted-foreground">Opening Date</p>
                         <p className="text-sm">{selectedProfile.googleData.openingDate}</p>
-                      </div>
-                    )}
-                    
-                    {selectedProfile.reviewsData && (
-                      <div>
-                        <p className="font-medium text-sm text-muted-foreground">Reviews Last Updated</p>
-                        <p className="text-sm">{new Date(selectedProfile.reviewsData.lastFetched).toLocaleString()}</p>
                       </div>
                     )}
                   </CardContent>
@@ -1518,8 +1468,8 @@ export default function ProfilesPage() {
                 </Button>
               )}
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       )}
     </div>
   )

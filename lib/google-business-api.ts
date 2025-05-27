@@ -491,59 +491,6 @@ export class GoogleBusinessAPI {
     return data.reviews || []
   }
 
-  // Get reviews with comprehensive data
-  async getReviewsWithDetails(locationName: string): Promise<{
-    reviews: any[]
-    totalReviews: number
-    averageRating: number
-    ratingDistribution: { [key: number]: number }
-  }> {
-    const accessToken = await this.authService.getValidAccessToken()
-    
-    console.log('[Google Business API] Fetching detailed reviews for location:', locationName)
-    
-    try {
-      const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}/reviews`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      })
-
-      const data = await this.handleApiResponse(response, 'Fetch Detailed Reviews')
-      const reviews = data.reviews || []
-      
-      // Calculate review statistics
-      const totalReviews = reviews.length
-      let totalRating = 0
-      const ratingDistribution: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-      
-      reviews.forEach((review: any) => {
-        if (review.starRating) {
-          totalRating += review.starRating
-          ratingDistribution[review.starRating] = (ratingDistribution[review.starRating] || 0) + 1
-        }
-      })
-      
-      const averageRating = totalReviews > 0 ? totalRating / totalReviews : 0
-      
-      return {
-        reviews,
-        totalReviews,
-        averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
-        ratingDistribution
-      }
-    } catch (error) {
-      console.warn('[Google Business API] Failed to fetch reviews, returning empty data:', error)
-      return {
-        reviews: [],
-        totalReviews: 0,
-        averageRating: 0,
-        ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-      }
-    }
-  }
-
   // Reply to a review
   async replyToReview(reviewName: string, reply: string): Promise<any> {
     const accessToken = await this.authService.getValidAccessToken()

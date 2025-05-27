@@ -115,14 +115,6 @@ export interface SavedBusinessProfile {
   totalReviews?: number
   lastSynced: string
   createdAt: string
-  // Real review data from Google API
-  reviewsData?: {
-    reviews: any[]
-    totalReviews: number
-    averageRating: number
-    ratingDistribution: { [key: number]: number }
-    lastFetched: string
-  }
 }
 
 export class BusinessProfilesStorage {

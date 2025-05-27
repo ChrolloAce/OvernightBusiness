@@ -5,58 +5,27 @@ import { motion } from 'framer-motion'
 import { 
   PenTool, 
   Calendar, 
-  Send, 
   Clock, 
   Building2, 
   Sparkles, 
   FileText, 
-  Image, 
-  Video, 
   Link,
   Plus,
   Edit,
   Trash2,
   Eye,
   CheckCircle,
-  AlertCircle,
   Loader2
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
-
-interface ContentPost {
-  id: string
-  businessProfileId: string
-  businessName: string
-  title: string
-  content: string
-  type: 'update' | 'offer' | 'event' | 'product'
-  status: 'draft' | 'scheduled' | 'published' | 'failed'
-  scheduledDate?: string
-  publishedDate?: string
-  media?: {
-    type: 'image' | 'video'
-    url: string
-    alt?: string
-  }[]
-  callToAction?: {
-    text: string
-    url: string
-  }
-  createdAt: string
-  updatedAt: string
-}
-
-interface ContentIdea {
-  title: string
-  description: string
-  type: 'update' | 'offer' | 'event' | 'product'
-  category: string
-}
+import { AppManager } from '@/lib/managers/app-manager'
+import { ContentPost, ContentIdea } from '@/lib/managers/content-manager'
+import { SavedBusinessProfile } from '@/lib/business-profiles-storage'
 
 export default function ContentHubPage() {
+  const [appManager] = useState(() => AppManager.getInstance())
   const [businessProfiles, setBusinessProfiles] = useState<SavedBusinessProfile[]>([])
   const [selectedProfile, setSelectedProfile] = useState<SavedBusinessProfile | null>(null)
   const [posts, setPosts] = useState<ContentPost[]>([])
@@ -67,110 +36,132 @@ export default function ContentHubPage() {
   const [postType, setPostType] = useState<'update' | 'offer' | 'event' | 'product'>('update')
   const [scheduledDate, setScheduledDate] = useState('')
   const [callToAction, setCallToAction] = useState({ text: '', url: '' })
-
-  // Content ideas based on business type
-  const contentIdeas: ContentIdea[] = [
-    { title: 'Weekly Special Offer', description: 'Promote a limited-time discount or deal', type: 'offer', category: 'Promotion' },
-    { title: 'Behind the Scenes', description: 'Show your team at work or business operations', type: 'update', category: 'Engagement' },
-    { title: 'Customer Spotlight', description: 'Feature a happy customer or testimonial', type: 'update', category: 'Social Proof' },
-    { title: 'New Product Launch', description: 'Announce a new product or service', type: 'product', category: 'Announcement' },
-    { title: 'Upcoming Event', description: 'Promote an event or workshop', type: 'event', category: 'Event' },
-    { title: 'Tips & Advice', description: 'Share industry expertise and helpful tips', type: 'update', category: 'Education' },
-    { title: 'Seasonal Content', description: 'Holiday or seasonal themed posts', type: 'update', category: 'Seasonal' },
-    { title: 'Community Involvement', description: 'Share local community activities', type: 'update', category: 'Community' }
-  ]
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadBusinessProfiles()
-    loadPosts()
+    initializeApp()
   }, [])
 
-  const loadBusinessProfiles = () => {
-    const profiles = BusinessProfilesStorage.getAllProfiles()
-    setBusinessProfiles(profiles)
-    if (profiles.length > 0 && !selectedProfile) {
-      setSelectedProfile(profiles[0])
+  const initializeApp = async () => {
+    try {
+      await appManager.initialize()
+      loadData()
+    } catch (error) {
+      console.error('Failed to initialize app:', error)
+      setError('Failed to initialize application')
     }
+  }
+
+  const loadData = () => {
+    const profiles = appManager.getAllBusinessProfiles()
+    setBusinessProfiles(profiles)
+    
+    if (profiles.length > 0 && !selectedProfile) {
+      const firstProfile = profiles[0]
+      setSelectedProfile(firstProfile)
+      appManager.selectBusinessProfile(firstProfile)
+    }
+    
+    loadPosts()
   }
 
   const loadPosts = () => {
-    // Load posts from localStorage
-    const savedPosts = localStorage.getItem('overnight_biz_content_posts')
-    if (savedPosts) {
-      setPosts(JSON.parse(savedPosts))
+    const allPosts = appManager.getPostsForCurrentProfile()
+    setPosts(allPosts)
+  }
+
+  const handleProfileSelect = (profile: SavedBusinessProfile) => {
+    setSelectedProfile(profile)
+    appManager.selectBusinessProfile(profile)
+    
+    // Load posts for the selected profile
+    const profilePosts = appManager.getPostsForCurrentProfile()
+    setPosts(profilePosts)
+  }
+
+  const handleGenerateContent = async () => {
+    if (!selectedProfile || !contentPrompt.trim()) {
+      setError('Please select a profile and enter a content prompt')
+      return
     }
-  }
-
-  const savePosts = (updatedPosts: ContentPost[]) => {
-    localStorage.setItem('overnight_biz_content_posts', JSON.stringify(updatedPosts))
-    setPosts(updatedPosts)
-  }
-
-  const generateContent = async () => {
-    if (!selectedProfile || !contentPrompt.trim()) return
 
     setIsGenerating(true)
+    setError(null)
+
     try {
-      const response = await fetch('/api/generate-content', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: contentPrompt,
-          businessName: selectedProfile.name,
-          businessType: selectedProfile.category,
-          businessDescription: selectedProfile.googleData?.businessDescription || '',
-          postType: postType
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to generate content')
-      }
-
-      const data = await response.json()
-      setGeneratedContent(data.content)
+      // Update app manager state
+      appManager.setContentPrompt(contentPrompt)
+      appManager.setPostType(postType)
+      
+      const content = await appManager.generateContent(contentPrompt)
+      setGeneratedContent(content)
+      appManager.setUIState({ generatedContent: content })
     } catch (error) {
-      console.error('Error generating content:', error)
-      alert('Failed to generate content. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate content'
+      setError(errorMessage)
     } finally {
       setIsGenerating(false)
     }
   }
 
-  const createPost = () => {
-    if (!selectedProfile || !generatedContent.trim()) return
-
-    const newPost: ContentPost = {
-      id: Date.now().toString(),
-      businessProfileId: selectedProfile.id,
-      businessName: selectedProfile.name,
-      title: contentPrompt.slice(0, 50) + (contentPrompt.length > 50 ? '...' : ''),
-      content: generatedContent,
-      type: postType,
-      status: scheduledDate ? 'scheduled' : 'draft',
-      scheduledDate: scheduledDate || undefined,
-      callToAction: callToAction.text && callToAction.url ? callToAction : undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+  const handleCreatePost = () => {
+    if (!selectedProfile || !generatedContent.trim()) {
+      setError('Please generate content before creating a post')
+      return
     }
 
-    const updatedPosts = [...posts, newPost]
-    savePosts(updatedPosts)
-    
-    // Reset form
+    try {
+      // Update app manager state
+      appManager.setScheduledDate(scheduledDate)
+      appManager.setCallToAction(callToAction)
+      
+      const post = appManager.createPost()
+      if (post) {
+        // Reset form
+        resetCreateForm()
+        loadPosts() // Refresh posts list
+      } else {
+        setError('Failed to create post')
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create post'
+      setError(errorMessage)
+    }
+  }
+
+  const handleDeletePost = (postId: string) => {
+    if (confirm('Are you sure you want to delete this post?')) {
+      const success = appManager.deletePost(postId)
+      if (success) {
+        loadPosts() // Refresh posts list
+      } else {
+        setError('Failed to delete post')
+      }
+    }
+  }
+
+  const handleIdeaClick = (idea: ContentIdea) => {
+    setContentPrompt(idea.description)
+    setPostType(idea.type)
+    setShowCreateForm(true)
+    appManager.handleIdeaClick(idea)
+  }
+
+  const resetCreateForm = () => {
     setShowCreateForm(false)
     setGeneratedContent('')
     setContentPrompt('')
     setScheduledDate('')
     setCallToAction({ text: '', url: '' })
+    setError(null)
   }
 
-  const deletePost = (postId: string) => {
-    if (confirm('Are you sure you want to delete this post?')) {
-      const updatedPosts = posts.filter(p => p.id !== postId)
-      savePosts(updatedPosts)
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'offer': return <Sparkles className="h-4 w-4" />
+      case 'event': return <Calendar className="h-4 w-4" />
+      case 'product': return <Building2 className="h-4 w-4" />
+      default: return <FileText className="h-4 w-4" />
     }
   }
 
@@ -184,18 +175,7 @@ export default function ContentHubPage() {
     }
   }
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'offer': return <Sparkles className="h-4 w-4" />
-      case 'event': return <Calendar className="h-4 w-4" />
-      case 'product': return <Building2 className="h-4 w-4" />
-      default: return <FileText className="h-4 w-4" />
-    }
-  }
-
-  const filteredPosts = selectedProfile 
-    ? posts.filter(p => p.businessProfileId === selectedProfile.id)
-    : posts
+  const contentIdeas = appManager.getContentIdeas()
 
   return (
     <div className="space-y-6">
@@ -212,6 +192,29 @@ export default function ContentHubPage() {
           Create Content
         </Button>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
+          <CardContent className="pt-6">
+            <div className="flex items-start space-x-2">
+              <div className="text-red-600 dark:text-red-400">⚠️</div>
+              <div>
+                <p className="text-red-600 dark:text-red-400 font-medium">Error</p>
+                <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => setError(null)}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Business Profile Selector */}
       <Card>
@@ -231,7 +234,7 @@ export default function ContentHubPage() {
                 <Button
                   key={profile.id}
                   variant={selectedProfile?.id === profile.id ? "default" : "outline"}
-                  onClick={() => setSelectedProfile(profile)}
+                  onClick={() => handleProfileSelect(profile)}
                   className="flex items-center space-x-2"
                 >
                   <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
@@ -275,11 +278,7 @@ export default function ContentHubPage() {
                   <Card 
                     key={idx} 
                     className="cursor-pointer hover:bg-accent transition-colors border-2 hover:border-primary/20"
-                    onClick={() => {
-                      setContentPrompt(idea.description)
-                      setPostType(idea.type)
-                      setShowCreateForm(true)
-                    }}
+                    onClick={() => handleIdeaClick(idea)}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start space-x-3">
@@ -315,7 +314,7 @@ export default function ContentHubPage() {
                   Content Posts
                 </div>
                 <Badge variant="outline">
-                  {filteredPosts.length} posts
+                  {posts.length} posts
                 </Badge>
               </CardTitle>
               <CardDescription>
@@ -323,9 +322,9 @@ export default function ContentHubPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {filteredPosts.length > 0 ? (
+              {posts.length > 0 ? (
                 <div className="space-y-4">
-                  {filteredPosts.map((post) => (
+                  {posts.map((post) => (
                     <Card key={post.id} className="border-l-4 border-l-blue-500">
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
@@ -369,7 +368,7 @@ export default function ContentHubPage() {
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              onClick={() => deletePost(post.id)}
+                              onClick={() => handleDeletePost(post.id)}
                               className="hover:bg-red-50 hover:border-red-200 hover:text-red-600"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -408,7 +407,7 @@ export default function ContentHubPage() {
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Create Content for {selectedProfile.name}</h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowCreateForm(false)}>
+              <Button variant="ghost" size="sm" onClick={resetCreateForm}>
                 ×
               </Button>
             </div>
@@ -453,7 +452,7 @@ export default function ContentHubPage() {
                     </div>
 
                     <Button 
-                      onClick={generateContent} 
+                      onClick={handleGenerateContent} 
                       disabled={!contentPrompt.trim() || isGenerating}
                       className="w-full"
                     >
@@ -545,7 +544,7 @@ export default function ContentHubPage() {
                           )}
                         </div>
                         <div className="flex space-x-3">
-                          <Button onClick={createPost} className="flex-1">
+                          <Button onClick={handleCreatePost} className="flex-1">
                             <CheckCircle className="mr-2 h-4 w-4" />
                             {scheduledDate ? 'Schedule Post' : 'Save as Draft'}
                           </Button>
