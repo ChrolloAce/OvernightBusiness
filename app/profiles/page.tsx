@@ -579,55 +579,98 @@ export default function ProfilesPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Business Profiles</h1>
-          <p className="text-muted-foreground">
-            Manage your Google Business Profile locations and settings.
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          <Button variant="outline" onClick={handleRefreshProfiles}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-          <Button onClick={handleAddProfile} disabled={!isConnected}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add New Profile
-          </Button>
+      <div className="relative mb-8">
+        {/* Background Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-3xl" />
+        
+        <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-white/20 dark:border-white/10 p-8">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <Building2 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
+                    Business Profiles
+                  </h1>
+                  <p className="text-lg text-gray-600 dark:text-gray-300 font-medium">
+                    Manage your Google Business Profile locations with elite precision
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex space-x-3">
+              <Button 
+                variant="outline" 
+                onClick={handleRefreshProfiles}
+                className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh
+              </Button>
+              <Button 
+                onClick={handleAddProfile} 
+                disabled={!isConnected}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <Plus className="mr-2 h-4 w-4 relative z-10" />
+                <span className="relative z-10">Add New Profile</span>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Connection Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Building2 className="mr-2 h-5 w-5" />
-            Google Business Profile Connection
-          </CardTitle>
-          <CardDescription>
-            Connect your Google account to manage business profiles
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+      <div className="relative mb-8">
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 rounded-3xl blur-2xl" />
+        
+        <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-white/20 dark:border-white/10 overflow-hidden">
+          {/* Header with Gradient */}
+          <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 p-6 border-b border-white/20 dark:border-white/10">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Building2 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Google Business Profile</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Connect your Google account to unlock premium features
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-6">
             {/* Connection Status Row */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${mounted && isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span className="text-sm font-medium">
-                  {mounted ? (isConnected ? 'Connected' : 'Not Connected') : 'Checking...'}
-                </span>
-                {isTokenExpiringSoon() && (
-                  <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                    <AlertCircle className="w-3 h-3 mr-1" />
-                    Token Expiring Soon
-                  </Badge>
-                )}
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <div className={`w-4 h-4 rounded-full ${mounted && isConnected ? 'bg-green-500' : 'bg-red-500'} shadow-lg`}></div>
+                  <div className={`absolute inset-0 w-4 h-4 rounded-full ${mounted && isConnected ? 'bg-green-500' : 'bg-red-500'} animate-ping opacity-30`}></div>
+                </div>
+                <div>
+                  <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {mounted ? (isConnected ? 'Connected' : 'Not Connected') : 'Checking...'}
+                  </span>
+                  {isTokenExpiringSoon() && (
+                    <div className="flex items-center space-x-2 mt-1">
+                      <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        Token Expiring Soon
+                      </Badge>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex space-x-2">
+              <div className="flex space-x-3">
                 {mounted && !isConnected && (
-                  <Button variant="outline" onClick={handleConnectGoogle}>
+                  <Button 
+                    onClick={handleConnectGoogle}
+                    className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                  >
                     Connect Google Account
                   </Button>
                 )}
@@ -638,6 +681,7 @@ export default function ProfilesPage() {
                       size="sm" 
                       onClick={handleRefreshToken}
                       disabled={refreshingToken}
+                      className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
                     >
                       {refreshingToken ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -646,7 +690,11 @@ export default function ProfilesPage() {
                       )}
                       Refresh Token
                     </Button>
-                    <Button variant="outline" onClick={handleDisconnect}>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleDisconnect}
+                      className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-300"
+                    >
                       <LogOut className="mr-2 h-4 w-4" />
                       Disconnect
                     </Button>
@@ -657,34 +705,49 @@ export default function ProfilesPage() {
 
             {/* User Info (when connected) */}
             {mounted && isConnected && userInfo && (
-              <div className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <User className="h-4 w-4" />
-                  <span className="text-sm font-medium">{userInfo.name}</span>
-                  <span className="text-sm text-muted-foreground">({userInfo.email})</span>
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl p-4 border border-blue-200/50 dark:border-blue-800/50">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                    <User className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">{userInfo.name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{userInfo.email}</p>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Session Info (when connected) */}
             {mounted && isConnected && sessionInfo && (
-              <div className="text-xs text-muted-foreground space-y-1">
-                <div>Connected: {formatDate(sessionInfo.created_at)}</div>
-                <div>Last Refreshed: {formatDate(sessionInfo.last_refreshed)}</div>
-                <div>Token Expires: {formatDate(sessionInfo.expires_at)}</div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white/50 dark:bg-black/20 rounded-xl p-3 border border-white/30 dark:border-white/20">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Connected</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatDate(sessionInfo.created_at)}</p>
+                </div>
+                <div className="bg-white/50 dark:bg-black/20 rounded-xl p-3 border border-white/30 dark:border-white/20">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Last Refreshed</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatDate(sessionInfo.last_refreshed)}</p>
+                </div>
+                <div className="bg-white/50 dark:bg-black/20 rounded-xl p-3 border border-white/30 dark:border-white/20">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Token Expires</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatDate(sessionInfo.expires_at)}</p>
+                </div>
               </div>
             )}
 
             {/* Status Description */}
-            <p className="text-xs text-muted-foreground">
-              {mounted && isConnected 
-                ? 'Your Google account is connected and ready to manage business profiles.'
-                : 'You need to connect your Google account to sync business profiles and manage posts.'
-              }
-            </p>
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                {mounted && isConnected 
+                  ? '✨ Your Google account is connected and ready to manage business profiles with premium features.'
+                  : '🔗 Connect your Google account to sync business profiles, manage posts, and unlock advanced analytics.'
+                }
+              </p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Error Display */}
       {error && (
@@ -703,120 +766,164 @@ export default function ProfilesPage() {
 
       {/* Profiles Grid */}
       {profiles.length > 0 && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
           {profiles.map((profile, index) => (
             <motion.div
               key={profile.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
+              className="group"
             >
-              <Card className="h-full">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-3">
-                      {/* Business Avatar */}
-                      <div className="flex-shrink-0">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
-                          {profile.name.charAt(0).toUpperCase()}
+              <div className="relative h-full">
+                {/* Background Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500" />
+                
+                {/* Card */}
+                <div className="relative h-full bg-white/60 dark:bg-black/30 backdrop-blur-xl rounded-3xl border border-white/30 dark:border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-[1.02] group-hover:border-white/50 dark:group-hover:border-white/30 overflow-hidden">
+                  
+                  {/* Header with Gradient Overlay */}
+                  <div className="relative p-6 bg-gradient-to-br from-white/20 to-transparent dark:from-black/20 border-b border-white/20 dark:border-white/10">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-4">
+                        {/* Premium Business Avatar */}
+                        <div className="relative">
+                          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:shadow-xl transition-all duration-300">
+                            {profile.name.charAt(0).toUpperCase()}
+                          </div>
+                          {/* Status Indicator */}
+                          <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-gray-900 ${
+                            profile.status === 'active' ? 'bg-green-500' : 
+                            profile.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
+                          } shadow-lg`}>
+                            <div className={`absolute inset-0 rounded-full animate-ping ${
+                              profile.status === 'active' ? 'bg-green-500' : 
+                              profile.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
+                            } opacity-30`} />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2 flex-1">
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
+                            {profile.name}
+                          </h3>
+                          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 dark:from-blue-900/30 dark:to-purple-900/30 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50">
+                            {profile.category}
+                          </div>
                         </div>
                       </div>
                       
-                      <div className="space-y-1 flex-1">
-                        <CardTitle className="text-lg">{profile.name}</CardTitle>
-                        <CardDescription className="text-sm">
-                          {profile.category}
-                        </CardDescription>
+                      <Badge className={`${getStatusColor(profile.status)} shadow-sm`}>
+                        {profile.status}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-6 space-y-4">
+                    {/* Contact Information */}
+                    <div className="space-y-3">
+                      <div className="flex items-start space-x-3">
+                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 transition-colors duration-300">
+                          <MapPin className="h-4 w-4 text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300" />
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{profile.address}</p>
+                      </div>
+                      
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-green-100 dark:group-hover:bg-green-900/30 transition-colors duration-300">
+                          <Phone className="h-4 w-4 text-gray-600 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors duration-300" />
+                        </div>
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{profile.phone}</p>
+                      </div>
+                      
+                      {profile.website && (
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-purple-100 dark:group-hover:bg-purple-900/30 transition-colors duration-300">
+                            <Globe className="h-4 w-4 text-gray-600 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-300" />
+                          </div>
+                          <a 
+                            href={profile.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline transition-colors duration-300 truncate"
+                          >
+                            {profile.website.replace(/^https?:\/\//, '')}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Performance Metrics */}
+                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl p-4 border border-yellow-200/50 dark:border-yellow-800/50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <Star className="h-5 w-5 text-white fill-current" />
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{profile.rating}</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Average Rating</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-gray-900 dark:text-white">{profile.reviewCount}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">Reviews</p>
+                        </div>
                       </div>
                     </div>
-                    <Badge className={getStatusColor(profile.status)}>
-                      {profile.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-start space-x-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <span className="text-muted-foreground">{profile.address}</span>
+
+                    {/* Last Updated */}
+                    <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-3 py-2">
+                      Last updated: {profile.lastUpdated}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">{profile.phone}</span>
-                    </div>
-                    {profile.website && (
-                      <div className="flex items-center space-x-2">
-                        <Globe className="h-4 w-4 text-muted-foreground" />
-                        <a 
-                          href={profile.website} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline text-sm"
-                        >
-                          {profile.website}
-                        </a>
-                      </div>
-                    )}
                   </div>
 
-                  <div className="flex items-center space-x-4 text-sm">
-                    <div className="flex items-center space-x-1">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span>{profile.rating}</span>
+                  {/* Action Buttons */}
+                  <div className="p-6 pt-0">
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 hover:scale-105"
+                        onClick={() => handleViewProfileDetails(profile.id)}
+                      >
+                        <Eye className="mr-2 h-3 w-3" />
+                        View Details
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-12 h-10 p-0 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all duration-300 hover:scale-105"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (profile.googleBusinessId && profile.googleBusinessId.includes('accounts/')) {
+                            const businessUrl = `https://business.google.com/dashboard/l/${profile.googleBusinessId.split('/').pop()}`
+                            window.open(businessUrl, '_blank')
+                          } else if (profile.website) {
+                            window.open(profile.website, '_blank')
+                          }
+                        }}
+                        title="View on Google Business"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-12 h-10 p-0 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-300 hover:scale-105"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteProfile(profile.id)
+                        }}
+                        title="Delete Profile"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <span className="text-muted-foreground">
-                      {profile.reviewCount} reviews
-                    </span>
                   </div>
-
-                  <div className="text-xs text-muted-foreground">
-                    Last updated: {profile.lastUpdated}
-                  </div>
-
-                  <div className="flex space-x-2 pt-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1"
-                      onClick={() => handleViewProfileDetails(profile.id)}
-                    >
-                      <Eye className="mr-2 h-3 w-3" />
-                      View Details
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="rounded-full w-10 h-10 p-0"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (profile.googleBusinessId && profile.googleBusinessId.includes('accounts/')) {
-                          // Open Google Business Profile in new tab
-                          const businessUrl = `https://business.google.com/dashboard/l/${profile.googleBusinessId.split('/').pop()}`
-                          window.open(businessUrl, '_blank')
-                        } else if (profile.website) {
-                          // Fallback to business website
-                          window.open(profile.website, '_blank')
-                        }
-                      }}
-                      title="View on Google Business"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="rounded-full w-10 h-10 p-0 hover:bg-red-50 hover:border-red-200 hover:text-red-600"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteProfile(profile.id)
-                      }}
-                      title="Delete Profile"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
           ))}
         </div>
