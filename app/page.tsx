@@ -114,27 +114,27 @@ export default function Dashboard() {
       </motion.header>
 
       {/* Page Content */}
-      <main className="p-8">
+      <main className="p-6 max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-8"
+          className="space-y-6"
         >
           {/* Page Header */}
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-3xl" />
-            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-white/20 dark:border-white/10 p-8">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl blur-2xl" />
+            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-2xl border border-white/20 dark:border-white/10 p-6">
               <div className="flex items-center justify-between">
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                      <BarChart3 className="w-6 h-6 text-white" />
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <BarChart3 className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
+                      <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
                         Dashboard
                       </h1>
-                      <p className="text-lg text-gray-600 dark:text-gray-300 font-medium">
+                      <p className="text-base text-gray-600 dark:text-gray-300 font-medium">
                         Welcome back! Here's what's happening with your business empire.
                       </p>
                     </div>
@@ -150,7 +150,7 @@ export default function Dashboard() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat, index) => (
               <motion.div
                 key={stat.title}
@@ -160,28 +160,28 @@ export default function Dashboard() {
                 className="group"
               >
                 <div className="relative h-full">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-500" />
-                  <Card className="relative h-full bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-[1.02] group-hover:border-white/50 dark:group-hover:border-white/30">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-xl blur-lg group-hover:blur-xl transition-all duration-500" />
+                  <Card className="relative h-full bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-lg hover:shadow-xl transition-all duration-500 group-hover:scale-[1.02] group-hover:border-white/50 dark:group-hover:border-white/30">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {stat.title}
                       </CardTitle>
-                      <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-xl flex items-center justify-center group-hover:from-blue-100 group-hover:to-purple-100 dark:group-hover:from-blue-900/30 dark:group-hover:to-purple-900/30 transition-all duration-300">
-                        <stat.icon className="h-5 w-5 text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300" />
+                      <div className="w-8 h-8 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-lg flex items-center justify-center group-hover:from-blue-100 group-hover:to-purple-100 dark:group-hover:from-blue-900/30 dark:group-hover:to-purple-900/30 transition-all duration-300">
+                        <stat.icon className="h-4 w-4 text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300" />
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{stat.value}</div>
-                      <div className="flex items-center text-sm">
+                      <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{stat.value}</div>
+                      <div className="flex items-center text-xs">
                         {stat.trend === 'up' ? (
-                          <ArrowUpRight className="mr-1 h-4 w-4 text-green-500" />
+                          <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
                         ) : (
-                          <ArrowDownRight className="mr-1 h-4 w-4 text-red-500" />
+                          <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
                         )}
                         <span className={`font-semibold ${stat.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
                           {stat.change}
                         </span>
-                        <span className="ml-2 text-gray-600 dark:text-gray-400">{stat.description}</span>
+                        <span className="ml-1 text-gray-600 dark:text-gray-400">{stat.description}</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -191,25 +191,25 @@ export default function Dashboard() {
           </div>
 
           {/* Charts and Activity */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <div className="col-span-4">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-2xl" />
-                <Card className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-xl">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl blur-xl" />
+                <Card className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-lg">
                   <CardHeader>
-                    <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Performance Overview</CardTitle>
-                    <CardDescription className="text-gray-600 dark:text-gray-300">
+                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">Performance Overview</CardTitle>
+                    <CardDescription className="text-sm text-gray-600 dark:text-gray-300">
                       Your business metrics at a glance
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pl-2">
-                    <div className="h-[300px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-900/50 rounded-2xl flex items-center justify-center border border-white/30 dark:border-white/10">
-                      <div className="text-center space-y-3">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
-                          <BarChart3 className="w-8 h-8 text-white" />
+                    <div className="h-[250px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl flex items-center justify-center border border-white/30 dark:border-white/10">
+                      <div className="text-center space-y-2">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mx-auto shadow-lg">
+                          <BarChart3 className="w-6 h-6 text-white" />
                         </div>
-                        <p className="text-gray-600 dark:text-gray-300 font-medium">Advanced Analytics Coming Soon</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Interactive charts and detailed insights</p>
+                        <p className="text-gray-600 dark:text-gray-300 font-medium text-sm">Advanced Analytics Coming Soon</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Interactive charts and detailed insights</p>
                       </div>
                     </div>
                   </CardContent>
@@ -219,27 +219,27 @@ export default function Dashboard() {
             
             <div className="col-span-3">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 rounded-3xl blur-2xl" />
-                <Card className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-xl">
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 rounded-2xl blur-xl" />
+                <Card className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-lg">
                   <CardHeader>
-                    <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Recent Activity</CardTitle>
-                    <CardDescription className="text-gray-600 dark:text-gray-300">
+                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">Recent Activity</CardTitle>
+                    <CardDescription className="text-sm text-gray-600 dark:text-gray-300">
                       Latest updates from your business profiles
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {recentActivity.map((activity, index) => (
-                        <div key={index} className="flex items-center space-x-4 p-3 bg-white/50 dark:bg-black/20 rounded-xl border border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
-                          <div className={`w-3 h-3 rounded-full ${
+                        <div key={index} className="flex items-center space-x-3 p-2 bg-white/50 dark:bg-black/20 rounded-lg border border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
+                          <div className={`w-2 h-2 rounded-full ${
                             activity.status === 'success' ? 'bg-green-500' : 'bg-blue-500'
-                          } shadow-lg`}>
-                            <div className={`absolute w-3 h-3 rounded-full animate-ping ${
+                          } shadow-sm`}>
+                            <div className={`absolute w-2 h-2 rounded-full animate-ping ${
                               activity.status === 'success' ? 'bg-green-500' : 'bg-blue-500'
                             } opacity-30`} />
                           </div>
-                          <div className="flex-1 space-y-1">
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                          <div className="flex-1 space-y-0">
+                            <p className="text-xs font-semibold text-gray-900 dark:text-white">
                               {activity.action}
                             </p>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -257,33 +257,33 @@ export default function Dashboard() {
 
           {/* Quick Actions */}
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-red-500/10 rounded-3xl blur-2xl" />
-            <Card className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-xl">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-red-500/10 rounded-2xl blur-xl" />
+            <Card className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-lg">
               <CardHeader>
-                <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Quick Actions</CardTitle>
-                <CardDescription className="text-gray-600 dark:text-gray-300">
+                <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">Quick Actions</CardTitle>
+                <CardDescription className="text-sm text-gray-600 dark:text-gray-300">
                   Common tasks to manage your business profiles efficiently
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <Button variant="outline" className="h-24 flex-col bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 hover:scale-105 group">
-                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mb-2 group-hover:shadow-lg transition-all duration-300">
-                      <FileText className="h-6 w-6 text-white" />
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Button variant="outline" className="h-20 flex-col bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 hover:scale-105 group">
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center mb-2 group-hover:shadow-lg transition-all duration-300">
+                      <FileText className="h-5 w-5 text-white" />
                     </div>
-                    <span className="font-semibold">Generate Blog Post</span>
+                    <span className="font-semibold text-sm">Generate Blog Post</span>
                   </Button>
-                  <Button variant="outline" className="h-24 flex-col bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 hover:scale-105 group">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mb-2 group-hover:shadow-lg transition-all duration-300">
-                      <Calendar className="h-6 w-6 text-white" />
+                  <Button variant="outline" className="h-20 flex-col bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 hover:scale-105 group">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center mb-2 group-hover:shadow-lg transition-all duration-300">
+                      <Calendar className="h-5 w-5 text-white" />
                     </div>
-                    <span className="font-semibold">Update Business Hours</span>
+                    <span className="font-semibold text-sm">Update Business Hours</span>
                   </Button>
-                  <Button variant="outline" className="h-24 flex-col bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 hover:scale-105 group">
-                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center mb-2 group-hover:shadow-lg transition-all duration-300">
-                      <MessageSquare className="h-6 w-6 text-white" />
+                  <Button variant="outline" className="h-20 flex-col bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 hover:scale-105 group">
+                    <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center mb-2 group-hover:shadow-lg transition-all duration-300">
+                      <MessageSquare className="h-5 w-5 text-white" />
                     </div>
-                    <span className="font-semibold">Respond to Reviews</span>
+                    <span className="font-semibold text-sm">Respond to Reviews</span>
                   </Button>
                 </div>
               </CardContent>
