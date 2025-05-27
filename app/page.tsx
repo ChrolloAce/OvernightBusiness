@@ -27,12 +27,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useTheme } from '@/components/theme-provider'
-import ProfilesPage from './profiles/page'
-import ContentHubPage from './content/page'
-import ReviewsPage from './reviews/page'
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('dashboard')
   const { theme, setTheme } = useTheme()
 
   const stats = [
@@ -77,174 +73,176 @@ export default function Dashboard() {
     { action: 'Hours updated', profile: 'Local Bakery', time: '1 day ago', status: 'info' },
   ]
 
-  const sidebarItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'profiles', label: 'Business Profiles', icon: Building2 },
-    { id: 'content', label: 'Content Hub', icon: FileText },
-    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-    { id: 'calendar', label: 'Scheduler', icon: Calendar },
-    { id: 'reviews', label: 'Reviews', icon: MessageSquare },
-  ]
-
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <motion.aside 
-        initial={{ x: -300, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        className="w-64 border-r bg-card/50 backdrop-blur-sm"
+    <div className="min-h-screen">
+      {/* Header */}
+      <motion.header 
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="sticky top-0 z-40 border-b bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/20 dark:border-white/10"
       >
-        <div className="p-6">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-primary-foreground" />
+        <div className="flex h-16 items-center px-6">
+          <div className="flex items-center space-x-4 flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="search"
+                placeholder="Search businesses, posts, reviews..."
+                className="pl-10 h-10 w-[400px] rounded-xl border border-white/30 dark:border-white/20 bg-white/50 dark:bg-black/20 backdrop-blur-sm px-4 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+              />
             </div>
-            <h1 className="text-xl font-bold">Overnight Biz</h1>
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            <Button variant="ghost" size="icon" className="relative bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
+              <Bell className="h-4 w-4" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-900" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+              className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+            >
+              {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            </Button>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg border-2 border-white/30 dark:border-white/20">
+              <span className="text-sm font-bold text-white">JD</span>
+            </div>
           </div>
         </div>
-        
-        <nav className="px-4 space-y-2">
-          {sidebarItems.map((item) => (
-            <Button
-              key={item.id}
-              variant={activeTab === item.id ? "secondary" : "ghost"}
-              className="w-full justify-start"
-              onClick={() => setActiveTab(item.id)}
-            >
-              <item.icon className="mr-2 h-4 w-4" />
-              {item.label}
-            </Button>
-          ))}
-        </nav>
-      </motion.aside>
+      </motion.header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <motion.header 
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+      {/* Page Content */}
+      <main className="p-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-8"
         >
-          <div className="flex h-16 items-center px-6">
-            <div className="flex items-center space-x-4 flex-1">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="search"
-                  placeholder="Search..."
-                  className="pl-8 h-9 w-[300px] rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                />
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon">
-                <Bell className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-              >
-                {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-              </Button>
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-medium">JD</span>
+          {/* Page Header */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-3xl" />
+            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-white/20 dark:border-white/10 p-8">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                      <BarChart3 className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
+                        Dashboard
+                      </h1>
+                      <p className="text-lg text-gray-600 dark:text-gray-300 font-medium">
+                        Welcome back! Here's what's happening with your business empire.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <Plus className="mr-2 h-4 w-4 relative z-10" />
+                  <span className="relative z-10">Quick Action</span>
+                </Button>
               </div>
             </div>
           </div>
-        </motion.header>
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          {activeTab === 'dashboard' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              {/* Page Header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                  <p className="text-muted-foreground">
-                    Welcome back! Here's what's happening with your business.
-                  </p>
+          {/* Stats Grid */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {stats.map((stat, index) => (
+              <motion.div
+                key={stat.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="group"
+              >
+                <div className="relative h-full">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-500" />
+                  <Card className="relative h-full bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-[1.02] group-hover:border-white/50 dark:group-hover:border-white/30">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {stat.title}
+                      </CardTitle>
+                      <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-xl flex items-center justify-center group-hover:from-blue-100 group-hover:to-purple-100 dark:group-hover:from-blue-900/30 dark:group-hover:to-purple-900/30 transition-all duration-300">
+                        <stat.icon className="h-5 w-5 text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{stat.value}</div>
+                      <div className="flex items-center text-sm">
+                        {stat.trend === 'up' ? (
+                          <ArrowUpRight className="mr-1 h-4 w-4 text-green-500" />
+                        ) : (
+                          <ArrowDownRight className="mr-1 h-4 w-4 text-red-500" />
+                        )}
+                        <span className={`font-semibold ${stat.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                          {stat.change}
+                        </span>
+                        <span className="ml-2 text-gray-600 dark:text-gray-400">{stat.description}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                <Button onClick={() => setActiveTab('profiles')}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add New Profile
-                </Button>
-              </div>
+              </motion.div>
+            ))}
+          </div>
 
-              {/* Stats Grid */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {stats.map((stat, index) => (
-                  <motion.div
-                    key={stat.title}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                          {stat.title}
-                        </CardTitle>
-                        <stat.icon className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">{stat.value}</div>
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          {stat.trend === 'up' ? (
-                            <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
-                          ) : (
-                            <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
-                          )}
-                          <span className={stat.trend === 'up' ? 'text-green-500' : 'text-red-500'}>
-                            {stat.change}
-                          </span>
-                          <span className="ml-1">{stat.description}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Charts and Activity */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4">
+          {/* Charts and Activity */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+            <div className="col-span-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-2xl" />
+                <Card className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-xl">
                   <CardHeader>
-                    <CardTitle>Overview</CardTitle>
+                    <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Performance Overview</CardTitle>
+                    <CardDescription className="text-gray-600 dark:text-gray-300">
+                      Your business metrics at a glance
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="pl-2">
-                    <div className="h-[300px] bg-muted/20 rounded-lg flex items-center justify-center">
-                      <p className="text-muted-foreground">Chart will be implemented here</p>
+                    <div className="h-[300px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-900/50 rounded-2xl flex items-center justify-center border border-white/30 dark:border-white/10">
+                      <div className="text-center space-y-3">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                          <BarChart3 className="w-8 h-8 text-white" />
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-300 font-medium">Advanced Analytics Coming Soon</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Interactive charts and detailed insights</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
-                
-                <Card className="col-span-3">
+              </div>
+            </div>
+            
+            <div className="col-span-3">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 rounded-3xl blur-2xl" />
+                <Card className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-xl">
                   <CardHeader>
-                    <CardTitle>Recent Activity</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Recent Activity</CardTitle>
+                    <CardDescription className="text-gray-600 dark:text-gray-300">
                       Latest updates from your business profiles
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       {recentActivity.map((activity, index) => (
-                        <div key={index} className="flex items-center space-x-4">
-                          <div className={`w-2 h-2 rounded-full ${
+                        <div key={index} className="flex items-center space-x-4 p-3 bg-white/50 dark:bg-black/20 rounded-xl border border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
+                          <div className={`w-3 h-3 rounded-full ${
                             activity.status === 'success' ? 'bg-green-500' : 'bg-blue-500'
-                          }`} />
+                          } shadow-lg`}>
+                            <div className={`absolute w-3 h-3 rounded-full animate-ping ${
+                              activity.status === 'success' ? 'bg-green-500' : 'bg-blue-500'
+                            } opacity-30`} />
+                          </div>
                           <div className="flex-1 space-y-1">
-                            <p className="text-sm font-medium leading-none">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
                               {activity.action}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
                               {activity.profile} • {activity.time}
                             </p>
                           </div>
@@ -254,68 +252,45 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               </div>
+            </div>
+          </div>
 
-              {/* Quick Actions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
-                  <CardDescription>
-                    Common tasks to manage your business profiles
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <Button variant="outline" className="h-20 flex-col">
-                      <FileText className="h-6 w-6 mb-2" />
-                      Generate Blog Post
-                    </Button>
-                    <Button variant="outline" className="h-20 flex-col">
-                      <Calendar className="h-6 w-6 mb-2" />
-                      Update Business Hours
-                    </Button>
-                    <Button variant="outline" className="h-20 flex-col">
-                      <MessageSquare className="h-6 w-6 mb-2" />
-                      Respond to Reviews
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Business Profiles Page */}
-          {activeTab === 'profiles' && <ProfilesPage />}
-
-          {/* Content Hub Page */}
-          {activeTab === 'content' && <ContentHubPage />}
-
-          {/* Reviews Page */}
-          {activeTab === 'reviews' && <ReviewsPage />}
-
-          {/* Other tab content */}
-          {activeTab !== 'dashboard' && activeTab !== 'profiles' && activeTab !== 'content' && activeTab !== 'reviews' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-center h-[400px]"
-            >
-              <Card className="w-full max-w-md text-center">
-                <CardHeader>
-                  <CardTitle className="capitalize">{activeTab}</CardTitle>
-                  <CardDescription>
-                    This section is under development
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    Coming soon! This feature will be available in the next update.
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-        </main>
-      </div>
+          {/* Quick Actions */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-red-500/10 rounded-3xl blur-2xl" />
+            <Card className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Quick Actions</CardTitle>
+                <CardDescription className="text-gray-600 dark:text-gray-300">
+                  Common tasks to manage your business profiles efficiently
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Button variant="outline" className="h-24 flex-col bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 hover:scale-105 group">
+                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mb-2 group-hover:shadow-lg transition-all duration-300">
+                      <FileText className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="font-semibold">Generate Blog Post</span>
+                  </Button>
+                  <Button variant="outline" className="h-24 flex-col bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 hover:scale-105 group">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mb-2 group-hover:shadow-lg transition-all duration-300">
+                      <Calendar className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="font-semibold">Update Business Hours</span>
+                  </Button>
+                  <Button variant="outline" className="h-24 flex-col bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 hover:scale-105 group">
+                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center mb-2 group-hover:shadow-lg transition-all duration-300">
+                      <MessageSquare className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="font-semibold">Respond to Reviews</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </motion.div>
+      </main>
     </div>
   )
 } 
