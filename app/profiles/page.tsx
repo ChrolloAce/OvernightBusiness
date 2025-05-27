@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { 
   Building2, 
   Plus, 
@@ -138,6 +139,104 @@ interface GoogleBusinessLocation {
     categoryId: string
     displayName: string
   }>
+}
+
+// Business Logo Component with fallback
+interface BusinessLogoProps {
+  businessName: string
+  website?: string
+  className?: string
+  fallbackClassName?: string
+}
+
+function BusinessLogo({ businessName, website, className = "w-16 h-16", fallbackClassName }: BusinessLogoProps) {
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
+
+  useEffect(() => {
+    const loadLogo = async () => {
+      if (!website && !businessName) {
+        setIsLoading(false)
+        setHasError(true)
+        return
+      }
+
+      try {
+        let domain = ''
+        if (website) {
+          try {
+            domain = new URL(website).hostname.replace('www.', '')
+          } catch {
+            // If website is not a valid URL, try to extract domain
+            domain = website.replace(/^https?:\/\//, '').replace('www.', '').split('/')[0]
+          }
+        }
+
+        // Try multiple logo sources with better fallbacks
+        const logoSources = [
+          // Google Favicon API (most reliable, no CORS issues)
+          domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : null,
+          // DuckDuckGo Favicon API (good fallback)
+          domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null,
+          // Clearbit Logo API (high quality but may have CORS issues)
+          domain ? `https://logo.clearbit.com/${domain}` : null,
+        ].filter(Boolean)
+
+        // Use the first available logo source
+        if (logoSources.length > 0) {
+          setLogoUrl(logoSources[0] as string)
+          setIsLoading(false)
+        } else {
+          setHasError(true)
+          setIsLoading(false)
+        }
+      } catch (error) {
+        setHasError(true)
+        setIsLoading(false)
+      }
+    }
+
+    loadLogo()
+  }, [businessName, website])
+
+  if (isLoading) {
+    return (
+      <div className={`${className} bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 rounded-2xl flex items-center justify-center ${fallbackClassName}`}>
+        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+      </div>
+    )
+  }
+
+  if (hasError || !logoUrl) {
+    return (
+      <div className={`${className} bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg ${fallbackClassName}`}>
+        <Building2 className="w-8 h-8 text-white" />
+      </div>
+    )
+  }
+
+  return (
+    <div className={`${className} rounded-2xl overflow-hidden shadow-lg bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 ${fallbackClassName}`}>
+      <Image
+        src={logoUrl}
+        alt={`${businessName} logo`}
+        width={64}
+        height={64}
+        className="w-full h-full object-contain p-2"
+        onError={() => {
+          // Fallback to business icon if logo fails to load
+          setHasError(true)
+          setLogoUrl(null)
+        }}
+        onLoad={() => {
+          // Logo loaded successfully
+          setHasError(false)
+        }}
+        unoptimized // Allow external images
+      />
+    </div>
+  )
 }
 
 export default function ProfilesPage() {
@@ -789,9 +888,11 @@ export default function ProfilesPage() {
                       <div className="flex items-start space-x-4">
                         {/* Premium Business Avatar */}
                         <div className="relative">
-                          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:shadow-xl transition-all duration-300">
-                            {profile.name.charAt(0).toUpperCase()}
-                          </div>
+                          <BusinessLogo 
+                            businessName={profile.name} 
+                            website={profile.website}
+                            className="w-16 h-16"
+                          />
                           {/* Status Indicator */}
                           <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-gray-900 ${
                             profile.status === 'active' ? 'bg-green-500' : 
@@ -978,9 +1079,11 @@ export default function ProfilesPage() {
                       <div className="flex items-start space-x-4">
                         {/* Business Image/Avatar */}
                         <div className="flex-shrink-0">
-                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                            {(location.title || location.displayName || location.locationName || 'B').charAt(0).toUpperCase()}
-                          </div>
+                          <BusinessLogo 
+                            businessName={location.title || location.displayName || location.locationName || 'B'} 
+                            website={location.websiteUri}
+                            className="w-16 h-16"
+                          />
                         </div>
                         
                         {/* Business Information */}
@@ -1145,9 +1248,7 @@ export default function ProfilesPage() {
             <div className="relative bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 p-6 border-b border-white/20 dark:border-white/10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                    {selectedProfile.name.charAt(0).toUpperCase()}
-                  </div>
+                  <BusinessLogo businessName={selectedProfile.name} website={selectedProfile.website} className="w-14 h-14" />
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedProfile.name}</h2>
                     <p className="text-base text-gray-600 dark:text-gray-300">{selectedProfile.category}</p>
