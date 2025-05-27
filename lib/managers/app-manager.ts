@@ -1,7 +1,6 @@
 import { ContentManager, ContentPost, ContentIdea, GenerateContentRequest } from './content-manager'
 import { UIManager, UIState, UICallbacks } from './ui-manager'
 import { BusinessProfileManager, BusinessProfileSummary } from './business-profile-manager'
-import { ReviewsManager, Review, ReviewSummary, ReviewReplyRequest } from './reviews-manager'
 import { SavedBusinessProfile } from '../business-profiles-storage'
 
 export interface AppState {
@@ -16,14 +15,12 @@ export class AppManager {
   private contentManager: ContentManager
   private uiManager: UIManager
   private businessProfileManager: BusinessProfileManager
-  private reviewsManager: ReviewsManager
   private appState: AppState
 
   private constructor() {
     this.contentManager = ContentManager.getInstance()
     this.uiManager = UIManager.getInstance()
     this.businessProfileManager = BusinessProfileManager.getInstance()
-    this.reviewsManager = ReviewsManager.getInstance()
     
     this.appState = {
       isInitialized: false,
@@ -306,68 +303,6 @@ export class AppManager {
     return this.uiManager.validateCreateForm()
   }
 
-  // Review Management Methods
-  public async getBusinessProfileReviews(profileId: string): Promise<Review[]> {
-    return await this.businessProfileManager.getProfileReviews(profileId)
-  }
-
-  public async getBusinessProfileReviewSummary(profileId: string): Promise<ReviewSummary | null> {
-    return await this.businessProfileManager.getProfileReviewSummary(profileId)
-  }
-
-  public async syncProfileReviews(profileId: string): Promise<{ success: boolean; error?: string; reviewCount?: number }> {
-    return await this.businessProfileManager.syncProfileReviews(profileId)
-  }
-
-  public async syncAllProfileReviews(): Promise<{ 
-    totalProfiles: number
-    successCount: number
-    failureCount: number
-    errors: string[]
-  }> {
-    return await this.businessProfileManager.syncAllProfileReviews()
-  }
-
-  public async replyToReview(reviewName: string, replyRequest: ReviewReplyRequest): Promise<void> {
-    return await this.reviewsManager.replyToReview(reviewName, replyRequest)
-  }
-
-  public async updateReviewReply(reviewName: string, replyRequest: ReviewReplyRequest): Promise<void> {
-    return await this.reviewsManager.updateReviewReply(reviewName, replyRequest)
-  }
-
-  public async deleteReviewReply(reviewName: string): Promise<void> {
-    return await this.reviewsManager.deleteReviewReply(reviewName)
-  }
-
-  public getReviewSentiment(starRating: string): 'positive' | 'neutral' | 'negative' {
-    return this.reviewsManager.getReviewSentiment(starRating)
-  }
-
-  public formatReviewDate(dateString: string): string {
-    return this.reviewsManager.formatReviewDate(dateString)
-  }
-
-  public getReviewerDisplayName(reviewer: Review['reviewer']): string {
-    return this.reviewsManager.getReviewerDisplayName(reviewer)
-  }
-
-  public validateReplyComment(comment: string): { isValid: boolean; errors: string[] } {
-    return this.reviewsManager.validateReplyComment(comment)
-  }
-
-  public searchReviews(reviews: Review[], query: string): Review[] {
-    return this.reviewsManager.searchReviews(reviews, query)
-  }
-
-  public filterReviewsByRating(reviews: Review[], minRating: number, maxRating: number = 5): Review[] {
-    return this.reviewsManager.filterReviewsByRating(reviews, minRating, maxRating)
-  }
-
-  public sortReviews(reviews: Review[], sortBy: 'date' | 'rating', order: 'asc' | 'desc' = 'desc'): Review[] {
-    return this.reviewsManager.sortReviews(reviews, sortBy, order)
-  }
-
   // Statistics and Analytics
   public getDashboardStats(): {
     totalProfiles: number
@@ -383,18 +318,6 @@ export class AppManager {
       totalReviews: this.businessProfileManager.getTotalReviews(),
       verificationRate: this.businessProfileManager.getVerificationRate()
     }
-  }
-
-  public async getReviewAnalytics(): Promise<{
-    totalReviews: number
-    averageRating: number
-    positiveReviews: number
-    neutralReviews: number
-    negativeReviews: number
-    unrepliedReviews: number
-    recentReviews: Review[]
-  }> {
-    return await this.businessProfileManager.getReviewAnalytics()
   }
 
   public getRecentActivity(): Array<{

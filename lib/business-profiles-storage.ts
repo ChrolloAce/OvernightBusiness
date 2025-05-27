@@ -1,3 +1,5 @@
+import { BusinessReview } from './google-business-api'
+
 // Local storage service for business profiles
 export interface SavedBusinessProfile {
   id: string
@@ -108,6 +110,13 @@ export interface SavedBusinessProfile {
       status?: string
       canReopen?: boolean
       isOpen?: boolean
+    }
+    // Reviews data
+    reviews?: BusinessReview[]
+    reviewsSummary?: {
+      averageRating: number
+      totalReviews: number
+      lastUpdated: string
     }
   }
   // Computed fields

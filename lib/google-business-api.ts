@@ -214,6 +214,35 @@ export interface BusinessPost {
   searchUrl: string
 }
 
+export interface ReviewReply {
+  comment: string
+  updateTime: string
+}
+
+export interface Reviewer {
+  profilePhotoUrl?: string
+  displayName: string
+  isAnonymous: boolean
+}
+
+export interface BusinessReview {
+  name: string
+  reviewId: string
+  reviewer: Reviewer
+  starRating: 'ONE' | 'TWO' | 'THREE' | 'FOUR' | 'FIVE' | 'STAR_RATING_UNSPECIFIED'
+  comment: string
+  createTime: string
+  updateTime: string
+  reviewReply?: ReviewReply
+}
+
+export interface ReviewsResponse {
+  reviews: BusinessReview[]
+  totalReviewCount: number
+  averageRating: number
+  nextPageToken?: string
+}
+
 export class GoogleBusinessAPI {
   private authService: GoogleAuthService
   // Updated to use the correct Google Business Profile API endpoints
@@ -475,7 +504,7 @@ export class GoogleBusinessAPI {
   }
 
   // Get reviews for a location
-  async getReviews(locationName: string): Promise<any[]> {
+  async getReviews(locationName: string): Promise<BusinessReview[]> {
     const accessToken = await this.authService.getValidAccessToken()
     
     console.log('[Google Business API] Fetching reviews for location:', locationName)
@@ -489,6 +518,121 @@ export class GoogleBusinessAPI {
 
     const data = await this.handleApiResponse(response, 'Fetch Reviews')
     return data.reviews || []
+  }
+
+  // Get reviews with pagination
+  async getReviewsPaginated(locationName: string, pageSize: number = 50, pageToken?: string): Promise<ReviewsResponse> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching paginated reviews for location:', locationName)
+    
+    let url = `${this.businessInfoBaseUrl}/${locationName}/reviews?pageSize=${pageSize}`
+    if (pageToken) {
+      url += `&pageToken=${pageToken}`
+    }
+    
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const data = await this.handleApiResponse(response, 'Fetch Paginated Reviews')
+    
+    // Calculate average rating and total count
+    const reviews = data.reviews || []
+    const totalReviewCount = data.totalReviewCount || reviews.length
+    const averageRating = this.calculateAverageRating(reviews)
+    
+    return {
+      reviews,
+      totalReviewCount,
+      averageRating,
+      nextPageToken: data.nextPageToken
+    }
+  }
+
+  // Get all reviews for a location (handles pagination automatically)
+  async getAllReviews(locationName: string): Promise<ReviewsResponse> {
+    let allReviews: BusinessReview[] = []
+    let nextPageToken: string | undefined
+    let totalReviewCount = 0
+    
+    do {
+      const response = await this.getReviewsPaginated(locationName, 50, nextPageToken)
+      allReviews = allReviews.concat(response.reviews)
+      nextPageToken = response.nextPageToken
+      totalReviewCount = response.totalReviewCount
+    } while (nextPageToken)
+    
+    const averageRating = this.calculateAverageRating(allReviews)
+    
+    return {
+      reviews: allReviews,
+      totalReviewCount,
+      averageRating,
+      nextPageToken: undefined
+    }
+  }
+
+  // Calculate average rating from reviews
+  private calculateAverageRating(reviews: BusinessReview[]): number {
+    if (reviews.length === 0) return 0
+    
+    const ratingValues = {
+      'ONE': 1,
+      'TWO': 2,
+      'THREE': 3,
+      'FOUR': 4,
+      'FIVE': 5,
+      'STAR_RATING_UNSPECIFIED': 0
+    }
+    
+    const totalRating = reviews.reduce((sum, review) => {
+      return sum + (ratingValues[review.starRating] || 0)
+    }, 0)
+    
+    return Math.round((totalRating / reviews.length) * 10) / 10
+  }
+
+  // Convert star rating enum to number
+  static getStarRatingValue(starRating: string): number {
+    const ratingValues = {
+      'ONE': 1,
+      'TWO': 2,
+      'THREE': 3,
+      'FOUR': 4,
+      'FIVE': 5,
+      'STAR_RATING_UNSPECIFIED': 0
+    }
+    return ratingValues[starRating as keyof typeof ratingValues] || 0
+  }
+
+  // Format review date
+  static formatReviewDate(dateString: string): string {
+    try {
+      return new Date(dateString).toLocaleDateString()
+    } catch {
+      return 'Unknown date'
+    }
+  }
+
+  // Get review summary for a location
+  async getReviewSummary(locationName: string): Promise<{ averageRating: number; totalReviews: number }> {
+    try {
+      const reviewsData = await this.getReviewsPaginated(locationName, 1) // Just get first page for summary
+      return {
+        averageRating: reviewsData.averageRating,
+        totalReviews: reviewsData.totalReviewCount
+      }
+    } catch (error) {
+      console.warn('[Google Business API] Failed to get review summary:', error)
+      return {
+        averageRating: 0,
+        totalReviews: 0
+      }
+    }
   }
 
   // Reply to a review

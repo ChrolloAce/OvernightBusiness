@@ -1,5 +1,4 @@
 import { BusinessProfilesStorage, SavedBusinessProfile } from '../business-profiles-storage'
-import { ReviewsManager, Review, ReviewSummary } from './reviews-manager'
 
 export interface BusinessProfileSummary {
   id: string
@@ -11,19 +10,11 @@ export interface BusinessProfileSummary {
   status: 'active' | 'pending' | 'suspended'
 }
 
-export interface BusinessProfileWithReviews extends SavedBusinessProfile {
-  reviews?: Review[]
-  reviewSummary?: ReviewSummary
-  lastReviewSync?: string
-}
-
 export class BusinessProfileManager {
   private static instance: BusinessProfileManager
   private profiles: SavedBusinessProfile[] = []
-  private reviewsManager: ReviewsManager
 
   private constructor() {
-    this.reviewsManager = ReviewsManager.getInstance()
     this.loadProfiles()
   }
 
@@ -57,132 +48,6 @@ export class BusinessProfileManager {
 
   public hasProfiles(): boolean {
     return this.profiles.length > 0
-  }
-
-  // Reviews Integration Methods
-  public async syncProfileReviews(profileId: string): Promise<{ success: boolean; error?: string; reviewCount?: number }> {
-    try {
-      const profile = this.getProfile(profileId)
-      if (!profile || !profile.googleBusinessId) {
-        return { success: false, error: 'Profile not found or missing Google Business ID' }
-      }
-
-      console.log('[BusinessProfileManager] Syncing reviews for profile:', profile.name)
-      
-      // Use the googleBusinessId as the location name for the Reviews API
-      const locationName = profile.googleBusinessId
-      const reviews = await this.reviewsManager.getReviews(locationName)
-      const reviewSummary = this.reviewsManager.generateReviewSummary(reviews)
-      
-      // Update profile with real review data
-      const updatedProfile = {
-        ...profile,
-        rating: reviewSummary.averageRating,
-        reviewCount: reviewSummary.totalReviews,
-        lastSynced: new Date().toISOString()
-      }
-
-      // Save updated profile
-      const success = this.updateProfile(profileId, updatedProfile)
-      
-      if (success) {
-        console.log(`[BusinessProfileManager] Successfully synced ${reviews.length} reviews for ${profile.name}`)
-        return { 
-          success: true, 
-          reviewCount: reviews.length 
-        }
-      } else {
-        return { success: false, error: 'Failed to update profile with review data' }
-      }
-    } catch (error) {
-      console.error('[BusinessProfileManager] Failed to sync reviews:', error)
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      }
-    }
-  }
-
-  public async syncAllProfileReviews(): Promise<{ 
-    totalProfiles: number
-    successCount: number
-    failureCount: number
-    errors: string[]
-  }> {
-    const results = {
-      totalProfiles: this.profiles.length,
-      successCount: 0,
-      failureCount: 0,
-      errors: [] as string[]
-    }
-
-    console.log(`[BusinessProfileManager] Starting bulk review sync for ${this.profiles.length} profiles`)
-
-    for (const profile of this.profiles) {
-      try {
-        const result = await this.syncProfileReviews(profile.id)
-        if (result.success) {
-          results.successCount++
-        } else {
-          results.failureCount++
-          results.errors.push(`${profile.name}: ${result.error}`)
-        }
-      } catch (error) {
-        results.failureCount++
-        results.errors.push(`${profile.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      }
-    }
-
-    console.log(`[BusinessProfileManager] Bulk sync completed: ${results.successCount} success, ${results.failureCount} failures`)
-    return results
-  }
-
-  public async getProfileWithReviews(profileId: string): Promise<BusinessProfileWithReviews | null> {
-    try {
-      const profile = this.getProfile(profileId)
-      if (!profile || !profile.googleBusinessId) {
-        return profile
-      }
-
-      const locationName = profile.googleBusinessId
-      const reviews = await this.reviewsManager.getReviews(locationName)
-      const reviewSummary = this.reviewsManager.generateReviewSummary(reviews)
-
-      return {
-        ...profile,
-        reviews,
-        reviewSummary,
-        lastReviewSync: new Date().toISOString()
-      }
-    } catch (error) {
-      console.error('[BusinessProfileManager] Failed to get profile with reviews:', error)
-      return this.getProfile(profileId)
-    }
-  }
-
-  public async getProfileReviews(profileId: string): Promise<Review[]> {
-    try {
-      const profile = this.getProfile(profileId)
-      if (!profile || !profile.googleBusinessId) {
-        return []
-      }
-
-      const locationName = profile.googleBusinessId
-      return await this.reviewsManager.getReviews(locationName)
-    } catch (error) {
-      console.error('[BusinessProfileManager] Failed to get profile reviews:', error)
-      return []
-    }
-  }
-
-  public async getProfileReviewSummary(profileId: string): Promise<ReviewSummary | null> {
-    try {
-      const reviews = await this.getProfileReviews(profileId)
-      return this.reviewsManager.generateReviewSummary(reviews)
-    } catch (error) {
-      console.error('[BusinessProfileManager] Failed to get profile review summary:', error)
-      return null
-    }
   }
 
   // Profile Operations
@@ -331,15 +196,15 @@ export class BusinessProfileManager {
     )
   }
 
-  // Profile Statistics (Updated with Real Review Data)
+  // Profile Statistics
   public getProfileSummaries(): BusinessProfileSummary[] {
     return this.profiles.map(profile => ({
       id: profile.id,
       name: profile.name,
       category: profile.category,
       isVerified: profile.isVerified || false,
-      rating: profile.rating, // Now uses real data from Google
-      reviewCount: profile.reviewCount, // Now uses real data from Google
+      rating: profile.rating,
+      reviewCount: profile.reviewCount,
       status: profile.status
     }))
   }
@@ -371,62 +236,6 @@ export class BusinessProfileManager {
     })
     
     return distribution
-  }
-
-  // Review Analytics
-  public async getReviewAnalytics(): Promise<{
-    totalReviews: number
-    averageRating: number
-    positiveReviews: number
-    neutralReviews: number
-    negativeReviews: number
-    unrepliedReviews: number
-    recentReviews: Review[]
-  }> {
-    let totalReviews = 0
-    let totalRatingPoints = 0
-    let positiveReviews = 0
-    let neutralReviews = 0
-    let negativeReviews = 0
-    let unrepliedReviews = 0
-    const allRecentReviews: Review[] = []
-
-    for (const profile of this.profiles) {
-      try {
-        const reviews = await this.getProfileReviews(profile.id)
-        const summary = this.reviewsManager.generateReviewSummary(reviews)
-        
-        totalReviews += summary.totalReviews
-        totalRatingPoints += summary.averageRating * summary.totalReviews
-        unrepliedReviews += summary.unrepliedReviews.length
-        
-        reviews.forEach(review => {
-          const sentiment = this.reviewsManager.getReviewSentiment(review.starRating)
-          if (sentiment === 'positive') positiveReviews++
-          else if (sentiment === 'neutral') neutralReviews++
-          else negativeReviews++
-        })
-        
-        allRecentReviews.push(...summary.recentReviews)
-      } catch (error) {
-        console.error(`Failed to get reviews for profile ${profile.name}:`, error)
-      }
-    }
-
-    // Sort and limit recent reviews
-    const recentReviews = allRecentReviews
-      .sort((a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime())
-      .slice(0, 10)
-
-    return {
-      totalReviews,
-      averageRating: totalReviews > 0 ? Math.round((totalRatingPoints / totalReviews) * 10) / 10 : 0,
-      positiveReviews,
-      neutralReviews,
-      negativeReviews,
-      unrepliedReviews,
-      recentReviews
-    }
   }
 
   // Profile Utilities
@@ -503,20 +312,6 @@ export class BusinessProfileManager {
 
   public getProfilesNeedingSync(maxAgeHours: number = 24): SavedBusinessProfile[] {
     return this.profiles.filter(profile => this.needsSync(profile, maxAgeHours))
-  }
-
-  public needsReviewSync(profile: SavedBusinessProfile, maxAgeHours: number = 6): boolean {
-    if (!profile.lastSynced) return true
-    
-    const lastSyncTime = new Date(profile.lastSynced)
-    const now = new Date()
-    const hoursSinceSync = (now.getTime() - lastSyncTime.getTime()) / (1000 * 60 * 60)
-    
-    return hoursSinceSync > maxAgeHours
-  }
-
-  public getProfilesNeedingReviewSync(maxAgeHours: number = 6): SavedBusinessProfile[] {
-    return this.profiles.filter(profile => this.needsReviewSync(profile, maxAgeHours))
   }
 
   // Business Hours Helpers
