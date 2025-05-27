@@ -117,8 +117,8 @@ export default function ReviewsPage() {
 
   const filteredAndSortedReviews = reviews
     .filter(review => {
-      const matchesSearch = review.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           review.reviewer.displayName.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesSearch = (review.comment || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (review.reviewer?.displayName || '').toLowerCase().includes(searchTerm.toLowerCase())
       const matchesRating = filterRating === 'all' || 
                            GoogleBusinessAPI.getStarRatingValue(review.starRating).toString() === filterRating
       return matchesSearch && matchesRating
@@ -126,9 +126,9 @@ export default function ReviewsPage() {
     .sort((a, b) => {
       switch (sortBy) {
         case 'newest':
-          return new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
+          return new Date(b.createTime || 0).getTime() - new Date(a.createTime || 0).getTime()
         case 'oldest':
-          return new Date(a.createTime).getTime() - new Date(b.createTime).getTime()
+          return new Date(a.createTime || 0).getTime() - new Date(b.createTime || 0).getTime()
         case 'highest':
           return GoogleBusinessAPI.getStarRatingValue(b.starRating) - GoogleBusinessAPI.getStarRatingValue(a.starRating)
         case 'lowest':
@@ -350,14 +350,14 @@ export default function ReviewsPage() {
                 ) : filteredAndSortedReviews.length > 0 ? (
                   <div className="space-y-4 max-h-96 overflow-y-auto">
                     {filteredAndSortedReviews.map((review) => (
-                      <div key={review.reviewId} className="border rounded-lg p-4 space-y-3">
+                      <div key={review.reviewId || review.name} className="border rounded-lg p-4 space-y-3">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                              {review.reviewer.displayName.charAt(0)}
+                              {(review.reviewer?.displayName || 'Anonymous').charAt(0)}
                             </div>
                             <div>
-                              <div className="font-medium">{review.reviewer.displayName}</div>
+                              <div className="font-medium">{review.reviewer?.displayName || 'Anonymous'}</div>
                               <div className="flex items-center gap-2">
                                 {renderStars(GoogleBusinessAPI.getStarRatingValue(review.starRating))}
                                 <span className="text-sm text-gray-500">

@@ -221,18 +221,18 @@ export interface ReviewReply {
 
 export interface Reviewer {
   profilePhotoUrl?: string
-  displayName: string
-  isAnonymous: boolean
+  displayName?: string
+  isAnonymous?: boolean
 }
 
 export interface BusinessReview {
-  name: string
-  reviewId: string
-  reviewer: Reviewer
-  starRating: 'ONE' | 'TWO' | 'THREE' | 'FOUR' | 'FIVE' | 'STAR_RATING_UNSPECIFIED'
-  comment: string
-  createTime: string
-  updateTime: string
+  name?: string
+  reviewId?: string
+  reviewer?: Reviewer
+  starRating?: 'ONE' | 'TWO' | 'THREE' | 'FOUR' | 'FIVE' | 'STAR_RATING_UNSPECIFIED'
+  comment?: string
+  createTime?: string
+  updateTime?: string
   reviewReply?: ReviewReply
 }
 
@@ -610,14 +610,17 @@ export class GoogleBusinessAPI {
     }
     
     const totalRating = reviews.reduce((sum, review) => {
-      return sum + (ratingValues[review.starRating] || 0)
+      const starRating = review.starRating || 'STAR_RATING_UNSPECIFIED'
+      return sum + (ratingValues[starRating as keyof typeof ratingValues] || 0)
     }, 0)
     
     return Math.round((totalRating / reviews.length) * 10) / 10
   }
 
   // Convert star rating enum to number
-  static getStarRatingValue(starRating: string): number {
+  static getStarRatingValue(starRating?: string): number {
+    if (!starRating) return 0
+    
     const ratingValues = {
       'ONE': 1,
       'TWO': 2,
@@ -630,7 +633,9 @@ export class GoogleBusinessAPI {
   }
 
   // Format review date
-  static formatReviewDate(dateString: string): string {
+  static formatReviewDate(dateString?: string): string {
+    if (!dateString) return 'Unknown date'
+    
     try {
       return new Date(dateString).toLocaleDateString()
     } catch {
