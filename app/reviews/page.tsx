@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -9,7 +10,105 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { GoogleBusinessAPI, BusinessReview } from '@/lib/google-business-api'
-import { Star, MessageSquare, RefreshCw, Search } from 'lucide-react'
+import { Star, MessageSquare, RefreshCw, Search, Building2, Loader2, Reply, CheckCircle, Clock } from 'lucide-react'
+
+// Business Logo Component with fallback
+interface BusinessLogoProps {
+  businessName: string
+  website?: string
+  className?: string
+  fallbackClassName?: string
+}
+
+function BusinessLogo({ businessName, website, className = "w-16 h-16", fallbackClassName }: BusinessLogoProps) {
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
+
+  useEffect(() => {
+    const loadLogo = async () => {
+      if (!website && !businessName) {
+        setIsLoading(false)
+        setHasError(true)
+        return
+      }
+
+      try {
+        let domain = ''
+        if (website) {
+          try {
+            domain = new URL(website).hostname.replace('www.', '')
+          } catch {
+            // If website is not a valid URL, try to extract domain
+            domain = website.replace(/^https?:\/\//, '').replace('www.', '').split('/')[0]
+          }
+        }
+
+        // Try multiple logo sources with better fallbacks
+        const logoSources = [
+          // Google Favicon API (most reliable, no CORS issues)
+          domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : null,
+          // DuckDuckGo Favicon API (good fallback)
+          domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null,
+          // Clearbit Logo API (high quality but may have CORS issues)
+          domain ? `https://logo.clearbit.com/${domain}` : null,
+        ].filter(Boolean)
+
+        // Use the first available logo source
+        if (logoSources.length > 0) {
+          setLogoUrl(logoSources[0] as string)
+          setIsLoading(false)
+        } else {
+          setHasError(true)
+          setIsLoading(false)
+        }
+      } catch (error) {
+        setHasError(true)
+        setIsLoading(false)
+      }
+    }
+
+    loadLogo()
+  }, [businessName, website])
+
+  if (isLoading) {
+    return (
+      <div className={`${className} bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 rounded-2xl flex items-center justify-center ${fallbackClassName}`}>
+        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+      </div>
+    )
+  }
+
+  if (hasError || !logoUrl) {
+    return (
+      <div className={`${className} bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg ${fallbackClassName}`}>
+        <Building2 className="w-8 h-8 text-white" />
+      </div>
+    )
+  }
+
+  return (
+    <div className={`${className} rounded-2xl overflow-hidden shadow-lg bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 ${fallbackClassName}`}>
+      <Image
+        src={logoUrl}
+        alt={`${businessName} logo`}
+        width={64}
+        height={64}
+        className="w-full h-full object-contain p-2"
+        onError={() => {
+          // Fallback to business icon if logo fails to load
+          setHasError(true)
+          setLogoUrl(null)
+        }}
+        onLoad={() => {
+          // Logo loaded successfully
+          setHasError(false)
+        }}
+        unoptimized // Allow external images
+      />
+    </div>
+  )
+}
 
 export default function ReviewsPage() {
   const [profiles, setProfiles] = useState<SavedBusinessProfile[]>([])
@@ -18,11 +117,14 @@ export default function ReviewsPage() {
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRating, setFilterRating] = useState<string>('all')
+  const [filterReplyStatus, setFilterReplyStatus] = useState<string>('all')
   const [sortBy, setSortBy] = useState<string>('newest')
   const [reviewsSummary, setReviewsSummary] = useState<{
     averageRating: number
     totalReviews: number
     ratingDistribution: { [key: number]: number }
+    repliedCount: number
+    unrepliedCount: number
   } | null>(null)
 
   const googleAPI = new GoogleBusinessAPI()
@@ -51,15 +153,26 @@ export default function ReviewsPage() {
       
       // Calculate rating distribution
       const distribution: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+      let repliedCount = 0
+      let unrepliedCount = 0
+      
       reviewsData.reviews.forEach(review => {
         const rating = GoogleBusinessAPI.getStarRatingValue(review.starRating)
         if (rating > 0) distribution[rating]++
+        
+        if (review.reviewReply) {
+          repliedCount++
+        } else {
+          unrepliedCount++
+        }
       })
 
       setReviewsSummary({
         averageRating: reviewsData.averageRating,
         totalReviews: reviewsData.totalReviewCount,
-        ratingDistribution: distribution
+        ratingDistribution: distribution,
+        repliedCount,
+        unrepliedCount
       })
 
       // Update profile with reviews data
@@ -93,14 +206,26 @@ export default function ReviewsPage() {
         setReviews(profile.googleData.reviews)
         if (profile.googleData.reviewsSummary) {
           const distribution: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+          let repliedCount = 0
+          let unrepliedCount = 0
+          
           profile.googleData.reviews.forEach(review => {
             const rating = GoogleBusinessAPI.getStarRatingValue(review.starRating)
             if (rating > 0) distribution[rating]++
+            
+            if (review.reviewReply) {
+              repliedCount++
+            } else {
+              unrepliedCount++
+            }
           })
+          
           setReviewsSummary({
             averageRating: profile.googleData.reviewsSummary.averageRating,
             totalReviews: profile.googleData.reviewsSummary.totalReviews,
-            ratingDistribution: distribution
+            ratingDistribution: distribution,
+            repliedCount,
+            unrepliedCount
           })
         }
       } else {
@@ -122,7 +247,9 @@ export default function ReviewsPage() {
                            (review.reviewer?.displayName || '').toLowerCase().includes(searchTerm.toLowerCase())
       const matchesRating = filterRating === 'all' || 
                            GoogleBusinessAPI.getStarRatingValue(review.starRating).toString() === filterRating
-      return matchesSearch && matchesRating
+      const matchesReplyStatus = filterReplyStatus === 'all' || 
+                                (review.reviewReply ? 'replied' : 'unreplied') === filterReplyStatus
+      return matchesSearch && matchesRating && matchesReplyStatus
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -244,10 +371,12 @@ export default function ReviewsPage() {
                 <SelectContent>
                   {profiles.map(profile => (
                     <SelectItem key={profile.id} value={profile.id}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
-                          {profile.name.charAt(0)}
-                        </div>
+                      <div className="flex items-center gap-3">
+                        <BusinessLogo 
+                          businessName={profile.name} 
+                          website={profile.website}
+                          className="w-8 h-8"
+                        />
                         <div>
                           <div className="font-medium">{profile.name}</div>
                           <div className="text-sm text-gray-500">{profile.address}</div>
@@ -312,6 +441,24 @@ export default function ReviewsPage() {
                         <span className="font-semibold">{reviewsSummary.averageRating.toFixed(1)}/5</span>
                       </div>
                       <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                          <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
+                          Replied
+                        </span>
+                        <span className="font-semibold text-green-600">
+                          {reviewsSummary.repliedCount}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                          <Clock className="w-4 h-4 mr-1 text-orange-500" />
+                          Pending Reply
+                        </span>
+                        <span className="font-semibold text-orange-600">
+                          {reviewsSummary.unrepliedCount}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600 dark:text-gray-400">5-Star Reviews</span>
                         <span className="font-semibold text-green-600">
                           {reviewsSummary.ratingDistribution[5] || 0}
@@ -356,6 +503,16 @@ export default function ReviewsPage() {
                           <SelectItem value="1">1 Star</SelectItem>
                         </SelectContent>
                       </Select>
+                      <Select value={filterReplyStatus} onValueChange={setFilterReplyStatus}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Replies</SelectItem>
+                          <SelectItem value="replied">Replied</SelectItem>
+                          <SelectItem value="unreplied">Unreplied</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Select value={sortBy} onValueChange={setSortBy}>
                         <SelectTrigger className="w-32">
                           <SelectValue />
@@ -378,40 +535,84 @@ export default function ReviewsPage() {
                     ) : filteredAndSortedReviews.length > 0 ? (
                       <div className="space-y-4 max-h-96 overflow-y-auto">
                         {filteredAndSortedReviews.map((review) => (
-                          <div key={review.reviewId || review.name} className="border rounded-lg p-4 space-y-3">
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                                  {(review.reviewer?.displayName || 'Anonymous').charAt(0)}
-                                </div>
-                                <div>
-                                  <div className="font-medium">{review.reviewer?.displayName || 'Anonymous'}</div>
-                                  <div className="flex items-center gap-2">
-                                    {renderStars(GoogleBusinessAPI.getStarRatingValue(review.starRating))}
-                                    <span className="text-sm text-gray-500">
-                                      {GoogleBusinessAPI.formatReviewDate(review.createTime)}
-                                    </span>
+                          <motion.div 
+                            key={review.reviewId || review.name} 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="relative"
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-pink-500/5 rounded-2xl blur-xl" />
+                            <div className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/20 p-6 space-y-4 hover:shadow-lg transition-all duration-300">
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-lg">
+                                    {(review.reviewer?.displayName || 'Anonymous').charAt(0)}
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 dark:text-white">
+                                      {review.reviewer?.displayName || 'Anonymous'}
+                                    </div>
+                                    <div className="flex items-center gap-3 mt-1">
+                                      {renderStars(GoogleBusinessAPI.getStarRatingValue(review.starRating))}
+                                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                                        {GoogleBusinessAPI.formatReviewDate(review.createTime)}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            </div>
-                            
-                            {review.comment && (
-                              <p className="text-gray-700 dark:text-gray-300">{review.comment}</p>
-                            )}
-                            
-                            {review.reviewReply && (
-                              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 ml-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Badge variant="secondary">Business Response</Badge>
-                                  <span className="text-sm text-gray-500">
-                                    {GoogleBusinessAPI.formatReviewDate(review.reviewReply.updateTime)}
-                                  </span>
+                                
+                                {/* Reply Status Badge */}
+                                <div className="flex items-center space-x-2">
+                                  {review.reviewReply ? (
+                                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800">
+                                      <CheckCircle className="w-3 h-3 mr-1" />
+                                      Replied
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400 border-orange-200 dark:border-orange-800">
+                                      <Clock className="w-3 h-3 mr-1" />
+                                      Pending
+                                    </Badge>
+                                  )}
                                 </div>
-                                <p className="text-sm">{review.reviewReply.comment}</p>
                               </div>
-                            )}
-                          </div>
+                              
+                              {review.comment && (
+                                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50">
+                                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{review.comment}</p>
+                                </div>
+                              )}
+                              
+                              {review.reviewReply && (
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 ml-4 border border-blue-200/50 dark:border-blue-800/50">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center shadow-lg">
+                                      <Reply className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div>
+                                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                                        Business Response
+                                      </Badge>
+                                      <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                                        {GoogleBusinessAPI.formatReviewDate(review.reviewReply.updateTime)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{review.reviewReply.comment}</p>
+                                </div>
+                              )}
+                              
+                              {/* Action Buttons */}
+                              {!review.reviewReply && (
+                                <div className="flex justify-end pt-2">
+                                  <Button size="sm" className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                                    <Reply className="w-4 h-4 mr-2" />
+                                    Reply to Review
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
                         ))}
                       </div>
                     ) : (
