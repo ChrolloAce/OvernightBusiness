@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -186,222 +187,251 @@ export default function ReviewsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Reviews Management</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Monitor and manage your Google Business Profile reviews
-          </p>
-        </div>
-        <Button onClick={refreshReviews} disabled={loading || !selectedProfile}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh Reviews
-        </Button>
-      </div>
-
-      {/* Business Profile Selector */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5" />
-            Select Business Profile
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
-            <SelectTrigger>
-              <SelectValue placeholder="Choose a business profile to view reviews" />
-            </SelectTrigger>
-            <SelectContent>
-              {profiles.map(profile => (
-                <SelectItem key={profile.id} value={profile.id}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
-                      {profile.name.charAt(0)}
+    <div className="min-h-screen">
+      {/* Page Content */}
+      <main className="p-6 max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          {/* Page Header */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 rounded-2xl blur-2xl" />
+            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-2xl border border-white/20 dark:border-white/10 p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <MessageSquare className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <div className="font-medium">{profile.name}</div>
-                      <div className="text-sm text-gray-500">{profile.address}</div>
+                      <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-green-800 to-blue-800 dark:from-white dark:via-green-200 dark:to-blue-200 bg-clip-text text-transparent">
+                        Reviews Management
+                      </h1>
+                      <p className="text-base text-gray-600 dark:text-gray-300 font-medium">
+                        Monitor and manage your Google Business Profile reviews
+                      </p>
                     </div>
                   </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-
-      {selectedProfile && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Reviews Overview */}
-          <div className="lg:col-span-1 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Reviews Overview</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {reviewsSummary ? (
-                  <>
-                    <div className="text-center">
-                      <div className="text-4xl font-bold text-yellow-500">
-                        {reviewsSummary.averageRating.toFixed(1)}
-                      </div>
-                      {renderStars(Math.round(reviewsSummary.averageRating), 'lg')}
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        Based on {reviewsSummary.totalReviews} reviews
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <h4 className="font-medium">Rating Distribution</h4>
-                      {renderRatingDistribution()}
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No reviews data available</p>
-                    <p className="text-sm">Click "Refresh Reviews" to load</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Quick Stats */}
-            {reviewsSummary && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Quick Stats</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Total Reviews</span>
-                    <span className="font-semibold">{reviewsSummary.totalReviews}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Average Rating</span>
-                    <span className="font-semibold">{reviewsSummary.averageRating.toFixed(1)}/5</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">5-Star Reviews</span>
-                    <span className="font-semibold text-green-600">
-                      {reviewsSummary.ratingDistribution[5] || 0}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">1-Star Reviews</span>
-                    <span className="font-semibold text-red-600">
-                      {reviewsSummary.ratingDistribution[1] || 0}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                </div>
+                <Button 
+                  onClick={refreshReviews} 
+                  disabled={loading || !selectedProfile}
+                  className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <RefreshCw className={`w-4 h-4 mr-2 relative z-10 ${loading ? 'animate-spin' : ''}`} />
+                  <span className="relative z-10">Refresh Reviews</span>
+                </Button>
+              </div>
+            </div>
           </div>
 
-          {/* Reviews List */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Customer Reviews</CardTitle>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      placeholder="Search reviews..."
-                      value={searchTerm}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Select value={filterRating} onValueChange={setFilterRating}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Ratings</SelectItem>
-                      <SelectItem value="5">5 Stars</SelectItem>
-                      <SelectItem value="4">4 Stars</SelectItem>
-                      <SelectItem value="3">3 Stars</SelectItem>
-                      <SelectItem value="2">2 Stars</SelectItem>
-                      <SelectItem value="1">1 Star</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="newest">Newest</SelectItem>
-                      <SelectItem value="oldest">Oldest</SelectItem>
-                      <SelectItem value="highest">Highest Rated</SelectItem>
-                      <SelectItem value="lowest">Lowest Rated</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="text-center py-8">
-                    <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2" />
-                    <p>Loading reviews...</p>
-                  </div>
-                ) : filteredAndSortedReviews.length > 0 ? (
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {filteredAndSortedReviews.map((review) => (
-                      <div key={review.reviewId || review.name} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                              {(review.reviewer?.displayName || 'Anonymous').charAt(0)}
-                            </div>
-                            <div>
-                              <div className="font-medium">{review.reviewer?.displayName || 'Anonymous'}</div>
-                              <div className="flex items-center gap-2">
-                                {renderStars(GoogleBusinessAPI.getStarRatingValue(review.starRating))}
-                                <span className="text-sm text-gray-500">
-                                  {GoogleBusinessAPI.formatReviewDate(review.createTime)}
-                                </span>
-                              </div>
-                            </div>
+          {/* Business Profile Selector */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                Select Business Profile
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a business profile to view reviews" />
+                </SelectTrigger>
+                <SelectContent>
+                  {profiles.map(profile => (
+                    <SelectItem key={profile.id} value={profile.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
+                          {profile.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="font-medium">{profile.name}</div>
+                          <div className="text-sm text-gray-500">{profile.address}</div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
+          {selectedProfile && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Reviews Overview */}
+              <div className="lg:col-span-1 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Reviews Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {reviewsSummary ? (
+                      <>
+                        <div className="text-center">
+                          <div className="text-4xl font-bold text-yellow-500">
+                            {reviewsSummary.averageRating.toFixed(1)}
+                          </div>
+                          {renderStars(Math.round(reviewsSummary.averageRating), 'lg')}
+                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            Based on {reviewsSummary.totalReviews} reviews
                           </div>
                         </div>
                         
-                        {review.comment && (
-                          <p className="text-gray-700 dark:text-gray-300">{review.comment}</p>
-                        )}
-                        
-                        {review.reviewReply && (
-                          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 ml-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="secondary">Business Response</Badge>
-                              <span className="text-sm text-gray-500">
-                                {GoogleBusinessAPI.formatReviewDate(review.reviewReply.updateTime)}
-                              </span>
+                        <div className="space-y-3">
+                          <h4 className="font-medium">Rating Distribution</h4>
+                          {renderRatingDistribution()}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center text-gray-500 py-8">
+                        <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p>No reviews data available</p>
+                        <p className="text-sm">Click "Refresh Reviews" to load</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Quick Stats */}
+                {reviewsSummary && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Quick Stats</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Total Reviews</span>
+                        <span className="font-semibold">{reviewsSummary.totalReviews}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Average Rating</span>
+                        <span className="font-semibold">{reviewsSummary.averageRating.toFixed(1)}/5</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">5-Star Reviews</span>
+                        <span className="font-semibold text-green-600">
+                          {reviewsSummary.ratingDistribution[5] || 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">1-Star Reviews</span>
+                        <span className="font-semibold text-red-600">
+                          {reviewsSummary.ratingDistribution[1] || 0}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Reviews List */}
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Customer Reviews</CardTitle>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Input
+                          placeholder="Search reviews..."
+                          value={searchTerm}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                      <Select value={filterRating} onValueChange={setFilterRating}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Ratings</SelectItem>
+                          <SelectItem value="5">5 Stars</SelectItem>
+                          <SelectItem value="4">4 Stars</SelectItem>
+                          <SelectItem value="3">3 Stars</SelectItem>
+                          <SelectItem value="2">2 Stars</SelectItem>
+                          <SelectItem value="1">1 Star</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={sortBy} onValueChange={setSortBy}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="newest">Newest</SelectItem>
+                          <SelectItem value="oldest">Oldest</SelectItem>
+                          <SelectItem value="highest">Highest Rated</SelectItem>
+                          <SelectItem value="lowest">Lowest Rated</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="text-center py-8">
+                        <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2" />
+                        <p>Loading reviews...</p>
+                      </div>
+                    ) : filteredAndSortedReviews.length > 0 ? (
+                      <div className="space-y-4 max-h-96 overflow-y-auto">
+                        {filteredAndSortedReviews.map((review) => (
+                          <div key={review.reviewId || review.name} className="border rounded-lg p-4 space-y-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                                  {(review.reviewer?.displayName || 'Anonymous').charAt(0)}
+                                </div>
+                                <div>
+                                  <div className="font-medium">{review.reviewer?.displayName || 'Anonymous'}</div>
+                                  <div className="flex items-center gap-2">
+                                    {renderStars(GoogleBusinessAPI.getStarRatingValue(review.starRating))}
+                                    <span className="text-sm text-gray-500">
+                                      {GoogleBusinessAPI.formatReviewDate(review.createTime)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <p className="text-sm">{review.reviewReply.comment}</p>
+                            
+                            {review.comment && (
+                              <p className="text-gray-700 dark:text-gray-300">{review.comment}</p>
+                            )}
+                            
+                            {review.reviewReply && (
+                              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 ml-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant="secondary">Business Response</Badge>
+                                  <span className="text-sm text-gray-500">
+                                    {GoogleBusinessAPI.formatReviewDate(review.reviewReply.updateTime)}
+                                  </span>
+                                </div>
+                                <p className="text-sm">{review.reviewReply.comment}</p>
+                              </div>
+                            )}
                           </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p>No reviews found</p>
+                        {searchTerm || filterRating !== 'all' ? (
+                          <p className="text-sm">Try adjusting your filters</p>
+                        ) : (
+                          <p className="text-sm">This business has no reviews yet</p>
                         )}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No reviews found</p>
-                    {searchTerm || filterRating !== 'all' ? (
-                      <p className="text-sm">Try adjusting your filters</p>
-                    ) : (
-                      <p className="text-sm">This business has no reviews yet</p>
                     )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </main>
     </div>
   )
 } 
