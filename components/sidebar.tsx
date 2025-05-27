@@ -16,11 +16,7 @@ import {
   Sun,
   Sparkles,
   Zap,
-  TrendingUp,
-  Users,
-  MessageSquare,
-  ChevronRight,
-  Palette
+  ChevronRight
 } from 'lucide-react'
 import { useTheme } from '@/components/theme-provider'
 import { Button } from '@/components/ui/button'
@@ -71,13 +67,6 @@ const navigation = [
   }
 ]
 
-const quickStats = [
-  { label: 'Active Profiles', value: '12', icon: Building2, color: 'text-blue-500' },
-  { label: 'Total Reviews', value: '1.2k', icon: Star, color: 'text-yellow-500' },
-  { label: 'Avg Rating', value: '4.8', icon: TrendingUp, color: 'text-green-500' },
-  { label: 'Posts This Month', value: '48', icon: MessageSquare, color: 'text-purple-500' }
-]
-
 export function Sidebar() {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
@@ -101,37 +90,6 @@ export function Sidebar() {
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
               Premium Business Suite
             </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="p-6 border-b border-white/10">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Quick Stats</h3>
-            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
-              Live
-            </Badge>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {quickStats.map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white/50 dark:bg-black/20 backdrop-blur-sm rounded-xl p-3 border border-white/20 dark:border-white/10 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
-              >
-                <div className="flex items-center space-x-2">
-                  <stat.icon className={`w-4 h-4 ${stat.color}`} />
-                  <div>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">{stat.value}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
           </div>
         </div>
       </div>
