@@ -110,6 +110,95 @@ function BusinessLogo({ businessName, website, className = "w-16 h-16", fallback
   )
 }
 
+// Reviewer Avatar Component with profile image loading
+interface ReviewerAvatarProps {
+  reviewerName: string
+  className?: string
+}
+
+function ReviewerAvatar({ reviewerName, className = "w-12 h-12" }: ReviewerAvatarProps) {
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
+
+  useEffect(() => {
+    const loadProfileImage = async () => {
+      if (!reviewerName || reviewerName === 'Anonymous') {
+        setIsLoading(false)
+        setHasError(true)
+        return
+      }
+
+      try {
+        // Try to get profile image from various sources
+        const imageSources = [
+          // Gravatar (most common for email-based profiles)
+          `https://www.gravatar.com/avatar/${btoa(reviewerName.toLowerCase())}?s=128&d=404`,
+          // UI Avatars (generates nice avatars from names)
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(reviewerName)}&size=128&background=random&color=fff&bold=true`,
+        ]
+
+        // Try Gravatar first, then fallback to UI Avatars
+        try {
+          const response = await fetch(imageSources[0])
+          if (response.ok) {
+            setProfileImageUrl(imageSources[0])
+            setIsLoading(false)
+            return
+          }
+        } catch {
+          // Gravatar failed, use UI Avatars as fallback
+          setProfileImageUrl(imageSources[1])
+          setIsLoading(false)
+          return
+        }
+
+        // If all fails, show error state
+        setHasError(true)
+        setIsLoading(false)
+      } catch (error) {
+        setHasError(true)
+        setIsLoading(false)
+      }
+    }
+
+    loadProfileImage()
+  }, [reviewerName])
+
+  if (isLoading) {
+    return (
+      <div className={`${className} rounded-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center shadow-lg`}>
+        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+      </div>
+    )
+  }
+
+  if (hasError || !profileImageUrl) {
+    return (
+      <div className={`${className} rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-lg`}>
+        {reviewerName.charAt(0).toUpperCase()}
+      </div>
+    )
+  }
+
+  return (
+    <div className={`${className} rounded-full overflow-hidden shadow-lg border-2 border-white/50 dark:border-gray-700/50`}>
+      <Image
+        src={profileImageUrl}
+        alt={`${reviewerName} profile`}
+        width={48}
+        height={48}
+        className="w-full h-full object-cover"
+        onError={() => {
+          setHasError(true)
+          setProfileImageUrl(null)
+        }}
+        unoptimized
+      />
+    </div>
+  )
+}
+
 export default function ReviewsPage() {
   const [profiles, setProfiles] = useState<SavedBusinessProfile[]>([])
   const [selectedProfile, setSelectedProfile] = useState<SavedBusinessProfile | null>(null)
@@ -365,21 +454,43 @@ export default function ReviewsPage() {
             </CardHeader>
             <CardContent>
               <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a business profile to view reviews" />
-                </SelectTrigger>
-                <SelectContent>
-                  {profiles.map(profile => (
-                    <SelectItem key={profile.id} value={profile.id}>
+                <SelectTrigger className="h-16 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
+                  <SelectValue placeholder="Choose a business profile to view reviews">
+                    {selectedProfile && (
                       <div className="flex items-center gap-3">
+                        <BusinessLogo 
+                          businessName={selectedProfile.name} 
+                          website={selectedProfile.website}
+                          className="w-10 h-10"
+                        />
+                        <div className="text-left">
+                          <div className="font-medium text-gray-900 dark:text-white">{selectedProfile.name}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{selectedProfile.address}</div>
+                        </div>
+                      </div>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  {profiles.map(profile => (
+                    <SelectItem key={profile.id} value={profile.id} className="h-16 p-3">
+                      <div className="flex items-center gap-3 w-full">
                         <BusinessLogo 
                           businessName={profile.name} 
                           website={profile.website}
-                          className="w-8 h-8"
+                          className="w-10 h-10"
                         />
-                        <div>
-                          <div className="font-medium">{profile.name}</div>
-                          <div className="text-sm text-gray-500">{profile.address}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 dark:text-white">{profile.name}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{profile.address}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center">
+                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
+                              <span className="text-xs text-gray-600 dark:text-gray-400">{profile.rating}</span>
+                            </div>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-600 dark:text-gray-400">{profile.reviewCount} reviews</span>
+                          </div>
                         </div>
                       </div>
                     </SelectItem>
@@ -477,7 +588,7 @@ export default function ReviewsPage() {
 
               {/* Reviews List */}
               <div className="lg:col-span-2">
-                <Card>
+                <Card className="h-full">
                   <CardHeader>
                     <CardTitle>Customer Reviews</CardTitle>
                     <div className="flex flex-col sm:flex-row gap-4">
@@ -487,53 +598,68 @@ export default function ReviewsPage() {
                           placeholder="Search reviews..."
                           value={searchTerm}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                          className="pl-10"
+                          className="pl-10 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
                         />
                       </div>
                       <Select value={filterRating} onValueChange={setFilterRating}>
-                        <SelectTrigger className="w-32">
+                        <SelectTrigger className="w-36 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-white/20">
                           <SelectItem value="all">All Ratings</SelectItem>
-                          <SelectItem value="5">5 Stars</SelectItem>
-                          <SelectItem value="4">4 Stars</SelectItem>
-                          <SelectItem value="3">3 Stars</SelectItem>
-                          <SelectItem value="2">2 Stars</SelectItem>
-                          <SelectItem value="1">1 Star</SelectItem>
+                          <SelectItem value="5">⭐⭐⭐⭐⭐ 5 Stars</SelectItem>
+                          <SelectItem value="4">⭐⭐⭐⭐ 4 Stars</SelectItem>
+                          <SelectItem value="3">⭐⭐⭐ 3 Stars</SelectItem>
+                          <SelectItem value="2">⭐⭐ 2 Stars</SelectItem>
+                          <SelectItem value="1">⭐ 1 Star</SelectItem>
                         </SelectContent>
                       </Select>
                       <Select value={filterReplyStatus} onValueChange={setFilterReplyStatus}>
-                        <SelectTrigger className="w-32">
+                        <SelectTrigger className="w-36 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Replies</SelectItem>
-                          <SelectItem value="replied">Replied</SelectItem>
-                          <SelectItem value="unreplied">Unreplied</SelectItem>
+                        <SelectContent className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-white/20">
+                          <SelectItem value="all">
+                            <div className="flex items-center">
+                              <MessageSquare className="w-4 h-4 mr-2 text-gray-500" />
+                              All Replies
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="replied">
+                            <div className="flex items-center">
+                              <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                              Replied
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="unreplied">
+                            <div className="flex items-center">
+                              <Clock className="w-4 h-4 mr-2 text-orange-500" />
+                              Unreplied
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <Select value={sortBy} onValueChange={setSortBy}>
-                        <SelectTrigger className="w-32">
+                        <SelectTrigger className="w-32 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="newest">Newest</SelectItem>
-                          <SelectItem value="oldest">Oldest</SelectItem>
+                        <SelectContent className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-white/20">
+                          <SelectItem value="newest">Newest First</SelectItem>
+                          <SelectItem value="oldest">Oldest First</SelectItem>
                           <SelectItem value="highest">Highest Rated</SelectItem>
                           <SelectItem value="lowest">Lowest Rated</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1">
                     {loading ? (
                       <div className="text-center py-8">
                         <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2" />
                         <p>Loading reviews...</p>
                       </div>
                     ) : filteredAndSortedReviews.length > 0 ? (
-                      <div className="space-y-4 max-h-96 overflow-y-auto">
+                      <div className="space-y-4 h-[600px] overflow-y-auto pr-2">
                         {filteredAndSortedReviews.map((review) => (
                           <motion.div 
                             key={review.reviewId || review.name} 
@@ -545,9 +671,7 @@ export default function ReviewsPage() {
                             <div className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/20 p-6 space-y-4 hover:shadow-lg transition-all duration-300">
                               <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-4">
-                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-lg">
-                                    {(review.reviewer?.displayName || 'Anonymous').charAt(0)}
-                                  </div>
+                                  <ReviewerAvatar reviewerName={review.reviewer?.displayName || 'Anonymous'} />
                                   <div>
                                     <div className="font-semibold text-gray-900 dark:text-white">
                                       {review.reviewer?.displayName || 'Anonymous'}
