@@ -505,51 +505,71 @@ export class GoogleBusinessAPI {
 
   // Get reviews for a location
   async getReviews(locationName: string): Promise<BusinessReview[]> {
-    const accessToken = await this.authService.getValidAccessToken()
-    
     console.log('[Google Business API] Fetching reviews for location:', locationName)
     
-    const response = await fetch(`${this.businessInfoBaseUrl}/${locationName}/reviews`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    const data = await this.handleApiResponse(response, 'Fetch Reviews')
-    return data.reviews || []
+    try {
+      const accessToken = await this.authService.getValidAccessToken()
+      
+      const response = await fetch(`/api/google-business/reviews?locationName=${encodeURIComponent(locationName)}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+      
+      const data = await response.json()
+      return data.reviews || []
+    } catch (error) {
+      console.error('[Google Business API] Failed to fetch reviews:', error)
+      throw error
+    }
   }
 
   // Get reviews with pagination
   async getReviewsPaginated(locationName: string, pageSize: number = 50, pageToken?: string): Promise<ReviewsResponse> {
-    const accessToken = await this.authService.getValidAccessToken()
-    
     console.log('[Google Business API] Fetching paginated reviews for location:', locationName)
     
-    let url = `${this.businessInfoBaseUrl}/${locationName}/reviews?pageSize=${pageSize}`
-    if (pageToken) {
-      url += `&pageToken=${pageToken}`
-    }
-    
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    const data = await this.handleApiResponse(response, 'Fetch Paginated Reviews')
-    
-    // Calculate average rating and total count
-    const reviews = data.reviews || []
-    const totalReviewCount = data.totalReviewCount || reviews.length
-    const averageRating = this.calculateAverageRating(reviews)
-    
-    return {
-      reviews,
-      totalReviewCount,
-      averageRating,
-      nextPageToken: data.nextPageToken
+    try {
+      const accessToken = await this.authService.getValidAccessToken()
+      
+      let url = `/api/google-business/reviews?locationName=${encodeURIComponent(locationName)}&pageSize=${pageSize}`
+      if (pageToken) {
+        url += `&pageToken=${encodeURIComponent(pageToken)}`
+      }
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      // Calculate average rating and total count
+      const reviews = data.reviews || []
+      const totalReviewCount = data.totalReviewCount || reviews.length
+      const averageRating = this.calculateAverageRating(reviews)
+      
+      return {
+        reviews,
+        totalReviewCount,
+        averageRating,
+        nextPageToken: data.nextPageToken
+      }
+    } catch (error) {
+      console.error('[Google Business API] Failed to fetch paginated reviews:', error)
+      throw error
     }
   }
 
