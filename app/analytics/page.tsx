@@ -228,7 +228,18 @@ export default function AnalyticsPage() {
     const chartData = processChartData()
     if (!chartData || chartData.length === 0) return null
 
-    const metrics = ['BUSINESS_IMPRESSIONS', 'CALL_CLICKS', 'WEBSITE_CLICKS', 'BUSINESS_DIRECTION_REQUESTS', 'BUSINESS_BOOKINGS']
+    // Updated metrics to match the new API response
+    const metrics = [
+      'BUSINESS_IMPRESSIONS_DESKTOP_MAPS',
+      'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH', 
+      'BUSINESS_IMPRESSIONS_MOBILE_MAPS',
+      'BUSINESS_IMPRESSIONS_MOBILE_SEARCH',
+      'CALL_CLICKS', 
+      'WEBSITE_CLICKS', 
+      'BUSINESS_DIRECTION_REQUESTS', 
+      'BUSINESS_BOOKINGS',
+      'BUSINESS_CONVERSATIONS'
+    ]
     const summary: any = {}
 
     metrics.forEach(metric => {
@@ -252,6 +263,37 @@ export default function AnalyticsPage() {
       }
     })
 
+    // Add combined metrics for better display
+    const totalImpressions = (summary['BUSINESS_IMPRESSIONS_DESKTOP_MAPS']?.total || 0) +
+                            (summary['BUSINESS_IMPRESSIONS_DESKTOP_SEARCH']?.total || 0) +
+                            (summary['BUSINESS_IMPRESSIONS_MOBILE_MAPS']?.total || 0) +
+                            (summary['BUSINESS_IMPRESSIONS_MOBILE_SEARCH']?.total || 0)
+    
+    const recentImpressions = (summary['BUSINESS_IMPRESSIONS_DESKTOP_MAPS']?.recent || 0) +
+                             (summary['BUSINESS_IMPRESSIONS_DESKTOP_SEARCH']?.recent || 0) +
+                             (summary['BUSINESS_IMPRESSIONS_MOBILE_MAPS']?.recent || 0) +
+                             (summary['BUSINESS_IMPRESSIONS_MOBILE_SEARCH']?.recent || 0)
+    
+    const previousImpressions = (summary['BUSINESS_IMPRESSIONS_DESKTOP_MAPS']?.previous || 0) +
+                               (summary['BUSINESS_IMPRESSIONS_DESKTOP_SEARCH']?.previous || 0) +
+                               (summary['BUSINESS_IMPRESSIONS_MOBILE_MAPS']?.previous || 0) +
+                               (summary['BUSINESS_IMPRESSIONS_MOBILE_SEARCH']?.previous || 0)
+
+    let impressionsTrend = 0
+    if (previousImpressions > 0) {
+      impressionsTrend = ((recentImpressions - previousImpressions) / previousImpressions) * 100
+    } else if (recentImpressions > 0) {
+      impressionsTrend = 100
+    }
+
+    // Add combined impressions metric
+    summary['TOTAL_IMPRESSIONS'] = {
+      total: totalImpressions,
+      recent: recentImpressions,
+      previous: previousImpressions,
+      trend: Math.round(impressionsTrend * 10) / 10
+    }
+
     return summary
   }
 
@@ -269,11 +311,15 @@ export default function AnalyticsPage() {
 
   const getMetricIcon = (metric: string) => {
     switch (metric) {
-      case 'BUSINESS_IMPRESSIONS': return <Eye className="w-5 h-5" />
+      case 'BUSINESS_IMPRESSIONS_DESKTOP_MAPS': return <Eye className="w-5 h-5" />
+      case 'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH': return <Eye className="w-5 h-5" />
+      case 'BUSINESS_IMPRESSIONS_MOBILE_MAPS': return <Eye className="w-5 h-5" />
+      case 'BUSINESS_IMPRESSIONS_MOBILE_SEARCH': return <Eye className="w-5 h-5" />
       case 'CALL_CLICKS': return <Phone className="w-5 h-5" />
       case 'WEBSITE_CLICKS': return <Globe className="w-5 h-5" />
       case 'BUSINESS_DIRECTION_REQUESTS': return <MapPin className="w-5 h-5" />
       case 'BUSINESS_BOOKINGS': return <Calendar className="w-5 h-5" />
+      case 'BUSINESS_CONVERSATIONS': return <Calendar className="w-5 h-5" />
       default: return <BarChart3 className="w-5 h-5" />
     }
   }
@@ -379,45 +425,57 @@ export default function AnalyticsPage() {
               {/* Metrics Summary Cards */}
               {metricsSummary && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                  {Object.entries(metricsSummary).map(([metric, data]: [string, any]) => (
-                    <motion.div
-                      key={metric}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="relative"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl blur-xl" />
-                      <Card className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-                                {getMetricIcon(metric)}
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                  {formatMetricName(metric)}
-                                </p>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                                  {data.total.toLocaleString()}
-                                </p>
+                  {/* Show key combined metrics */}
+                  {[
+                    { key: 'TOTAL_IMPRESSIONS', name: 'Total Impressions', icon: <Eye className="w-5 h-5" /> },
+                    { key: 'CALL_CLICKS', name: 'Call Clicks', icon: <Phone className="w-5 h-5" /> },
+                    { key: 'WEBSITE_CLICKS', name: 'Website Clicks', icon: <Globe className="w-5 h-5" /> },
+                    { key: 'BUSINESS_DIRECTION_REQUESTS', name: 'Direction Requests', icon: <MapPin className="w-5 h-5" /> },
+                    { key: 'BUSINESS_BOOKINGS', name: 'Bookings', icon: <Calendar className="w-5 h-5" /> }
+                  ].map(({ key, name, icon }) => {
+                    const data = metricsSummary[key]
+                    if (!data) return null
+                    
+                    return (
+                      <motion.div
+                        key={key}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="relative"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl blur-xl" />
+                        <Card className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+                                  {icon}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                    {name}
+                                  </p>
+                                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                    {data.total.toLocaleString()}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="flex items-center mt-4 space-x-2">
-                            {getTrendIcon(data.trend)}
-                            <span className={`text-sm font-medium ${
-                              data.trend > 0 ? 'text-green-600' : 
-                              data.trend < 0 ? 'text-red-600' : 'text-gray-500'
-                            }`}>
-                              {Math.abs(data.trend)}%
-                            </span>
-                            <span className="text-sm text-gray-500">vs last week</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
+                            <div className="flex items-center mt-4 space-x-2">
+                              {getTrendIcon(data.trend)}
+                              <span className={`text-sm font-medium ${
+                                data.trend > 0 ? 'text-green-600' : 
+                                data.trend < 0 ? 'text-red-600' : 'text-gray-500'
+                              }`}>
+                                {Math.abs(data.trend)}%
+                              </span>
+                              <span className="text-sm text-gray-500">vs last week</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )
+                  }).filter(Boolean)}
                 </div>
               )}
 
@@ -437,10 +495,13 @@ export default function AnalyticsPage() {
                           <YAxis />
                           <Tooltip />
                           <Legend />
-                          <Line type="monotone" dataKey="BUSINESS_IMPRESSIONS" stroke="#3B82F6" name="Impressions" />
-                          <Line type="monotone" dataKey="CALL_CLICKS" stroke="#10B981" name="Calls" />
-                          <Line type="monotone" dataKey="WEBSITE_CLICKS" stroke="#F59E0B" name="Website Clicks" />
-                          <Line type="monotone" dataKey="BUSINESS_DIRECTION_REQUESTS" stroke="#EF4444" name="Directions" />
+                          <Line type="monotone" dataKey="BUSINESS_IMPRESSIONS_DESKTOP_MAPS" stroke="#3B82F6" name="Desktop Maps" />
+                          <Line type="monotone" dataKey="BUSINESS_IMPRESSIONS_DESKTOP_SEARCH" stroke="#10B981" name="Desktop Search" />
+                          <Line type="monotone" dataKey="BUSINESS_IMPRESSIONS_MOBILE_MAPS" stroke="#F59E0B" name="Mobile Maps" />
+                          <Line type="monotone" dataKey="BUSINESS_IMPRESSIONS_MOBILE_SEARCH" stroke="#EF4444" name="Mobile Search" />
+                          <Line type="monotone" dataKey="CALL_CLICKS" stroke="#8B5CF6" name="Calls" />
+                          <Line type="monotone" dataKey="WEBSITE_CLICKS" stroke="#8B5CF6" name="Website Clicks" />
+                          <Line type="monotone" dataKey="BUSINESS_DIRECTION_REQUESTS" stroke="#8B5CF6" name="Directions" />
                           <Line type="monotone" dataKey="BUSINESS_BOOKINGS" stroke="#8B5CF6" name="Bookings" />
                         </LineChart>
                       </ResponsiveContainer>
@@ -459,7 +520,10 @@ export default function AnalyticsPage() {
                           <XAxis dataKey="date" />
                           <YAxis />
                           <Tooltip />
-                          <Bar dataKey="BUSINESS_IMPRESSIONS" fill="#3B82F6" />
+                          <Bar dataKey="BUSINESS_IMPRESSIONS_DESKTOP_MAPS" fill="#3B82F6" />
+                          <Bar dataKey="BUSINESS_IMPRESSIONS_DESKTOP_SEARCH" fill="#10B981" />
+                          <Bar dataKey="BUSINESS_IMPRESSIONS_MOBILE_MAPS" fill="#F59E0B" />
+                          <Bar dataKey="BUSINESS_IMPRESSIONS_MOBILE_SEARCH" fill="#EF4444" />
                         </BarChart>
                       </ResponsiveContainer>
                     </CardContent>
