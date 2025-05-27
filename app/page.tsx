@@ -28,6 +28,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { useTheme } from '@/components/theme-provider'
 import ProfilesPage from './profiles/page'
+import ContentHubPage from './content/page'
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard')
@@ -284,8 +285,11 @@ export default function Dashboard() {
           {/* Business Profiles Page */}
           {activeTab === 'profiles' && <ProfilesPage />}
 
+          {/* Content Hub Page */}
+          {activeTab === 'content' && <ContentHubPage />}
+
           {/* Other tab content */}
-          {activeTab !== 'dashboard' && activeTab !== 'profiles' && (
+          {activeTab !== 'dashboard' && activeTab !== 'profiles' && activeTab !== 'content' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
