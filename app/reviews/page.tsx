@@ -222,11 +222,19 @@ export default function ReviewsPage() {
     loadProfiles()
   }, [])
 
+  // Auto-load reviews when profile changes
+  useEffect(() => {
+    if (selectedProfile) {
+      loadReviews(selectedProfile)
+    }
+  }, [selectedProfile])
+
   const loadProfiles = () => {
     const savedProfiles = BusinessProfilesStorage.getAllProfiles()
     setProfiles(savedProfiles)
     if (savedProfiles.length > 0 && !selectedProfile) {
-      setSelectedProfile(savedProfiles[0])
+      const firstProfile = savedProfiles[0]
+      setSelectedProfile(firstProfile)
     }
   }
 
@@ -290,37 +298,7 @@ export default function ReviewsPage() {
     const profile = profiles.find(p => p.id === profileId)
     if (profile) {
       setSelectedProfile(profile)
-      // Load cached reviews first
-      if (profile.googleData?.reviews) {
-        setReviews(profile.googleData.reviews)
-        if (profile.googleData.reviewsSummary) {
-          const distribution: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-          let repliedCount = 0
-          let unrepliedCount = 0
-          
-          profile.googleData.reviews.forEach(review => {
-            const rating = GoogleBusinessAPI.getStarRatingValue(review.starRating)
-            if (rating > 0) distribution[rating]++
-            
-            if (review.reviewReply) {
-              repliedCount++
-            } else {
-              unrepliedCount++
-            }
-          })
-          
-          setReviewsSummary({
-            averageRating: profile.googleData.reviewsSummary.averageRating,
-            totalReviews: profile.googleData.reviewsSummary.totalReviews,
-            ratingDistribution: distribution,
-            repliedCount,
-            unrepliedCount
-          })
-        }
-      } else {
-        setReviews([])
-        setReviewsSummary(null)
-      }
+      // Auto-loading will be handled by useEffect
     }
   }
 

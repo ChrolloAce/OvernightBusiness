@@ -497,53 +497,55 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Business Profile Selector */}
-          <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Select Business Profile
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
-                <SelectTrigger className="h-16 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
-                  <SelectValue placeholder="Choose a business profile to view analytics">
-                    {selectedProfile && (
-                      <div className="flex items-center gap-3">
-                        <BusinessLogo 
-                          businessName={selectedProfile.name} 
-                          website={selectedProfile.website}
-                          className="w-10 h-10"
-                        />
-                        <div className="text-left">
-                          <div className="font-medium text-gray-900 dark:text-white">{selectedProfile.name}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{selectedProfile.address}</div>
+          {/* Business Profile Selector - Sticky */}
+          <div className="sticky top-4 z-10">
+            <Card className="bg-white/80 dark:bg-black/40 backdrop-blur-xl border-white/30 dark:border-white/20 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  Select Business Profile
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
+                  <SelectTrigger className="h-16 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
+                    <SelectValue placeholder="Choose a business profile to view analytics">
+                      {selectedProfile && (
+                        <div className="flex items-center gap-3">
+                          <BusinessLogo 
+                            businessName={selectedProfile.name} 
+                            website={selectedProfile.website}
+                            className="w-10 h-10"
+                          />
+                          <div className="text-left">
+                            <div className="font-medium text-gray-900 dark:text-white">{selectedProfile.name}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{selectedProfile.address}</div>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-white/20">
-                  {profiles.map(profile => (
-                    <SelectItem key={profile.id} value={profile.id} className="h-16 p-3">
-                      <div className="flex items-center gap-3 w-full">
-                        <BusinessLogo 
-                          businessName={profile.name} 
-                          website={profile.website}
-                          className="w-10 h-10"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 dark:text-white">{profile.name}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{profile.address}</div>
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-white/20">
+                    {profiles.map(profile => (
+                      <SelectItem key={profile.id} value={profile.id} className="h-16 p-3">
+                        <div className="flex items-center gap-3 w-full">
+                          <BusinessLogo 
+                            businessName={profile.name} 
+                            website={profile.website}
+                            className="w-10 h-10"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 dark:text-white">{profile.name}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{profile.address}</div>
+                          </div>
                         </div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+          </div>
 
           {selectedProfile && (
             <>
