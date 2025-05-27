@@ -5,6 +5,9 @@ import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { GoogleBusinessAPI, PerformanceMetricsResponse, DailyMetricTimeSeries } from '@/lib/google-business-api'
 import { 
@@ -19,7 +22,9 @@ import {
   Loader2,
   ArrowUp,
   ArrowDown,
-  Minus
+  Minus,
+  Settings,
+  Filter
 } from 'lucide-react'
 import {
   LineChart,
@@ -34,7 +39,9 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  AreaChart,
+  Area
 } from 'recharts'
 
 // Business Logo Component (reused from profiles page)
@@ -119,17 +126,104 @@ function BusinessLogo({ businessName, website, className = "w-16 h-16" }: Busine
   )
 }
 
+// Metric configuration
+const METRIC_CONFIG = [
+  { 
+    key: 'BUSINESS_IMPRESSIONS_DESKTOP_MAPS', 
+    name: 'Desktop Maps', 
+    icon: <Eye className="w-4 h-4" />, 
+    color: '#3B82F6',
+    category: 'impressions'
+  },
+  { 
+    key: 'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH', 
+    name: 'Desktop Search', 
+    icon: <Eye className="w-4 h-4" />, 
+    color: '#10B981',
+    category: 'impressions'
+  },
+  { 
+    key: 'BUSINESS_IMPRESSIONS_MOBILE_MAPS', 
+    name: 'Mobile Maps', 
+    icon: <Eye className="w-4 h-4" />, 
+    color: '#F59E0B',
+    category: 'impressions'
+  },
+  { 
+    key: 'BUSINESS_IMPRESSIONS_MOBILE_SEARCH', 
+    name: 'Mobile Search', 
+    icon: <Eye className="w-4 h-4" />, 
+    color: '#EF4444',
+    category: 'impressions'
+  },
+  { 
+    key: 'CALL_CLICKS', 
+    name: 'Call Clicks', 
+    icon: <Phone className="w-4 h-4" />, 
+    color: '#8B5CF6',
+    category: 'actions'
+  },
+  { 
+    key: 'WEBSITE_CLICKS', 
+    name: 'Website Clicks', 
+    icon: <Globe className="w-4 h-4" />, 
+    color: '#06B6D4',
+    category: 'actions'
+  },
+  { 
+    key: 'BUSINESS_DIRECTION_REQUESTS', 
+    name: 'Direction Requests', 
+    icon: <MapPin className="w-4 h-4" />, 
+    color: '#84CC16',
+    category: 'actions'
+  },
+  { 
+    key: 'BUSINESS_BOOKINGS', 
+    name: 'Bookings', 
+    icon: <Calendar className="w-4 h-4" />, 
+    color: '#F97316',
+    category: 'actions'
+  },
+  { 
+    key: 'BUSINESS_CONVERSATIONS', 
+    name: 'Conversations', 
+    icon: <Calendar className="w-4 h-4" />, 
+    color: '#EC4899',
+    category: 'actions'
+  }
+]
+
 export default function AnalyticsPage() {
   const [profiles, setProfiles] = useState<SavedBusinessProfile[]>([])
   const [selectedProfile, setSelectedProfile] = useState<SavedBusinessProfile | null>(null)
   const [performanceData, setPerformanceData] = useState<PerformanceMetricsResponse | null>(null)
   const [loading, setLoading] = useState(false)
-  const [timeRange, setTimeRange] = useState<string>('30')
+  const [dateRange, setDateRange] = useState<string>('30')
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
+  const [enabledMetrics, setEnabledMetrics] = useState<Record<string, boolean>>({
+    'BUSINESS_IMPRESSIONS_DESKTOP_MAPS': true,
+    'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH': true,
+    'BUSINESS_IMPRESSIONS_MOBILE_MAPS': true,
+    'BUSINESS_IMPRESSIONS_MOBILE_SEARCH': true,
+    'CALL_CLICKS': true,
+    'WEBSITE_CLICKS': true,
+    'BUSINESS_DIRECTION_REQUESTS': true,
+    'BUSINESS_BOOKINGS': true,
+    'BUSINESS_CONVERSATIONS': true
+  })
+  const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('area')
 
   const googleAPI = new GoogleBusinessAPI()
 
   useEffect(() => {
     loadProfiles()
+    // Set default date range
+    const end = new Date()
+    const start = new Date()
+    start.setDate(end.getDate() - 30)
+    setStartDate(start.toISOString().split('T')[0])
+    setEndDate(end.toISOString().split('T')[0])
   }, [])
 
   const loadProfiles = () => {
@@ -140,20 +234,52 @@ export default function AnalyticsPage() {
     }
   }
 
-  const loadPerformanceData = async (profile: SavedBusinessProfile) => {
+  const loadPerformanceData = async (profile: SavedBusinessProfile, customStartDate?: string, customEndDate?: string) => {
     if (!profile.googleBusinessId) return
 
     setLoading(true)
     try {
       console.log('Loading performance data for profile:', profile.name)
       
-      // Extract location ID from the full name (e.g., "accounts/123/locations/456" -> "456")
+      // Extract location ID from the full name
       const locationId = profile.googleBusinessId.split('/').pop()
       if (!locationId) {
         throw new Error('Invalid location ID')
       }
 
-      const data = await googleAPI.getRecentPerformanceMetrics(locationId)
+      // Calculate date range
+      let start = new Date()
+      let end = new Date()
+      
+      if (customStartDate && customEndDate) {
+        start = new Date(customStartDate)
+        end = new Date(customEndDate)
+      } else if (dateRange === 'custom' && startDate && endDate) {
+        start = new Date(startDate)
+        end = new Date(endDate)
+      } else {
+        const days = parseInt(dateRange)
+        start.setDate(end.getDate() - days)
+      }
+
+      // Get enabled metrics only
+      const enabledMetricKeys = Object.keys(enabledMetrics).filter(key => enabledMetrics[key])
+      
+      const data = await googleAPI.fetchMultiDailyMetricsTimeSeries(
+        locationId,
+        enabledMetricKeys,
+        {
+          year: start.getFullYear(),
+          month: start.getMonth() + 1,
+          day: start.getDate()
+        },
+        {
+          year: end.getFullYear(),
+          month: end.getMonth() + 1,
+          day: end.getDate()
+        }
+      )
+      
       setPerformanceData(data)
       
       // Update profile with performance data
@@ -193,6 +319,26 @@ export default function AnalyticsPage() {
     }
   }
 
+  const handleDateRangeChange = (value: string) => {
+    setDateRange(value)
+    if (value !== 'custom' && selectedProfile) {
+      loadPerformanceData(selectedProfile)
+    }
+  }
+
+  const handleCustomDateSubmit = () => {
+    if (selectedProfile && startDate && endDate) {
+      loadPerformanceData(selectedProfile, startDate, endDate)
+    }
+  }
+
+  const toggleMetric = (metricKey: string) => {
+    setEnabledMetrics(prev => ({
+      ...prev,
+      [metricKey]: !prev[metricKey]
+    }))
+  }
+
   // Process performance data for charts
   const processChartData = () => {
     if (!performanceData?.multiDailyMetricTimeSeries) return null
@@ -209,7 +355,7 @@ export default function AnalyticsPage() {
           const dateKey = `${dataPoint.date.year}-${String(dataPoint.date.month).padStart(2, '0')}-${String(dataPoint.date.day).padStart(2, '0')}`
           
           if (!metricsMap.has(dateKey)) {
-            metricsMap.set(dateKey, { date: dateKey })
+            metricsMap.set(dateKey, { date: dateKey, formattedDate: new Date(dateKey).toLocaleDateString() })
           }
           
           const existing = metricsMap.get(dateKey)
@@ -229,17 +375,7 @@ export default function AnalyticsPage() {
     if (!chartData || chartData.length === 0) return null
 
     // Updated metrics to match the new API response
-    const metrics = [
-      'BUSINESS_IMPRESSIONS_DESKTOP_MAPS',
-      'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH', 
-      'BUSINESS_IMPRESSIONS_MOBILE_MAPS',
-      'BUSINESS_IMPRESSIONS_MOBILE_SEARCH',
-      'CALL_CLICKS', 
-      'WEBSITE_CLICKS', 
-      'BUSINESS_DIRECTION_REQUESTS', 
-      'BUSINESS_BOOKINGS',
-      'BUSINESS_CONVERSATIONS'
-    ]
+    const metrics = Object.keys(enabledMetrics).filter(key => enabledMetrics[key])
     const summary: any = {}
 
     metrics.forEach(metric => {
@@ -264,34 +400,27 @@ export default function AnalyticsPage() {
     })
 
     // Add combined metrics for better display
-    const totalImpressions = (summary['BUSINESS_IMPRESSIONS_DESKTOP_MAPS']?.total || 0) +
-                            (summary['BUSINESS_IMPRESSIONS_DESKTOP_SEARCH']?.total || 0) +
-                            (summary['BUSINESS_IMPRESSIONS_MOBILE_MAPS']?.total || 0) +
-                            (summary['BUSINESS_IMPRESSIONS_MOBILE_SEARCH']?.total || 0)
+    const impressionMetrics = ['BUSINESS_IMPRESSIONS_DESKTOP_MAPS', 'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH', 'BUSINESS_IMPRESSIONS_MOBILE_MAPS', 'BUSINESS_IMPRESSIONS_MOBILE_SEARCH']
+    const enabledImpressionMetrics = impressionMetrics.filter(metric => enabledMetrics[metric])
     
-    const recentImpressions = (summary['BUSINESS_IMPRESSIONS_DESKTOP_MAPS']?.recent || 0) +
-                             (summary['BUSINESS_IMPRESSIONS_DESKTOP_SEARCH']?.recent || 0) +
-                             (summary['BUSINESS_IMPRESSIONS_MOBILE_MAPS']?.recent || 0) +
-                             (summary['BUSINESS_IMPRESSIONS_MOBILE_SEARCH']?.recent || 0)
-    
-    const previousImpressions = (summary['BUSINESS_IMPRESSIONS_DESKTOP_MAPS']?.previous || 0) +
-                               (summary['BUSINESS_IMPRESSIONS_DESKTOP_SEARCH']?.previous || 0) +
-                               (summary['BUSINESS_IMPRESSIONS_MOBILE_MAPS']?.previous || 0) +
-                               (summary['BUSINESS_IMPRESSIONS_MOBILE_SEARCH']?.previous || 0)
+    if (enabledImpressionMetrics.length > 0) {
+      const totalImpressions = enabledImpressionMetrics.reduce((sum, metric) => sum + (summary[metric]?.total || 0), 0)
+      const recentImpressions = enabledImpressionMetrics.reduce((sum, metric) => sum + (summary[metric]?.recent || 0), 0)
+      const previousImpressions = enabledImpressionMetrics.reduce((sum, metric) => sum + (summary[metric]?.previous || 0), 0)
 
-    let impressionsTrend = 0
-    if (previousImpressions > 0) {
-      impressionsTrend = ((recentImpressions - previousImpressions) / previousImpressions) * 100
-    } else if (recentImpressions > 0) {
-      impressionsTrend = 100
-    }
+      let impressionsTrend = 0
+      if (previousImpressions > 0) {
+        impressionsTrend = ((recentImpressions - previousImpressions) / previousImpressions) * 100
+      } else if (recentImpressions > 0) {
+        impressionsTrend = 100
+      }
 
-    // Add combined impressions metric
-    summary['TOTAL_IMPRESSIONS'] = {
-      total: totalImpressions,
-      recent: recentImpressions,
-      previous: previousImpressions,
-      trend: Math.round(impressionsTrend * 10) / 10
+      summary['TOTAL_IMPRESSIONS'] = {
+        total: totalImpressions,
+        recent: recentImpressions,
+        previous: previousImpressions,
+        trend: Math.round(impressionsTrend * 10) / 10
+      }
     }
 
     return summary
@@ -300,34 +429,27 @@ export default function AnalyticsPage() {
   const chartData = processChartData()
   const metricsSummary = calculateMetricsSummary()
 
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
-
-  const formatMetricName = (metric: string) => {
-    return metric.replace('BUSINESS_', '').replace('_', ' ').toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
-  }
-
-  const getMetricIcon = (metric: string) => {
-    switch (metric) {
-      case 'BUSINESS_IMPRESSIONS_DESKTOP_MAPS': return <Eye className="w-5 h-5" />
-      case 'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH': return <Eye className="w-5 h-5" />
-      case 'BUSINESS_IMPRESSIONS_MOBILE_MAPS': return <Eye className="w-5 h-5" />
-      case 'BUSINESS_IMPRESSIONS_MOBILE_SEARCH': return <Eye className="w-5 h-5" />
-      case 'CALL_CLICKS': return <Phone className="w-5 h-5" />
-      case 'WEBSITE_CLICKS': return <Globe className="w-5 h-5" />
-      case 'BUSINESS_DIRECTION_REQUESTS': return <MapPin className="w-5 h-5" />
-      case 'BUSINESS_BOOKINGS': return <Calendar className="w-5 h-5" />
-      case 'BUSINESS_CONVERSATIONS': return <Calendar className="w-5 h-5" />
-      default: return <BarChart3 className="w-5 h-5" />
-    }
-  }
-
   const getTrendIcon = (trend: number) => {
     if (trend > 0) return <ArrowUp className="w-4 h-4 text-green-500" />
     if (trend < 0) return <ArrowDown className="w-4 h-4 text-red-500" />
     return <Minus className="w-4 h-4 text-gray-500" />
+  }
+
+  // Custom tooltip for charts
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white/95 dark:bg-black/95 backdrop-blur-xl border border-white/30 dark:border-white/20 rounded-xl p-4 shadow-xl">
+          <p className="font-semibold text-gray-900 dark:text-white mb-2">{new Date(label).toLocaleDateString()}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} className="text-sm" style={{ color: entry.color }}>
+              {METRIC_CONFIG.find(m => m.key === entry.dataKey)?.name || entry.dataKey}: {entry.value.toLocaleString()}
+            </p>
+          ))}
+        </div>
+      )
+    }
+    return null
   }
 
   return (
@@ -373,7 +495,7 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Business Profile Selector */}
-          <Card>
+          <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5" />
@@ -422,17 +544,168 @@ export default function AnalyticsPage() {
 
           {selectedProfile && (
             <>
+              {/* Controls Panel */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Date Range Controls */}
+                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5" />
+                      Date Range
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        variant={dateRange === '7' ? 'default' : 'outline'}
+                        onClick={() => handleDateRangeChange('7')}
+                        className="w-full"
+                      >
+                        Last 7 Days
+                      </Button>
+                      <Button
+                        variant={dateRange === '30' ? 'default' : 'outline'}
+                        onClick={() => handleDateRangeChange('30')}
+                        className="w-full"
+                      >
+                        Last 30 Days
+                      </Button>
+                      <Button
+                        variant={dateRange === '90' ? 'default' : 'outline'}
+                        onClick={() => handleDateRangeChange('90')}
+                        className="w-full"
+                      >
+                        Last 90 Days
+                      </Button>
+                      <Button
+                        variant={dateRange === 'custom' ? 'default' : 'outline'}
+                        onClick={() => handleDateRangeChange('custom')}
+                        className="w-full"
+                      >
+                        Custom Range
+                      </Button>
+                    </div>
+                    
+                    {dateRange === 'custom' && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="start-date">Start Date</Label>
+                            <Input
+                              id="start-date"
+                              type="date"
+                              value={startDate}
+                              onChange={(e) => setStartDate(e.target.value)}
+                              className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="end-date">End Date</Label>
+                            <Input
+                              id="end-date"
+                              type="date"
+                              value={endDate}
+                              onChange={(e) => setEndDate(e.target.value)}
+                              className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20"
+                            />
+                          </div>
+                        </div>
+                        <Button 
+                          onClick={handleCustomDateSubmit}
+                          disabled={!startDate || !endDate}
+                          className="w-full"
+                        >
+                          Apply Date Range
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Chart Controls */}
+                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Settings className="w-5 h-5" />
+                      Chart Settings
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label>Chart Type</Label>
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        <Button
+                          variant={chartType === 'line' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setChartType('line')}
+                        >
+                          Line
+                        </Button>
+                        <Button
+                          variant={chartType === 'area' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setChartType('area')}
+                        >
+                          Area
+                        </Button>
+                        <Button
+                          variant={chartType === 'bar' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setChartType('bar')}
+                        >
+                          Bar
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Metrics Toggles */}
+              <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Filter className="w-5 h-5" />
+                    Metrics Selection
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {METRIC_CONFIG.map((metric) => (
+                      <div key={metric.key} className="flex items-center justify-between p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div 
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg"
+                            style={{ backgroundColor: metric.color }}
+                          >
+                            {metric.icon}
+                          </div>
+                          <div>
+                            <Label className="font-medium">{metric.name}</Label>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{metric.category}</p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={enabledMetrics[metric.key]}
+                          onCheckedChange={() => toggleMetric(metric.key)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Metrics Summary Cards */}
               {metricsSummary && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                   {/* Show key combined metrics */}
                   {[
-                    { key: 'TOTAL_IMPRESSIONS', name: 'Total Impressions', icon: <Eye className="w-5 h-5" /> },
-                    { key: 'CALL_CLICKS', name: 'Call Clicks', icon: <Phone className="w-5 h-5" /> },
-                    { key: 'WEBSITE_CLICKS', name: 'Website Clicks', icon: <Globe className="w-5 h-5" /> },
-                    { key: 'BUSINESS_DIRECTION_REQUESTS', name: 'Direction Requests', icon: <MapPin className="w-5 h-5" /> },
-                    { key: 'BUSINESS_BOOKINGS', name: 'Bookings', icon: <Calendar className="w-5 h-5" /> }
-                  ].map(({ key, name, icon }) => {
+                    { key: 'TOTAL_IMPRESSIONS', name: 'Total Impressions', icon: <Eye className="w-5 h-5" />, color: '#3B82F6' },
+                    { key: 'CALL_CLICKS', name: 'Call Clicks', icon: <Phone className="w-5 h-5" />, color: '#8B5CF6' },
+                    { key: 'WEBSITE_CLICKS', name: 'Website Clicks', icon: <Globe className="w-5 h-5" />, color: '#06B6D4' },
+                    { key: 'BUSINESS_DIRECTION_REQUESTS', name: 'Direction Requests', icon: <MapPin className="w-5 h-5" />, color: '#84CC16' },
+                    { key: 'BUSINESS_BOOKINGS', name: 'Bookings', icon: <Calendar className="w-5 h-5" />, color: '#F97316' }
+                  ].map(({ key, name, icon, color }) => {
                     const data = metricsSummary[key]
                     if (!data) return null
                     
@@ -448,7 +721,10 @@ export default function AnalyticsPage() {
                           <CardContent className="p-6">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
-                                <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+                                <div 
+                                  className="p-2 rounded-lg shadow-lg"
+                                  style={{ backgroundColor: color }}
+                                >
                                   {icon}
                                 </div>
                                 <div>
@@ -481,88 +757,202 @@ export default function AnalyticsPage() {
 
               {/* Charts */}
               {chartData && chartData.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Line Chart */}
-                  <Card className="lg:col-span-2">
+                <div className="grid grid-cols-1 gap-6">
+                  {/* Main Chart */}
+                  <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
                     <CardHeader>
-                      <CardTitle>Performance Trends (Last 30 Days)</CardTitle>
+                      <CardTitle>Performance Trends</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <ResponsiveContainer width="100%" height={400}>
-                        <LineChart data={chartData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Line type="monotone" dataKey="BUSINESS_IMPRESSIONS_DESKTOP_MAPS" stroke="#3B82F6" name="Desktop Maps" />
-                          <Line type="monotone" dataKey="BUSINESS_IMPRESSIONS_DESKTOP_SEARCH" stroke="#10B981" name="Desktop Search" />
-                          <Line type="monotone" dataKey="BUSINESS_IMPRESSIONS_MOBILE_MAPS" stroke="#F59E0B" name="Mobile Maps" />
-                          <Line type="monotone" dataKey="BUSINESS_IMPRESSIONS_MOBILE_SEARCH" stroke="#EF4444" name="Mobile Search" />
-                          <Line type="monotone" dataKey="CALL_CLICKS" stroke="#8B5CF6" name="Calls" />
-                          <Line type="monotone" dataKey="WEBSITE_CLICKS" stroke="#8B5CF6" name="Website Clicks" />
-                          <Line type="monotone" dataKey="BUSINESS_DIRECTION_REQUESTS" stroke="#8B5CF6" name="Directions" />
-                          <Line type="monotone" dataKey="BUSINESS_BOOKINGS" stroke="#8B5CF6" name="Bookings" />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-
-                  {/* Bar Chart */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Weekly Totals</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={chartData.slice(-7)}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="BUSINESS_IMPRESSIONS_DESKTOP_MAPS" fill="#3B82F6" />
-                          <Bar dataKey="BUSINESS_IMPRESSIONS_DESKTOP_SEARCH" fill="#10B981" />
-                          <Bar dataKey="BUSINESS_IMPRESSIONS_MOBILE_MAPS" fill="#F59E0B" />
-                          <Bar dataKey="BUSINESS_IMPRESSIONS_MOBILE_SEARCH" fill="#EF4444" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-
-                  {/* Pie Chart */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Actions Distribution</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                          <Pie
-                            data={[
-                              { name: 'Calls', value: metricsSummary?.CALL_CLICKS?.total || 0 },
-                              { name: 'Website', value: metricsSummary?.WEBSITE_CLICKS?.total || 0 },
-                              { name: 'Directions', value: metricsSummary?.BUSINESS_DIRECTION_REQUESTS?.total || 0 },
-                              { name: 'Bookings', value: metricsSummary?.BUSINESS_BOOKINGS?.total || 0 },
-                            ]}
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                            label
-                          >
-                            {COLORS.map((color, index) => (
-                              <Cell key={`cell-${index}`} fill={color} />
+                      <ResponsiveContainer width="100%" height={500}>
+                        {chartType === 'line' ? (
+                          <LineChart data={chartData}>
+                            <defs>
+                              {METRIC_CONFIG.filter(m => enabledMetrics[m.key]).map((metric, index) => (
+                                <linearGradient key={metric.key} id={`gradient-${metric.key}`} x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={metric.color} stopOpacity={0.8}/>
+                                  <stop offset="95%" stopColor={metric.color} stopOpacity={0.1}/>
+                                </linearGradient>
+                              ))}
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
+                            <XAxis 
+                              dataKey="formattedDate" 
+                              stroke="#6b7280"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                            />
+                            <YAxis 
+                              stroke="#6b7280"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                              tickFormatter={(value) => value.toLocaleString()}
+                            />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend />
+                            {METRIC_CONFIG.filter(m => enabledMetrics[m.key]).map((metric) => (
+                              <Line 
+                                key={metric.key}
+                                type="monotone" 
+                                dataKey={metric.key} 
+                                stroke={metric.color}
+                                strokeWidth={3}
+                                name={metric.name}
+                                dot={{ fill: metric.color, strokeWidth: 2, r: 4 }}
+                                activeDot={{ r: 6, stroke: metric.color, strokeWidth: 2 }}
+                              />
                             ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
+                          </LineChart>
+                        ) : chartType === 'area' ? (
+                          <AreaChart data={chartData}>
+                            <defs>
+                              {METRIC_CONFIG.filter(m => enabledMetrics[m.key]).map((metric) => (
+                                <linearGradient key={metric.key} id={`gradient-${metric.key}`} x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={metric.color} stopOpacity={0.8}/>
+                                  <stop offset="95%" stopColor={metric.color} stopOpacity={0.1}/>
+                                </linearGradient>
+                              ))}
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
+                            <XAxis 
+                              dataKey="formattedDate" 
+                              stroke="#6b7280"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                            />
+                            <YAxis 
+                              stroke="#6b7280"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                              tickFormatter={(value) => value.toLocaleString()}
+                            />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend />
+                            {METRIC_CONFIG.filter(m => enabledMetrics[m.key]).map((metric) => (
+                              <Area 
+                                key={metric.key}
+                                type="monotone" 
+                                dataKey={metric.key} 
+                                stroke={metric.color}
+                                strokeWidth={2}
+                                fill={`url(#gradient-${metric.key})`}
+                                name={metric.name}
+                              />
+                            ))}
+                          </AreaChart>
+                        ) : (
+                          <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
+                            <XAxis 
+                              dataKey="formattedDate" 
+                              stroke="#6b7280"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                            />
+                            <YAxis 
+                              stroke="#6b7280"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                              tickFormatter={(value) => value.toLocaleString()}
+                            />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend />
+                            {METRIC_CONFIG.filter(m => enabledMetrics[m.key]).map((metric) => (
+                              <Bar 
+                                key={metric.key}
+                                dataKey={metric.key} 
+                                fill={metric.color}
+                                name={metric.name}
+                                radius={[2, 2, 0, 0]}
+                              />
+                            ))}
+                          </BarChart>
+                        )}
                       </ResponsiveContainer>
                     </CardContent>
                   </Card>
+
+                  {/* Secondary Charts */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Pie Chart for Actions Distribution */}
+                    <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                      <CardHeader>
+                        <CardTitle>Actions Distribution</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                            <Pie
+                              data={METRIC_CONFIG.filter(m => m.category === 'actions' && enabledMetrics[m.key] && metricsSummary?.[m.key]?.total > 0).map(metric => ({
+                                name: metric.name,
+                                value: metricsSummary?.[metric.key]?.total || 0,
+                                fill: metric.color
+                              }))}
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={80}
+                              dataKey="value"
+                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            >
+                              {METRIC_CONFIG.filter(m => m.category === 'actions' && enabledMetrics[m.key]).map((metric, index) => (
+                                <Cell key={`cell-${index}`} fill={metric.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(value: any) => [value.toLocaleString(), 'Total']} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+
+                    {/* Impressions Breakdown */}
+                    <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                      <CardHeader>
+                        <CardTitle>Impressions Breakdown</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart 
+                            data={METRIC_CONFIG.filter(m => m.category === 'impressions' && enabledMetrics[m.key] && metricsSummary?.[m.key]?.total > 0).map(metric => ({
+                              name: metric.name.replace('Impressions ', ''),
+                              value: metricsSummary?.[metric.key]?.total || 0,
+                              fill: metric.color
+                            }))}
+                            layout="horizontal"
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
+                            <XAxis 
+                              type="number"
+                              stroke="#6b7280"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                              tickFormatter={(value) => value.toLocaleString()}
+                            />
+                            <YAxis 
+                              type="category"
+                              dataKey="name"
+                              stroke="#6b7280"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                              width={100}
+                            />
+                            <Tooltip formatter={(value: any) => [value.toLocaleString(), 'Total']} />
+                            <Bar dataKey="value" fill="#3B82F6" radius={[0, 4, 4, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
               ) : loading ? (
-                <Card>
+                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
                   <CardContent className="flex items-center justify-center py-12">
                     <div className="text-center">
                       <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
@@ -572,7 +962,7 @@ export default function AnalyticsPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <Card>
+                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
                   <CardContent className="flex items-center justify-center py-12">
                     <div className="text-center">
                       <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
