@@ -50,6 +50,7 @@ interface GoogleBusinessLocation {
   websiteUri?: string
   rating?: number
   reviewCount?: number
+  totalReviews?: number
   address?: {
     addressLines: string[]
     locality: string
@@ -337,6 +338,29 @@ export default function ProfilesPage() {
       }
 
       setGoogleLocations(locations)
+      
+      // Fetch review summary for each location
+      if (locations.length > 0) {
+        console.log('[Profiles] Fetching review summaries for locations...')
+        const locationsWithReviews = await Promise.all(
+          locations.map(async (location) => {
+            try {
+              const reviewSummary = await businessAPI.getReviewSummary(location.name)
+              return {
+                ...location,
+                rating: reviewSummary.averageRating,
+                reviewCount: reviewSummary.totalReviews,
+                totalReviews: reviewSummary.totalReviews
+              }
+            } catch (error) {
+              console.warn('[Profiles] Failed to fetch review summary for location:', location.name, error)
+              return location
+            }
+          })
+        )
+        setGoogleLocations(locationsWithReviews)
+        console.log('[Profiles] Updated locations with review data')
+      }
       
       if (locations.length === 0) {
         setError('No business locations found in your Google Business Profile account. Make sure you have verified business locations set up.')
@@ -833,7 +857,7 @@ export default function ProfilesPage() {
             {loadingLocations ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin" />
-                <span className="ml-2">Loading your business profiles...</span>
+                <span className="ml-2">Loading your business profiles and review data...</span>
               </div>
             ) : googleLocations.length > 0 ? (
               <div className="space-y-4">
@@ -947,7 +971,7 @@ export default function ProfilesPage() {
                                   <span>{location.rating || 'No rating'}</span>
                                 </div>
                                 <span>•</span>
-                                <span>{location.reviewCount || 0} reviews</span>
+                                <span>{location.reviewCount || location.totalReviews || 0} reviews</span>
                               </div>
                               
                               {/* Business Capabilities */}
@@ -1130,11 +1154,15 @@ export default function ProfilesPage() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                        <p className="text-2xl font-bold text-yellow-600">{selectedProfile.rating}</p>
+                        <p className="text-2xl font-bold text-yellow-600">
+                          {selectedProfile.googleData?.reviewsSummary?.averageRating?.toFixed(1) || selectedProfile.rating}
+                        </p>
                         <p className="text-xs text-muted-foreground">Rating</p>
                       </div>
                       <div className="text-center p-3 bg-blue-50 rounded-lg">
-                        <p className="text-2xl font-bold text-blue-600">{selectedProfile.reviewCount}</p>
+                        <p className="text-2xl font-bold text-blue-600">
+                          {selectedProfile.googleData?.reviewsSummary?.totalReviews || selectedProfile.reviewCount}
+                        </p>
                         <p className="text-xs text-muted-foreground">Reviews</p>
                       </div>
                     </div>
