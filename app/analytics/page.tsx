@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -226,11 +226,19 @@ export default function AnalyticsPage() {
     setEndDate(end.toISOString().split('T')[0])
   }, [])
 
+  // Auto-refresh when profile changes
+  useEffect(() => {
+    if (selectedProfile) {
+      loadPerformanceData(selectedProfile)
+    }
+  }, [selectedProfile, dateRange, enabledMetrics])
+
   const loadProfiles = () => {
     const savedProfiles = BusinessProfilesStorage.getAllProfiles()
     setProfiles(savedProfiles)
     if (savedProfiles.length > 0 && !selectedProfile) {
-      setSelectedProfile(savedProfiles[0])
+      const firstProfile = savedProfiles[0]
+      setSelectedProfile(firstProfile)
     }
   }
 
@@ -304,12 +312,7 @@ export default function AnalyticsPage() {
     const profile = profiles.find(p => p.id === profileId)
     if (profile) {
       setSelectedProfile(profile)
-      // Load cached performance data first
-      if (profile.googleData?.performanceData) {
-        setPerformanceData(profile.googleData.performanceData)
-      } else {
-        setPerformanceData(null)
-      }
+      // Auto-refresh will be handled by useEffect
     }
   }
 
@@ -544,124 +547,7 @@ export default function AnalyticsPage() {
 
           {selectedProfile && (
             <>
-              {/* Controls Panel */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Date Range Controls */}
-                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="w-5 h-5" />
-                      Date Range
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button
-                        variant={dateRange === '7' ? 'default' : 'outline'}
-                        onClick={() => handleDateRangeChange('7')}
-                        className="w-full"
-                      >
-                        Last 7 Days
-                      </Button>
-                      <Button
-                        variant={dateRange === '30' ? 'default' : 'outline'}
-                        onClick={() => handleDateRangeChange('30')}
-                        className="w-full"
-                      >
-                        Last 30 Days
-                      </Button>
-                      <Button
-                        variant={dateRange === '90' ? 'default' : 'outline'}
-                        onClick={() => handleDateRangeChange('90')}
-                        className="w-full"
-                      >
-                        Last 90 Days
-                      </Button>
-                      <Button
-                        variant={dateRange === 'custom' ? 'default' : 'outline'}
-                        onClick={() => handleDateRangeChange('custom')}
-                        className="w-full"
-                      >
-                        Custom Range
-                      </Button>
-                    </div>
-                    
-                    {dateRange === 'custom' && (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label htmlFor="start-date">Start Date</Label>
-                            <Input
-                              id="start-date"
-                              type="date"
-                              value={startDate}
-                              onChange={(e) => setStartDate(e.target.value)}
-                              className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="end-date">End Date</Label>
-                            <Input
-                              id="end-date"
-                              type="date"
-                              value={endDate}
-                              onChange={(e) => setEndDate(e.target.value)}
-                              className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20"
-                            />
-                          </div>
-                        </div>
-                        <Button 
-                          onClick={handleCustomDateSubmit}
-                          disabled={!startDate || !endDate}
-                          className="w-full"
-                        >
-                          Apply Date Range
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Chart Controls */}
-                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Settings className="w-5 h-5" />
-                      Chart Settings
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label>Chart Type</Label>
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        <Button
-                          variant={chartType === 'line' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setChartType('line')}
-                        >
-                          Line
-                        </Button>
-                        <Button
-                          variant={chartType === 'area' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setChartType('area')}
-                        >
-                          Area
-                        </Button>
-                        <Button
-                          variant={chartType === 'bar' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setChartType('bar')}
-                        >
-                          Bar
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Metrics Toggles */}
+              {/* Metrics Toggles - Compact Version */}
               <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -670,20 +556,17 @@ export default function AnalyticsPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                     {METRIC_CONFIG.map((metric) => (
-                      <div key={metric.key} className="flex items-center justify-between p-3 bg-white/30 dark:bg-black/20 rounded-lg">
-                        <div className="flex items-center space-x-3">
+                      <div key={metric.key} className="flex items-center justify-between p-2 bg-white/30 dark:bg-black/20 rounded-lg">
+                        <div className="flex items-center space-x-2">
                           <div 
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg"
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-white shadow-lg"
                             style={{ backgroundColor: metric.color }}
                           >
-                            {metric.icon}
+                            {React.cloneElement(metric.icon, { className: "w-3 h-3" })}
                           </div>
-                          <div>
-                            <Label className="font-medium">{metric.name}</Label>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{metric.category}</p>
-                          </div>
+                          <Label className="text-sm font-medium">{metric.name.replace(' Impressions', '').replace('Business ', '')}</Label>
                         </div>
                         <Switch
                           checked={enabledMetrics[metric.key]}
@@ -761,7 +644,103 @@ export default function AnalyticsPage() {
                   {/* Main Chart */}
                   <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
                     <CardHeader>
-                      <CardTitle>Performance Trends</CardTitle>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>Performance Trends</CardTitle>
+                        <div className="flex items-center gap-3">
+                          {/* Date Range Buttons */}
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant={dateRange === '7' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => handleDateRangeChange('7')}
+                            >
+                              7D
+                            </Button>
+                            <Button
+                              variant={dateRange === '30' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => handleDateRangeChange('30')}
+                            >
+                              30D
+                            </Button>
+                            <Button
+                              variant={dateRange === '90' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => handleDateRangeChange('90')}
+                            >
+                              90D
+                            </Button>
+                            <Button
+                              variant={dateRange === 'custom' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => handleDateRangeChange('custom')}
+                            >
+                              Custom
+                            </Button>
+                          </div>
+                          
+                          {/* Chart Type Buttons */}
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant={chartType === 'line' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setChartType('line')}
+                            >
+                              Line
+                            </Button>
+                            <Button
+                              variant={chartType === 'area' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setChartType('area')}
+                            >
+                              Area
+                            </Button>
+                            <Button
+                              variant={chartType === 'bar' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setChartType('bar')}
+                            >
+                              Bar
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Custom Date Range (if selected) */}
+                      {dateRange === 'custom' && (
+                        <div className="mt-4 p-4 bg-white/30 dark:bg-black/20 rounded-lg">
+                          <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                              <Label htmlFor="start-date" className="text-sm">Start Date</Label>
+                              <Input
+                                id="start-date"
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 h-8"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="end-date" className="text-sm">End Date</Label>
+                              <Input
+                                id="end-date"
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 h-8"
+                              />
+                            </div>
+                          </div>
+                          <Button 
+                            onClick={handleCustomDateSubmit}
+                            disabled={!startDate || !endDate}
+                            size="sm"
+                            className="w-full"
+                          >
+                            Apply Custom Range
+                          </Button>
+                        </div>
+                      )}
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={500}>
