@@ -1,4 +1,4 @@
-import { BusinessReview } from './google-business-api'
+import { BusinessReview, MediaItem, BusinessMedia } from './google-business-api'
 
 // Local storage service for business profiles
 export interface SavedBusinessProfile {
@@ -121,6 +121,12 @@ export interface SavedBusinessProfile {
     // Performance analytics data
     performanceData?: any
     lastPerformanceUpdate?: string
+    // Media data
+    media?: BusinessMedia
+    coverPhotoUrl?: string
+    profilePhotoUrl?: string
+    displayPhotos?: MediaItem[]
+    lastMediaUpdate?: string
   }
   // Computed fields
   isVerified?: boolean

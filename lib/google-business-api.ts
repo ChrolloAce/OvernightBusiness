@@ -311,6 +311,57 @@ export interface VoiceOfMerchantState {
   waitingForVoiceOfMerchant: boolean
 }
 
+// Media API Interfaces
+export interface MediaItem {
+  name: string
+  mediaFormat: 'PHOTO' | 'VIDEO' | 'MEDIA_FORMAT_UNSPECIFIED'
+  locationAssociation?: {
+    category?: 'COVER' | 'PROFILE' | 'LOGO' | 'EXTERIOR' | 'INTERIOR' | 'PRODUCT' | 'AT_WORK' | 'FOOD_AND_DRINK' | 'MENU' | 'COMMON_AREA' | 'ROOMS' | 'TEAMS' | 'ADDITIONAL' | 'CATEGORY_UNSPECIFIED'
+    priceListItemId?: string
+  }
+  googleUrl?: string
+  thumbnailUrl?: string
+  createTime?: string
+  dimensions?: {
+    widthPixels: number
+    heightPixels: number
+  }
+  insights?: {
+    viewCount: string
+  }
+  attribution?: {
+    profileName: string
+    profilePhotoUrl: string
+    takedownUrl: string
+    profileUrl: string
+  }
+  description?: string
+  sourceUrl?: string
+  dataRef?: {
+    resourceName: string
+  }
+}
+
+export interface MediaResponse {
+  mediaItems: MediaItem[]
+  nextPageToken?: string
+  totalMediaItemsCount?: number
+}
+
+export interface BusinessMedia {
+  coverPhoto?: MediaItem
+  profilePhoto?: MediaItem
+  logoPhoto?: MediaItem
+  exteriorPhotos: MediaItem[]
+  interiorPhotos: MediaItem[]
+  productPhotos: MediaItem[]
+  foodAndDrinkPhotos: MediaItem[]
+  menuPhotos: MediaItem[]
+  teamPhotos: MediaItem[]
+  additionalPhotos: MediaItem[]
+  allPhotos: MediaItem[]
+}
+
 export class GoogleBusinessAPI {
   private authService: GoogleAuthService
   // Updated to use the correct Google Business Profile API endpoints
@@ -319,6 +370,7 @@ export class GoogleBusinessAPI {
   private postsBaseUrl = 'https://mybusiness.googleapis.com/v4'
   private performanceBaseUrl = 'https://businessprofileperformance.googleapis.com/v1'
   private verificationsBaseUrl = 'https://mybusinessverifications.googleapis.com/v1'
+  private mediaBaseUrl = 'https://mybusiness.googleapis.com/v4'
 
   constructor() {
     this.authService = GoogleAuthService.getInstance()
@@ -1372,5 +1424,194 @@ export class GoogleBusinessAPI {
         isVerified: false
       }
     }
+  }
+
+  // Media API Methods
+  
+  // Get all media items for a location
+  async getLocationMedia(locationName: string): Promise<MediaResponse> {
+    const accessToken = await this.authService.getValidAccessToken()
+    
+    console.log('[Google Business API] Fetching media for location:', locationName)
+    
+    const response = await fetch(`${this.mediaBaseUrl}/${locationName}/media`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    return await this.handleApiResponse(response, 'Fetch Location Media')
+  }
+
+  // Get organized business media by category
+  async getBusinessMedia(locationName: string): Promise<BusinessMedia> {
+    try {
+      const mediaResponse = await this.getLocationMedia(locationName)
+      const mediaItems = mediaResponse.mediaItems || []
+      
+      console.log('[Google Business API] Processing', mediaItems.length, 'media items for location:', locationName)
+      
+      const businessMedia: BusinessMedia = {
+        exteriorPhotos: [],
+        interiorPhotos: [],
+        productPhotos: [],
+        foodAndDrinkPhotos: [],
+        menuPhotos: [],
+        teamPhotos: [],
+        additionalPhotos: [],
+        allPhotos: mediaItems
+      }
+
+      // Organize media by category
+      mediaItems.forEach(item => {
+        const category = item.locationAssociation?.category
+        
+        switch (category) {
+          case 'COVER':
+            businessMedia.coverPhoto = item
+            break
+          case 'PROFILE':
+            businessMedia.profilePhoto = item
+            break
+          case 'LOGO':
+            businessMedia.logoPhoto = item
+            break
+          case 'EXTERIOR':
+            businessMedia.exteriorPhotos.push(item)
+            break
+          case 'INTERIOR':
+            businessMedia.interiorPhotos.push(item)
+            break
+          case 'PRODUCT':
+            businessMedia.productPhotos.push(item)
+            break
+          case 'FOOD_AND_DRINK':
+            businessMedia.foodAndDrinkPhotos.push(item)
+            break
+          case 'MENU':
+            businessMedia.menuPhotos.push(item)
+            break
+          case 'TEAMS':
+            businessMedia.teamPhotos.push(item)
+            break
+          case 'ADDITIONAL':
+          default:
+            businessMedia.additionalPhotos.push(item)
+            break
+        }
+      })
+
+      console.log('[Google Business API] Organized media:', {
+        coverPhoto: !!businessMedia.coverPhoto,
+        profilePhoto: !!businessMedia.profilePhoto,
+        logoPhoto: !!businessMedia.logoPhoto,
+        exteriorPhotos: businessMedia.exteriorPhotos.length,
+        interiorPhotos: businessMedia.interiorPhotos.length,
+        productPhotos: businessMedia.productPhotos.length,
+        totalPhotos: mediaItems.length
+      })
+
+      return businessMedia
+    } catch (error) {
+      console.error('[Google Business API] Failed to fetch business media:', error)
+      
+      // Return empty media structure on error
+      return {
+        exteriorPhotos: [],
+        interiorPhotos: [],
+        productPhotos: [],
+        foodAndDrinkPhotos: [],
+        menuPhotos: [],
+        teamPhotos: [],
+        additionalPhotos: [],
+        allPhotos: []
+      }
+    }
+  }
+
+  // Get cover photo URL for a location
+  async getCoverPhotoUrl(locationName: string): Promise<string | null> {
+    try {
+      const businessMedia = await this.getBusinessMedia(locationName)
+      return businessMedia.coverPhoto?.googleUrl || businessMedia.coverPhoto?.thumbnailUrl || null
+    } catch (error) {
+      console.error('[Google Business API] Failed to get cover photo:', error)
+      return null
+    }
+  }
+
+  // Get profile photo URL for a location
+  async getProfilePhotoUrl(locationName: string): Promise<string | null> {
+    try {
+      const businessMedia = await this.getBusinessMedia(locationName)
+      return businessMedia.profilePhoto?.googleUrl || businessMedia.profilePhoto?.thumbnailUrl || null
+    } catch (error) {
+      console.error('[Google Business API] Failed to get profile photo:', error)
+      return null
+    }
+  }
+
+  // Get the best available photos for display (cover, exterior, interior, etc.)
+  async getDisplayPhotos(locationName: string, maxPhotos: number = 6): Promise<MediaItem[]> {
+    try {
+      const businessMedia = await this.getBusinessMedia(locationName)
+      const displayPhotos: MediaItem[] = []
+
+      // Prioritize photos in order of importance for display
+      if (businessMedia.coverPhoto) {
+        displayPhotos.push(businessMedia.coverPhoto)
+      }
+
+      // Add exterior photos (most important for businesses)
+      displayPhotos.push(...businessMedia.exteriorPhotos.slice(0, Math.max(0, maxPhotos - displayPhotos.length)))
+
+      // Add interior photos if we have space
+      if (displayPhotos.length < maxPhotos) {
+        displayPhotos.push(...businessMedia.interiorPhotos.slice(0, maxPhotos - displayPhotos.length))
+      }
+
+      // Add product photos if we have space
+      if (displayPhotos.length < maxPhotos) {
+        displayPhotos.push(...businessMedia.productPhotos.slice(0, maxPhotos - displayPhotos.length))
+      }
+
+      // Add food and drink photos if we have space
+      if (displayPhotos.length < maxPhotos) {
+        displayPhotos.push(...businessMedia.foodAndDrinkPhotos.slice(0, maxPhotos - displayPhotos.length))
+      }
+
+      // Fill remaining slots with additional photos
+      if (displayPhotos.length < maxPhotos) {
+        displayPhotos.push(...businessMedia.additionalPhotos.slice(0, maxPhotos - displayPhotos.length))
+      }
+
+      console.log('[Google Business API] Selected', displayPhotos.length, 'display photos for location:', locationName)
+      return displayPhotos.slice(0, maxPhotos)
+    } catch (error) {
+      console.error('[Google Business API] Failed to get display photos:', error)
+      return []
+    }
+  }
+
+  // Helper method to get the best image URL from a media item
+  static getBestImageUrl(mediaItem: MediaItem): string | null {
+    return mediaItem.googleUrl || mediaItem.thumbnailUrl || mediaItem.sourceUrl || null
+  }
+
+  // Helper method to check if media item is a photo
+  static isPhoto(mediaItem: MediaItem): boolean {
+    return mediaItem.mediaFormat === 'PHOTO'
+  }
+
+  // Helper method to get media item dimensions
+  static getMediaDimensions(mediaItem: MediaItem): { width: number; height: number } | null {
+    if (mediaItem.dimensions) {
+      return {
+        width: mediaItem.dimensions.widthPixels,
+        height: mediaItem.dimensions.heightPixels
+      }
+    }
+    return null
   }
 } 

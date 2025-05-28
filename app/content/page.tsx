@@ -45,6 +45,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
+import { GoogleBusinessAPI, MediaItem, BusinessMedia } from '@/lib/google-business-api'
 
 // Business Logo Component
 interface BusinessLogoProps {
@@ -227,6 +228,10 @@ export default function ContentHubPage() {
   const [profileAudit, setProfileAudit] = useState<ProfileAudit | null>(null)
   const [loading, setLoading] = useState(false)
   const [auditMode, setAuditMode] = useState(true)
+  const [businessMedia, setBusinessMedia] = useState<BusinessMedia | null>(null)
+  const [loadingMedia, setLoadingMedia] = useState(false)
+
+  const googleAPI = new GoogleBusinessAPI()
 
   useEffect(() => {
     loadProfiles()
@@ -247,12 +252,56 @@ export default function ContentHubPage() {
     }
   }
 
+  const loadBusinessMedia = async (profile: SavedBusinessProfile) => {
+    if (!profile.googleBusinessId) return
+
+    setLoadingMedia(true)
+    try {
+      console.log('Loading business media for profile:', profile.name)
+      const media = await googleAPI.getBusinessMedia(profile.googleBusinessId)
+      setBusinessMedia(media)
+      
+      // Update profile with media data
+      const updatedProfile = {
+        ...profile,
+        googleData: {
+          ...profile.googleData,
+          media: media,
+          coverPhotoUrl: media.coverPhoto ? GoogleBusinessAPI.getBestImageUrl(media.coverPhoto) || undefined : undefined,
+          profilePhotoUrl: media.profilePhoto ? GoogleBusinessAPI.getBestImageUrl(media.profilePhoto) || undefined : undefined,
+          displayPhotos: await googleAPI.getDisplayPhotos(profile.googleBusinessId, 6),
+          lastMediaUpdate: new Date().toISOString()
+        }
+      }
+      BusinessProfilesStorage.updateProfile(profile.id, updatedProfile)
+      
+    } catch (error) {
+      console.error('Failed to load business media:', error)
+      // Set empty media on error
+      setBusinessMedia({
+        exteriorPhotos: [],
+        interiorPhotos: [],
+        productPhotos: [],
+        foodAndDrinkPhotos: [],
+        menuPhotos: [],
+        teamPhotos: [],
+        additionalPhotos: [],
+        allPhotos: []
+      })
+    } finally {
+      setLoadingMedia(false)
+    }
+  }
+
   const performProfileAudit = async (profile: SavedBusinessProfile) => {
     setLoading(true)
     
     try {
+      // Load business media first
+      await loadBusinessMedia(profile)
+      
       // Simulate audit analysis
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      await new Promise(resolve => setTimeout(resolve, 1000))
       
       const issues: AuditIssue[] = []
       let score = 100
@@ -333,12 +382,14 @@ export default function ContentHubPage() {
         completionItems++
       }
 
-      if (!(profile.googleData as any)?.photos || (profile.googleData as any).photos?.length < 5) {
+      // Check photos using loaded media data
+      const totalPhotos = businessMedia?.allPhotos?.length || 0
+      if (totalPhotos < 5) {
         issues.push({
           id: 'insufficient-photos',
           category: 'important',
           title: 'Need More Photos',
-          description: `Only ${(profile.googleData as any)?.photos?.length || 0} photos (recommended: 10+)`,
+          description: `Only ${totalPhotos} photos (recommended: 10+)`,
           impact: 'Fewer photos reduce customer engagement',
           solution: 'Add high-quality photos of your business',
           priority: 5,
@@ -347,7 +398,7 @@ export default function ContentHubPage() {
           section: 'photos'
         })
         score -= 7
-      } else if (((profile.googleData as any)?.photos?.length || 0) >= 5) {
+      } else if (totalPhotos >= 5) {
         completionItems++
       }
 
@@ -421,6 +472,7 @@ export default function ContentHubPage() {
       if (profile.googleData?.businessDescription && profile.googleData.businessDescription.length >= 100) strengths.push('Detailed business description')
       if (profile.website) strengths.push('Website listed')
       if (profile.phone) strengths.push('Contact information complete')
+      if (totalPhotos >= 10) strengths.push('Rich photo gallery')
 
       const audit: ProfileAudit = {
         profileId: profile.id,
@@ -571,7 +623,38 @@ export default function ContentHubPage() {
             {/* Profile Header */}
             <div className="relative">
               {/* Cover Photo Area */}
-              <div className="h-48 bg-gradient-to-r from-blue-500 to-purple-600 relative">
+              <div className="h-48 bg-gradient-to-r from-blue-500 to-purple-600 relative overflow-hidden">
+                {/* Display actual cover photo if available */}
+                {businessMedia?.coverPhoto && !auditMode && (
+                  <img
+                    src={GoogleBusinessAPI.getBestImageUrl(businessMedia.coverPhoto) || ''}
+                    alt="Business cover photo"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to gradient background on error
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                )}
+                
+                {/* Display photo gallery if no cover photo but has other photos */}
+                {!businessMedia?.coverPhoto && businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 && !auditMode && (
+                  <div className="grid grid-cols-3 gap-1 h-full p-2">
+                    {businessMedia.allPhotos.slice(0, 6).map((photo, index) => (
+                      <div key={index} className="relative overflow-hidden rounded-lg">
+                        <img
+                          src={GoogleBusinessAPI.getBestImageUrl(photo) || ''}
+                          alt={`Business photo ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
                 {auditMode && getIssueForSection('photos') && (
                   <AuditHighlight 
                     issue={getIssueForSection('photos')!}
@@ -580,16 +663,32 @@ export default function ContentHubPage() {
                     <div className="h-full bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
                       <div className="text-center text-gray-500">
                         <Camera className="w-8 h-8 mx-auto mb-2" />
-                        <p className="text-sm">Add photos</p>
+                        <p className="text-sm">
+                          {businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 
+                            ? `${businessMedia.allPhotos.length} photos (need ${Math.max(0, 10 - businessMedia.allPhotos.length)} more)`
+                            : 'Add photos'
+                          }
+                        </p>
                       </div>
                     </div>
                   </AuditHighlight>
                 )}
-                {!auditMode && (
+                
+                {!auditMode && (!businessMedia?.coverPhoto && (!businessMedia?.allPhotos || businessMedia.allPhotos.length === 0)) && (
                   <div className="absolute inset-4 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
                     <div className="text-center text-gray-500">
                       <Camera className="w-8 h-8 mx-auto mb-2" />
                       <p className="text-sm">Business Photos</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Loading overlay */}
+                {loadingMedia && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="text-center text-white">
+                      <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                      <p className="text-sm">Loading photos...</p>
                     </div>
                   </div>
                 )}
@@ -598,11 +697,28 @@ export default function ContentHubPage() {
               {/* Business Info */}
               <div className="p-6">
                 <div className="flex items-start gap-4">
-                  <BusinessLogo 
-                    businessName={selectedProfile.name} 
-                    website={selectedProfile.website}
-                    className="w-20 h-20"
-                  />
+                  {/* Use profile photo if available, otherwise fallback to logo */}
+                  {businessMedia?.profilePhoto ? (
+                    <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50">
+                      <img
+                        src={GoogleBusinessAPI.getBestImageUrl(businessMedia.profilePhoto) || ''}
+                        alt={`${selectedProfile.name} profile`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to BusinessLogo component on error
+                          e.currentTarget.parentElement!.innerHTML = ''
+                          const logoDiv = document.createElement('div')
+                          e.currentTarget.parentElement!.appendChild(logoDiv)
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <BusinessLogo 
+                      businessName={selectedProfile.name} 
+                      website={selectedProfile.website}
+                      className="w-20 h-20"
+                    />
+                  )}
                   
                   <div className="flex-1">
                     <div className="flex items-start justify-between">
