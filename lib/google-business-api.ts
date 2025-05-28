@@ -1430,18 +1430,26 @@ export class GoogleBusinessAPI {
   
   // Get all media items for a location
   async getLocationMedia(locationName: string): Promise<MediaResponse> {
-    const accessToken = await this.authService.getValidAccessToken()
-    
     console.log('[Google Business API] Fetching media for location:', locationName)
     
-    const response = await fetch(`${this.mediaBaseUrl}/${locationName}/media`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    return await this.handleApiResponse(response, 'Fetch Location Media')
+    try {
+      const response = await fetch(`/api/google-business/media?locationName=${encodeURIComponent(locationName)}`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+      
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('[Google Business API] Failed to fetch media:', error)
+      throw error
+    }
   }
 
   // Get organized business media by category
