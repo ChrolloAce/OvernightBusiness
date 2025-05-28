@@ -279,7 +279,7 @@ export default function ContentHubPage() {
         completionItems++
       }
 
-      if (!profile.googleData?.photos || (profile.googleData as any).photos?.length < 5) {
+      if (!(profile.googleData as any)?.photos || (profile.googleData as any).photos?.length < 5) {
         issues.push({
           id: 'insufficient-photos',
           category: 'important',
@@ -296,7 +296,7 @@ export default function ContentHubPage() {
         completionItems++
       }
 
-      if (!profile.googleData?.services || (profile.googleData as any).services?.length < 3) {
+      if (!(profile.googleData as any)?.services || (profile.googleData as any).services?.length < 3) {
         issues.push({
           id: 'missing-services',
           category: 'important',
