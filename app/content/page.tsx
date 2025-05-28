@@ -243,6 +243,13 @@ export default function ContentHubPage() {
     }
   }, [selectedProfile])
 
+  // Debug effect for businessMedia state changes
+  useEffect(() => {
+    console.log('businessMedia state changed:', businessMedia)
+    console.log('Cover photo available:', businessMedia?.coverPhoto ? 'Yes' : 'No')
+    console.log('All photos count:', businessMedia?.allPhotos?.length || 0)
+  }, [businessMedia])
+
   const loadProfiles = () => {
     const savedProfiles = BusinessProfilesStorage.getAllProfiles()
     setProfiles(savedProfiles)
@@ -259,7 +266,13 @@ export default function ContentHubPage() {
     try {
       console.log('Loading business media for profile:', profile.name)
       const media = await googleAPI.getBusinessMedia(profile.googleBusinessId)
+      console.log('Media loaded successfully:', media)
+      console.log('Total photos:', media.allPhotos?.length || 0)
+      console.log('Cover photo:', media.coverPhoto ? 'Yes' : 'No')
+      console.log('Profile photo:', media.profilePhoto ? 'Yes' : 'No')
+      
       setBusinessMedia(media)
+      console.log('Business media state updated')
       
       // Update profile with media data
       const updatedProfile = {
