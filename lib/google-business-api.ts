@@ -1433,8 +1433,11 @@ export class GoogleBusinessAPI {
     console.log('[Google Business API] Fetching media for location:', locationName)
     
     try {
+      const accessToken = await this.authService.getValidAccessToken()
+      
       const response = await fetch(`/api/google-business/media?locationName=${encodeURIComponent(locationName)}`, {
         headers: {
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
       })

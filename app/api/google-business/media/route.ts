@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleAuthService } from '@/lib/google-auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,16 +14,16 @@ export async function GET(request: NextRequest) {
 
     console.log('[Media API] Fetching media for location:', locationName)
 
-    // Get access token from auth service
-    const authService = GoogleAuthService.getInstance()
-    const accessToken = await authService.getValidAccessToken()
-
-    if (!accessToken) {
+    // Get access token from Authorization header
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
-        { error: 'No valid access token available' },
+        { error: 'Authorization header with Bearer token is required' },
         { status: 401 }
       )
     }
+
+    const accessToken = authHeader.substring(7) // Remove 'Bearer ' prefix
 
     // Make request to Google Business Profile Media API
     const mediaUrl = `https://mybusiness.googleapis.com/v4/${locationName}/media`
