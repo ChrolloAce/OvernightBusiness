@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
 
     const accessToken = authHeader.substring(7) // Remove 'Bearer ' prefix
 
-    // Make request to Google Business Profile Media API
+    // The locationName should be in format: accounts/{accountId}/locations/{locationId}
+    // We need to construct the correct v4 media endpoint
     const mediaUrl = `https://mybusiness.googleapis.com/v4/${locationName}/media`
     
     console.log('[Media API] Requesting:', mediaUrl)
@@ -47,6 +48,13 @@ export async function GET(request: NextRequest) {
         const errorData = JSON.parse(errorText)
         if (errorData.error) {
           errorMessage = errorData.error.message || errorData.error
+          
+          // Provide specific guidance for media API errors
+          if (response.status === 404) {
+            errorMessage += '\n\nNote: The Google Business Profile Media API may not be available for all locations or may require special permissions. This is a known limitation of the Google Business Profile API.'
+          } else if (response.status === 403) {
+            errorMessage += '\n\nThis usually means:\n1. The Google Business Profile Media API is not enabled\n2. You don\'t have permission to access media for this location\n3. The location may not support media features'
+          }
         }
       } catch (e) {
         errorMessage += ` - ${errorText}`

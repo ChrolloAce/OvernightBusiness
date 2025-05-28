@@ -1525,9 +1525,10 @@ export class GoogleBusinessAPI {
 
       return businessMedia
     } catch (error) {
-      console.error('[Google Business API] Failed to fetch business media:', error)
+      console.warn('[Google Business API] Media API not available for this location:', error)
       
-      // Return empty media structure on error
+      // Return empty media structure gracefully - this is expected for many locations
+      // as the Google Business Profile Media API is not available for all business types
       return {
         exteriorPhotos: [],
         interiorPhotos: [],
@@ -1600,7 +1601,7 @@ export class GoogleBusinessAPI {
       console.log('[Google Business API] Selected', displayPhotos.length, 'display photos for location:', locationName)
       return displayPhotos.slice(0, maxPhotos)
     } catch (error) {
-      console.error('[Google Business API] Failed to get display photos:', error)
+      console.warn('[Google Business API] Could not get display photos for location:', locationName, error)
       return []
     }
   }
