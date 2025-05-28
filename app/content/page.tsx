@@ -227,7 +227,7 @@ export default function ContentHubPage() {
   const [selectedProfile, setSelectedProfile] = useState<SavedBusinessProfile | null>(null)
   const [profileAudit, setProfileAudit] = useState<ProfileAudit | null>(null)
   const [loading, setLoading] = useState(false)
-  const [auditMode, setAuditMode] = useState(true)
+  const [auditMode, setAuditMode] = useState(false)
   const [businessMedia, setBusinessMedia] = useState<BusinessMedia | null>(null)
   const [loadingMedia, setLoadingMedia] = useState(false)
 
@@ -266,13 +266,7 @@ export default function ContentHubPage() {
     try {
       console.log('Loading business media for profile:', profile.name)
       const media = await googleAPI.getBusinessMedia(profile.googleBusinessId)
-      console.log('Media loaded successfully:', media)
-      console.log('Total photos:', media.allPhotos?.length || 0)
-      console.log('Cover photo:', media.coverPhoto ? 'Yes' : 'No')
-      console.log('Profile photo:', media.profilePhoto ? 'Yes' : 'No')
-      
       setBusinessMedia(media)
-      console.log('Business media state updated')
       
       // Update profile with media data
       const updatedProfile = {
@@ -638,7 +632,7 @@ export default function ContentHubPage() {
               {/* Cover Photo Area */}
               <div className="h-48 bg-gradient-to-r from-blue-500 to-purple-600 relative overflow-hidden">
                 {/* Display actual cover photo if available */}
-                {businessMedia?.coverPhoto && !auditMode && (
+                {businessMedia?.coverPhoto && (
                   <img
                     src={GoogleBusinessAPI.getBestImageUrl(businessMedia.coverPhoto) || ''}
                     alt="Business cover photo"
@@ -651,7 +645,7 @@ export default function ContentHubPage() {
                 )}
                 
                 {/* Display photo gallery if no cover photo but has other photos */}
-                {!businessMedia?.coverPhoto && businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 && !auditMode && (
+                {!businessMedia?.coverPhoto && businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 && (
                   <div className="grid grid-cols-3 gap-1 h-full p-2">
                     {businessMedia.allPhotos.slice(0, 6).map((photo, index) => (
                       <div key={index} className="relative overflow-hidden rounded-lg">
@@ -668,15 +662,16 @@ export default function ContentHubPage() {
                   </div>
                 )}
                 
+                {/* Audit overlay - show on top of photos when in audit mode */}
                 {auditMode && getIssueForSection('photos') && (
                   <AuditHighlight 
                     issue={getIssueForSection('photos')!}
                     className="absolute inset-4"
                   >
-                    <div className="h-full bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                      <div className="text-center text-gray-500">
+                    <div className="h-full bg-black/60 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                      <div className="text-center text-white">
                         <Camera className="w-8 h-8 mx-auto mb-2" />
-                        <p className="text-sm">
+                        <p className="text-sm font-medium">
                           {businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 
                             ? `${businessMedia.allPhotos.length} photos (need ${Math.max(0, 10 - businessMedia.allPhotos.length)} more)`
                             : 'Add photos'
@@ -687,7 +682,8 @@ export default function ContentHubPage() {
                   </AuditHighlight>
                 )}
                 
-                {!auditMode && (!businessMedia?.coverPhoto && (!businessMedia?.allPhotos || businessMedia.allPhotos.length === 0)) && (
+                {/* Show placeholder only if no photos at all */}
+                {(!businessMedia?.coverPhoto && (!businessMedia?.allPhotos || businessMedia.allPhotos.length === 0)) && (
                   <div className="absolute inset-4 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
                     <div className="text-center text-gray-500">
                       <Camera className="w-8 h-8 mx-auto mb-2" />
