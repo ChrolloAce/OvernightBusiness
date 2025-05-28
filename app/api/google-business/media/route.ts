@@ -25,9 +25,51 @@ export async function GET(request: NextRequest) {
 
     const accessToken = authHeader.substring(7) // Remove 'Bearer ' prefix
 
-    // The locationName should be in format: accounts/{accountId}/locations/{locationId}
+    let fullLocationName = locationName
+
+    // Check if locationName is in the old format (just "locations/{id}")
+    // If so, we need to get the account and construct the full path
+    if (locationName.startsWith('locations/') && !locationName.includes('accounts/')) {
+      console.log('[Media API] Converting location ID to full path for:', locationName)
+      
+      // Get accounts to find the correct account for this location
+      const accountsResponse = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!accountsResponse.ok) {
+        const accountsError = await accountsResponse.text()
+        return NextResponse.json(
+          { error: `Failed to get accounts: ${accountsError}` },
+          { status: accountsResponse.status }
+        )
+      }
+
+      const accountsData = await accountsResponse.json()
+      const accounts = accountsData.accounts || []
+      
+      if (accounts.length === 0) {
+        return NextResponse.json(
+          { error: 'No business accounts found' },
+          { status: 404 }
+        )
+      }
+
+      // Use the first account (most common case)
+      const accountName = accounts[0].name
+      const locationId = locationName.split('/')[1] // Extract just the ID part
+      
+      // Construct the full location name
+      fullLocationName = `${accountName}/locations/${locationId}`
+      console.log('[Media API] Converted to full location name:', fullLocationName)
+    }
+
+    // The locationName should now be in format: accounts/{accountId}/locations/{locationId}
     // We need to construct the correct v4 media endpoint
-    const mediaUrl = `https://mybusiness.googleapis.com/v4/${locationName}/media`
+    const mediaUrl = `https://mybusiness.googleapis.com/v4/${fullLocationName}/media`
     
     console.log('[Media API] Requesting:', mediaUrl)
 
