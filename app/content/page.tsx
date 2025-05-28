@@ -539,9 +539,89 @@ export default function ContentHubPage() {
   }
 
   const formatBusinessHours = (hours: any) => {
-    if (!hours) return 'Hours not specified'
-    // Simplified hours display
-    return 'Open • Closes 6 AM Wed'
+    if (!hours || typeof hours !== 'object') return 'Hours not specified'
+    
+    try {
+      // Handle different hour formats from Google Business API
+      if (hours.regularHours && Array.isArray(hours.regularHours)) {
+        const today = new Date().getDay() // 0 = Sunday, 1 = Monday, etc.
+        const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
+        const todayName = dayNames[today]
+        
+        // Find today's hours
+        const todayHours = hours.regularHours.find((day: any) => day.day === todayName)
+        
+        if (todayHours && todayHours.openTime && todayHours.closeTime) {
+          const openTime = formatTime(todayHours.openTime)
+          const closeTime = formatTime(todayHours.closeTime)
+          return `Open • Closes ${closeTime}`
+        } else if (todayHours && todayHours.isClosed) {
+          return 'Closed today'
+        }
+      }
+      
+      // Fallback for other formats
+      if (typeof hours === 'string') return hours
+      
+      return 'Hours available'
+    } catch (error) {
+      console.error('Error formatting business hours:', error)
+      return 'Hours not specified'
+    }
+  }
+
+  const formatTime = (timeObj: any) => {
+    if (!timeObj) return ''
+    
+    try {
+      if (typeof timeObj === 'string') return timeObj
+      
+      if (timeObj.hours !== undefined && timeObj.minutes !== undefined) {
+        const hours = timeObj.hours
+        const minutes = timeObj.minutes
+        const period = hours >= 12 ? 'PM' : 'AM'
+        const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours
+        return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+      }
+      
+      return timeObj.toString()
+    } catch (error) {
+      return ''
+    }
+  }
+
+  const getBusinessCategories = (profile: SavedBusinessProfile) => {
+    const categories = []
+    
+    if (profile.googleData?.primaryCategory) {
+      categories.push(profile.googleData.primaryCategory)
+    }
+    
+    if (profile.googleData?.additionalCategories) {
+      categories.push(...profile.googleData.additionalCategories.slice(0, 2))
+    }
+    
+    return categories
+  }
+
+  const getBusinessServices = (profile: SavedBusinessProfile) => {
+    const services = []
+    
+    // Get services from Google Business data
+    if (profile.googleData?.serviceItems) {
+      services.push(...profile.googleData.serviceItems.slice(0, 6))
+    }
+    
+    // Get services from categories
+    if (profile.googleData?.categories?.additionalCategories) {
+      profile.googleData.categories.additionalCategories.forEach((category: any) => {
+        if (category.serviceTypes) {
+          services.push(...category.serviceTypes.slice(0, 3))
+        }
+      })
+    }
+    
+    return services.slice(0, 8) // Limit to 8 services
   }
 
   if (!selectedProfile) {
@@ -726,8 +806,18 @@ export default function ContentHubPage() {
                           </span>
                         </div>
                         
+                        {/* Business Categories */}
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {getBusinessCategories(selectedProfile).map((category: any, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {category.displayName || category.name || category}
+                            </Badge>
+                          ))}
+                        </div>
+                        
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                          Construction company in {selectedProfile.address?.split(',')[1] || 'Miami-Dade County'}, Florida
+                          {selectedProfile.googleData?.businessDescription?.substring(0, 100) || 
+                           `Business in ${selectedProfile.address?.split(',')[1] || 'Miami-Dade County'}, Florida`}
                         </p>
                       </div>
                       
@@ -872,21 +962,167 @@ export default function ContentHubPage() {
             )}
 
             {/* Products/Services Section */}
-            <div className="px-6 pb-4">
-              <h3 className="font-semibold mb-3">Products</h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-center">
-                  <div className="w-full h-24 bg-gray-200 dark:bg-gray-600 rounded mb-2"></div>
-                  <p className="text-sm font-medium">REMODELING</p>
-                </div>
-                <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-center">
-                  <div className="w-full h-24 bg-gray-200 dark:bg-gray-600 rounded mb-2"></div>
-                  <p className="text-sm font-medium">Home Remodeling</p>
-                </div>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center flex items-center justify-center">
-                  <Plus className="w-6 h-6 text-gray-400" />
-                </div>
+            <div className="px-6 pb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">Services & Products</h3>
+                <Button variant="outline" size="sm">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add service
+                </Button>
               </div>
+              
+              {(() => {
+                const services = getBusinessServices(selectedProfile)
+                
+                if (services.length > 0) {
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {services.map((service: any, index) => (
+                        <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                              <Tag className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm mb-1">
+                                {service.displayName || service.name || service.title || 'Service'}
+                              </h4>
+                              {service.description && (
+                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                  {service.description.substring(0, 80)}...
+                                </p>
+                              )}
+                              {service.price && (
+                                <p className="text-xs font-medium text-green-600 dark:text-green-400 mt-1">
+                                  {service.price}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* Add service card */}
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center flex items-center justify-center min-h-[80px] hover:border-gray-400 dark:hover:border-gray-500 transition-colors cursor-pointer">
+                        <div className="text-gray-500 dark:text-gray-400">
+                          <Plus className="w-6 h-6 mx-auto mb-1" />
+                          <p className="text-xs">Add service</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                } else {
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-center">
+                        <div className="w-full h-16 bg-gray-200 dark:bg-gray-600 rounded mb-2 flex items-center justify-center">
+                          <Tag className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <p className="text-sm font-medium">REMODELING</p>
+                      </div>
+                      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-center">
+                        <div className="w-full h-16 bg-gray-200 dark:bg-gray-600 rounded mb-2 flex items-center justify-center">
+                          <Building2 className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <p className="text-sm font-medium">Construction</p>
+                      </div>
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center flex items-center justify-center">
+                        <div className="text-gray-400">
+                          <Plus className="w-6 h-6 mx-auto mb-1" />
+                          <p className="text-xs">Add service</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+              })()}
+            </div>
+
+            {/* Business Hours Section */}
+            <div className="px-6 pb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">Business Hours</h3>
+                <Button variant="outline" size="sm">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Edit hours
+                </Button>
+              </div>
+              
+              {(() => {
+                const hours = selectedProfile.googleData?.businessHours
+                
+                if (hours && typeof hours === 'object' && !Array.isArray(hours) && (hours as any).regularHours && Array.isArray((hours as any).regularHours)) {
+                  const dayNames = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
+                  const dayDisplayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                  const regularHours = (hours as any).regularHours
+                  
+                  return (
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                      <div className="space-y-3">
+                        {dayNames.map((day, index) => {
+                          const dayHours = regularHours.find((h: any) => h.day === day)
+                          const today = new Date().getDay()
+                          const isToday = (today === 0 ? 6 : today - 1) === index // Adjust for Sunday = 0
+                          
+                          return (
+                            <div key={day} className={`flex items-center justify-between py-2 px-3 rounded ${
+                              isToday ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800' : ''
+                            }`}>
+                              <span className={`text-sm font-medium ${
+                                isToday ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'
+                              }`}>
+                                {dayDisplayNames[index]}
+                                {isToday && <span className="ml-2 text-xs">(Today)</span>}
+                              </span>
+                              
+                              <span className={`text-sm ${
+                                isToday ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-600 dark:text-gray-400'
+                              }`}>
+                                {dayHours && dayHours.openTime && dayHours.closeTime ? (
+                                  `${formatTime(dayHours.openTime)} - ${formatTime(dayHours.closeTime)}`
+                                ) : (
+                                  <span className="text-red-500 dark:text-red-400">Closed</span>
+                                )}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      
+                      {/* Special Hours */}
+                      {(hours as any).specialHours && Array.isArray((hours as any).specialHours) && (hours as any).specialHours.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Special Hours</h4>
+                          <div className="space-y-2">
+                            {(hours as any).specialHours.slice(0, 3).map((special: any, index: number) => (
+                              <div key={index} className="flex items-center justify-between text-sm">
+                                <span className="text-orange-600 dark:text-orange-400">
+                                  {special.date || 'Special day'}
+                                </span>
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  {special.isClosed ? 'Closed' : `${formatTime(special.openTime)} - ${formatTime(special.closeTime)}`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                } else {
+                  return (
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                      <div className="text-center py-4">
+                        <Clock className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Business hours not specified</p>
+                        <Button variant="outline" size="sm" className="mt-2">
+                          Add business hours
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                }
+              })()}
             </div>
 
             {/* Q&A Section */}
@@ -912,35 +1148,137 @@ export default function ContentHubPage() {
             </div>
 
             {/* Reviews Section */}
-            <div className="px-6 pb-4">
-              <div className="flex items-center justify-between mb-3">
+            <div className="px-6 pb-6">
+              <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold">Reviews</h3>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">Get more reviews</Button>
-                  <Button variant="outline" size="sm">Add a photo</Button>
+                  <Button variant="outline" size="sm">
+                    <Star className="w-4 h-4 mr-2" />
+                    Get more reviews
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Camera className="w-4 h-4 mr-2" />
+                    Add a photo
+                  </Button>
                 </div>
               </div>
               
               {auditMode && getIssueForSection('reviews') ? (
                 <AuditHighlight issue={getIssueForSection('reviews')!}>
-                  <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="text-2xl font-bold">{selectedProfile.rating || '5.0'}</div>
-                    <div>
-                      {renderStars(selectedProfile.rating || 5)}
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {selectedProfile.reviewCount || 7} Google reviews (Need more reviews)
-                      </p>
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 border border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center gap-6 mb-4">
+                      <div className="text-center">
+                        <div className="text-4xl font-bold text-gray-900 dark:text-white">{selectedProfile.rating || '5.0'}</div>
+                        <div className="flex justify-center mb-1">
+                          {renderStars(selectedProfile.rating || 5)}
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {selectedProfile.reviewCount || 7} reviews (Need more reviews)
+                        </p>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <div className="space-y-2">
+                          {[5, 4, 3, 2, 1].map((stars) => (
+                            <div key={stars} className="flex items-center gap-2">
+                              <span className="text-sm w-3">{stars}</span>
+                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                              <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                                <div 
+                                  className="bg-yellow-400 h-2 rounded-full" 
+                                  style={{ width: `${stars === 5 ? 80 : stars === 4 ? 15 : 5}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs text-gray-500 w-8">{stars === 5 ? '80%' : stars === 4 ? '15%' : '5%'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </AuditHighlight>
               ) : (
-                <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="text-2xl font-bold">{selectedProfile.rating || '5.0'}</div>
-                  <div>
-                    {renderStars(selectedProfile.rating || 5)}
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {selectedProfile.reviewCount || 7} Google reviews
-                    </p>
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 border border-gray-200 dark:border-gray-600">
+                  <div className="flex items-center gap-6 mb-6">
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-gray-900 dark:text-white">{selectedProfile.rating || '5.0'}</div>
+                      <div className="flex justify-center mb-1">
+                        {renderStars(selectedProfile.rating || 5)}
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {selectedProfile.reviewCount || 7} Google reviews
+                      </p>
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="space-y-2">
+                        {[5, 4, 3, 2, 1].map((stars) => (
+                          <div key={stars} className="flex items-center gap-2">
+                            <span className="text-sm w-3">{stars}</span>
+                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                            <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                              <div 
+                                className="bg-yellow-400 h-2 rounded-full" 
+                                style={{ width: `${stars === 5 ? 80 : stars === 4 ? 15 : 5}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-gray-500 w-8">{stars === 5 ? '80%' : stars === 4 ? '15%' : '5%'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Recent Reviews */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-gray-900 dark:text-white">Recent reviews</h4>
+                    
+                    {/* Sample reviews - in real app, these would come from API */}
+                    <div className="space-y-4">
+                      <div className="border-b border-gray-200 dark:border-gray-600 pb-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                            J
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-sm">John Smith</span>
+                              <div className="flex">
+                                {renderStars(5)}
+                              </div>
+                              <span className="text-xs text-gray-500">2 weeks ago</span>
+                            </div>
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              Excellent service and quality work. The team was professional and completed the project on time.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="border-b border-gray-200 dark:border-gray-600 pb-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-medium">
+                            M
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-sm">Maria Garcia</span>
+                              <div className="flex">
+                                {renderStars(5)}
+                              </div>
+                              <span className="text-xs text-gray-500">1 month ago</span>
+                            </div>
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              Amazing results! Highly recommend their construction services. Very satisfied with the outcome.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <Button variant="outline" className="w-full">
+                      View all reviews
+                    </Button>
                   </div>
                 </div>
               )}
@@ -948,19 +1286,186 @@ export default function ContentHubPage() {
 
             {/* Posts Section */}
             <div className="px-6 pb-6">
-              <h3 className="font-semibold mb-3">From AMERICAN GLOBAL CONSTRUCTION LLC</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">Posts & Updates</h3>
+                <Button variant="outline" size="sm">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create post
+                </Button>
+              </div>
               
               {auditMode && getIssueForSection('posts') ? (
                 <AuditHighlight issue={getIssueForSection('posts')!}>
-                  <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
-                    <MessageSquare className="w-8 h-8 mx-auto mb-2" />
-                    <p className="text-sm">No posts yet - start sharing updates!</p>
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 text-center">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">No posts yet</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                      Start sharing updates, offers, and events to engage with customers
+                    </p>
+                    <div className="flex gap-2 justify-center">
+                      <Button size="sm">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create post
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Add event
+                      </Button>
+                    </div>
                   </div>
                 </AuditHighlight>
               ) : (
-                <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
-                  <MessageSquare className="w-8 h-8 mx-auto mb-2" />
-                  <p className="text-sm">Recent business posts would appear here</p>
+                <div className="space-y-4">
+                  {/* Sample posts - in real app, these would come from API */}
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <BusinessLogo 
+                        businessName={selectedProfile.name} 
+                        website={selectedProfile.website}
+                        className="w-10 h-10"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-medium text-sm">{selectedProfile.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            Offer
+                          </Badge>
+                          <span className="text-xs text-gray-500">3 days ago</span>
+                        </div>
+                        <h4 className="font-medium mb-2">🏗️ Special Winter Construction Discount!</h4>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                          Get 15% off all construction and remodeling projects booked this month. 
+                          Professional quality work with premium materials. Contact us today!
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <button className="flex items-center gap-1 hover:text-blue-600">
+                            <Star className="w-3 h-3" />
+                            12 likes
+                          </button>
+                          <button className="flex items-center gap-1 hover:text-blue-600">
+                            <MessageSquare className="w-3 h-3" />
+                            3 comments
+                          </button>
+                          <button className="flex items-center gap-1 hover:text-blue-600">
+                            <Share className="w-3 h-3" />
+                            Share
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <BusinessLogo 
+                        businessName={selectedProfile.name} 
+                        website={selectedProfile.website}
+                        className="w-10 h-10"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-medium text-sm">{selectedProfile.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            Update
+                          </Badge>
+                          <span className="text-xs text-gray-500">1 week ago</span>
+                        </div>
+                        <h4 className="font-medium mb-2">📸 Recent Project Completion</h4>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                          Just completed another successful home renovation project! 
+                          Check out the amazing transformation we achieved for our client.
+                        </p>
+                        
+                        {/* Sample project images */}
+                        {businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            {businessMedia.allPhotos.slice(0, 2).map((photo, index) => (
+                              <div key={index} className="relative overflow-hidden rounded-lg h-32">
+                                <img
+                                  src={GoogleBusinessAPI.getBestImageUrl(photo) || ''}
+                                  alt={`Project photo ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <button className="flex items-center gap-1 hover:text-blue-600">
+                            <Star className="w-3 h-3" />
+                            24 likes
+                          </button>
+                          <button className="flex items-center gap-1 hover:text-blue-600">
+                            <MessageSquare className="w-3 h-3" />
+                            8 comments
+                          </button>
+                          <button className="flex items-center gap-1 hover:text-blue-600">
+                            <Share className="w-3 h-3" />
+                            Share
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <BusinessLogo 
+                        businessName={selectedProfile.name} 
+                        website={selectedProfile.website}
+                        className="w-10 h-10"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-medium text-sm">{selectedProfile.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            Event
+                          </Badge>
+                          <span className="text-xs text-gray-500">2 weeks ago</span>
+                        </div>
+                        <h4 className="font-medium mb-2">🎉 Free Consultation Week</h4>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                          Join us for Free Consultation Week! Get expert advice on your next construction 
+                          or remodeling project. Book your appointment today.
+                        </p>
+                        <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 mb-3">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="w-4 h-4 text-blue-600" />
+                            <span className="font-medium">December 15-22, 2024</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm mt-1">
+                            <MapPin className="w-4 h-4 text-blue-600" />
+                            <span>Our Office & Virtual Consultations</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <button className="flex items-center gap-1 hover:text-blue-600">
+                            <Star className="w-3 h-3" />
+                            18 likes
+                          </button>
+                          <button className="flex items-center gap-1 hover:text-blue-600">
+                            <MessageSquare className="w-3 h-3" />
+                            5 comments
+                          </button>
+                          <button className="flex items-center gap-1 hover:text-blue-600">
+                            <Share className="w-3 h-3" />
+                            Share
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Button variant="outline" className="w-full">
+                    View all posts
+                  </Button>
                 </div>
               )}
             </div>
