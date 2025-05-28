@@ -38,7 +38,9 @@ import {
   Navigation,
   BookOpen,
   Edit3,
-  HelpCircle
+  HelpCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -230,6 +232,7 @@ export default function ContentHubPage() {
   const [auditMode, setAuditMode] = useState(false)
   const [businessMedia, setBusinessMedia] = useState<BusinessMedia | null>(null)
   const [loadingMedia, setLoadingMedia] = useState(false)
+  const [selectedImageModal, setSelectedImageModal] = useState<MediaItem | null>(null)
 
   const googleAPI = new GoogleBusinessAPI()
 
@@ -632,7 +635,7 @@ export default function ContentHubPage() {
               {/* Cover Photo Area */}
               <div className="h-48 bg-gradient-to-r from-blue-500 to-purple-600 relative overflow-hidden">
                 {/* Display actual cover photo if available */}
-                {businessMedia?.coverPhoto && (
+                {businessMedia?.coverPhoto ? (
                   <img
                     src={GoogleBusinessAPI.getBestImageUrl(businessMedia.coverPhoto) || ''}
                     alt="Business cover photo"
@@ -642,23 +645,13 @@ export default function ContentHubPage() {
                       e.currentTarget.style.display = 'none'
                     }}
                   />
-                )}
-                
-                {/* Display photo gallery if no cover photo but has other photos */}
-                {!businessMedia?.coverPhoto && businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 && (
-                  <div className="grid grid-cols-3 gap-1 h-full p-2">
-                    {businessMedia.allPhotos.slice(0, 6).map((photo, index) => (
-                      <div key={index} className="relative overflow-hidden rounded-lg">
-                        <img
-                          src={GoogleBusinessAPI.getBestImageUrl(photo) || ''}
-                          alt={`Business photo ${index + 1}`}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none'
-                          }}
-                        />
-                      </div>
-                    ))}
+                ) : (
+                  /* Show placeholder when no cover photo */
+                  <div className="absolute inset-4 bg-black/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                    <div className="text-center text-white">
+                      <Camera className="w-8 h-8 mx-auto mb-2" />
+                      <p className="text-sm">No cover photo</p>
+                    </div>
                   </div>
                 )}
                 
@@ -682,16 +675,6 @@ export default function ContentHubPage() {
                   </AuditHighlight>
                 )}
                 
-                {/* Show placeholder only if no photos at all */}
-                {(!businessMedia?.coverPhoto && (!businessMedia?.allPhotos || businessMedia.allPhotos.length === 0)) && (
-                  <div className="absolute inset-4 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                    <div className="text-center text-gray-500">
-                      <Camera className="w-8 h-8 mx-auto mb-2" />
-                      <p className="text-sm">Business Photos</p>
-                    </div>
-                  </div>
-                )}
-                
                 {/* Loading overlay */}
                 {loadingMedia && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -712,7 +695,7 @@ export default function ContentHubPage() {
                       <img
                         src={GoogleBusinessAPI.getBestImageUrl(businessMedia.profilePhoto) || ''}
                         alt={`${selectedProfile.name} profile`}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain p-2"
                         onError={(e) => {
                           // Fallback to BusinessLogo component on error
                           e.currentTarget.parentElement!.innerHTML = ''
@@ -842,6 +825,51 @@ export default function ContentHubPage() {
                 </div>
               )}
             </div>
+
+            {/* Image Gallery Section */}
+            {businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 && (
+              <div className="px-6 pb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold">Photos ({businessMedia.allPhotos.length})</h3>
+                  <Button variant="outline" size="sm">
+                    <Camera className="w-4 h-4 mr-2" />
+                    View all
+                  </Button>
+                </div>
+                
+                {/* Masonry Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {businessMedia.allPhotos.slice(0, 8).map((photo, index) => (
+                    <div 
+                      key={index} 
+                      className={`relative overflow-hidden rounded-lg cursor-pointer hover:opacity-90 transition-opacity ${
+                        index === 0 ? 'md:col-span-2 md:row-span-2' : ''
+                      }`}
+                      onClick={() => setSelectedImageModal(photo)}
+                    >
+                      <img
+                        src={GoogleBusinessAPI.getBestImageUrl(photo) || ''}
+                        alt={`Business photo ${index + 1}`}
+                        className={`w-full object-cover ${
+                          index === 0 ? 'h-48 md:h-96' : 'h-24 md:h-32'
+                        }`}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                        }}
+                      />
+                      {/* Overlay for first image if there are more */}
+                      {index === 7 && businessMedia.allPhotos.length > 8 && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <span className="text-white font-semibold">
+                            +{businessMedia.allPhotos.length - 8} more
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Products/Services Section */}
             <div className="px-6 pb-4">
@@ -1026,6 +1054,59 @@ export default function ContentHubPage() {
           </motion.div>
         )}
       </div>
+
+      {/* Image Modal */}
+      {selectedImageModal && (
+        <div 
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedImageModal(null)}
+        >
+          <div className="relative max-w-4xl max-h-full">
+            <button
+              onClick={() => setSelectedImageModal(null)}
+              className="absolute top-4 right-4 z-10 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+            >
+              <XCircle className="w-6 h-6" />
+            </button>
+            
+            <img
+              src={GoogleBusinessAPI.getBestImageUrl(selectedImageModal) || ''}
+              alt="Business photo"
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+            
+            {/* Navigation buttons if there are multiple photos */}
+            {businessMedia?.allPhotos && businessMedia.allPhotos.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const currentIndex = businessMedia.allPhotos.findIndex(p => p === selectedImageModal)
+                    const prevIndex = currentIndex > 0 ? currentIndex - 1 : businessMedia.allPhotos.length - 1
+                    setSelectedImageModal(businessMedia.allPhotos[prevIndex])
+                  }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const currentIndex = businessMedia.allPhotos.findIndex(p => p === selectedImageModal)
+                    const nextIndex = currentIndex < businessMedia.allPhotos.length - 1 ? currentIndex + 1 : 0
+                    setSelectedImageModal(businessMedia.allPhotos[nextIndex])
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 } 
