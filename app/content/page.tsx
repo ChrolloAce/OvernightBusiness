@@ -233,6 +233,9 @@ export default function ContentHubPage() {
   const [businessMedia, setBusinessMedia] = useState<BusinessMedia | null>(null)
   const [loadingMedia, setLoadingMedia] = useState(false)
   const [selectedImageModal, setSelectedImageModal] = useState<MediaItem | null>(null)
+  const [businessReviews, setBusinessReviews] = useState<any[]>([])
+  const [reviewsSummary, setReviewsSummary] = useState<any>(null)
+  const [loadingReviews, setLoadingReviews] = useState(false)
 
   const googleAPI = new GoogleBusinessAPI()
 
@@ -303,12 +306,83 @@ export default function ContentHubPage() {
     }
   }
 
+  const loadBusinessReviews = async (profile: SavedBusinessProfile) => {
+    if (!profile.googleBusinessId) return
+
+    setLoadingReviews(true)
+    try {
+      console.log('Loading reviews for profile:', profile.name)
+      const reviewsData = await googleAPI.getAllReviews(profile.googleBusinessId)
+      
+      setBusinessReviews(reviewsData.reviews || [])
+      
+      // Calculate rating distribution
+      const distribution: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+      let repliedCount = 0
+      let unrepliedCount = 0
+      
+      (reviewsData.reviews || []).forEach((review: any) => {
+        const rating = GoogleBusinessAPI.getStarRatingValue(review.starRating)
+        if (rating >= 1 && rating <= 5) {
+          const currentCount = distribution[rating] || 0
+          distribution[rating] = currentCount + 1
+        }
+        
+        if (review.reviewReply) {
+          repliedCount++
+        } else {
+          unrepliedCount++
+        }
+      })
+
+      setReviewsSummary({
+        averageRating: reviewsData.averageRating || profile.rating || 0,
+        totalReviews: reviewsData.totalReviewCount || profile.reviewCount || 0,
+        ratingDistribution: distribution,
+        repliedCount,
+        unrepliedCount
+      })
+
+      // Update profile with reviews data
+      const updatedProfile = {
+        ...profile,
+        googleData: {
+          ...profile.googleData,
+          reviews: reviewsData.reviews,
+          reviewsSummary: {
+            averageRating: reviewsData.averageRating,
+            totalReviews: reviewsData.totalReviewCount,
+            lastUpdated: new Date().toISOString()
+          }
+        }
+      }
+      BusinessProfilesStorage.updateProfile(profile.id, updatedProfile)
+      
+    } catch (error) {
+      console.error('Failed to load reviews:', error)
+      // Set fallback data
+      setBusinessReviews([])
+      setReviewsSummary({
+        averageRating: profile.rating || 0,
+        totalReviews: profile.reviewCount || 0,
+        ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        repliedCount: 0,
+        unrepliedCount: 0
+      })
+    } finally {
+      setLoadingReviews(false)
+    }
+  }
+
   const performProfileAudit = async (profile: SavedBusinessProfile) => {
     setLoading(true)
     
     try {
-      // Load business media first
-      await loadBusinessMedia(profile)
+      // Load business media and reviews first
+      await Promise.all([
+        loadBusinessMedia(profile),
+        loadBusinessReviews(profile)
+      ])
       
       // Simulate audit analysis
       await new Promise(resolve => setTimeout(resolve, 1000))
@@ -412,12 +486,12 @@ export default function ContentHubPage() {
         completionItems++
       }
 
-      if ((profile.reviewCount || 0) < 10) {
+      if ((reviewsSummary?.totalReviews || 0) < 10) {
         issues.push({
           id: 'low-review-count',
           category: 'recommended',
           title: 'Need More Reviews',
-          description: `Only ${profile.reviewCount || 0} reviews (target: 25+)`,
+          description: `Only ${reviewsSummary?.totalReviews || 0} reviews (target: 25+)`,
           impact: 'Fewer reviews reduce credibility',
           solution: 'Encourage satisfied customers to leave reviews',
           priority: 6,
@@ -426,7 +500,7 @@ export default function ContentHubPage() {
           section: 'reviews'
         })
         score -= 4
-      } else if ((profile.reviewCount || 0) >= 10) {
+      } else if ((reviewsSummary?.totalReviews || 0) >= 10) {
         completionItems++
       }
 
@@ -475,10 +549,10 @@ export default function ContentHubPage() {
       const shortTerm = issues.filter(issue => issue.category === 'important').slice(0, 3)
       const longTerm = issues.filter(issue => ['recommended', 'optimization'].includes(issue.category)).slice(0, 4)
 
-      // Identify strengths
+      // Identify strengths using real data
       const strengths: string[] = []
-      if (profile.rating && profile.rating >= 4.0) strengths.push('High customer rating')
-      if (profile.reviewCount && profile.reviewCount >= 25) strengths.push('Strong review count')
+      if (reviewsSummary?.averageRating && reviewsSummary.averageRating >= 4.0) strengths.push('High customer rating')
+      if (reviewsSummary?.totalReviews && reviewsSummary.totalReviews >= 25) strengths.push('Strong review count')
       if (profile.googleData?.businessDescription && profile.googleData.businessDescription.length >= 100) strengths.push('Detailed business description')
       if (profile.website) strengths.push('Website listed')
       if (profile.phone) strengths.push('Contact information complete')
@@ -1179,19 +1253,27 @@ export default function ContentHubPage() {
                       
                       <div className="flex-1">
                         <div className="space-y-2">
-                          {[5, 4, 3, 2, 1].map((stars) => (
-                            <div key={stars} className="flex items-center gap-2">
-                              <span className="text-sm w-3">{stars}</span>
-                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                              <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                                <div 
-                                  className="bg-yellow-400 h-2 rounded-full" 
-                                  style={{ width: `${stars === 5 ? 80 : stars === 4 ? 15 : 5}%` }}
-                                ></div>
+                          {[5, 4, 3, 2, 1].map((stars) => {
+                            const count = reviewsSummary?.ratingDistribution?.[stars] || 0
+                            const total = reviewsSummary?.totalReviews || 1
+                            const percentage = total > 0 ? Math.round((count / total) * 100) : 0
+                            
+                            return (
+                              <div key={stars} className="flex items-center gap-2">
+                                <span className="text-sm w-3">{stars}</span>
+                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                                <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                                  <div 
+                                    className="bg-yellow-400 h-2 rounded-full transition-all duration-300" 
+                                    style={{ width: `${percentage}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-xs text-gray-500 w-12 text-right">
+                                  {count} ({percentage}%)
+                                </span>
                               </div>
-                              <span className="text-xs text-gray-500 w-8">{stars === 5 ? '80%' : stars === 4 ? '15%' : '5%'}</span>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       </div>
                     </div>
@@ -1212,19 +1294,27 @@ export default function ContentHubPage() {
                     
                     <div className="flex-1">
                       <div className="space-y-2">
-                        {[5, 4, 3, 2, 1].map((stars) => (
-                          <div key={stars} className="flex items-center gap-2">
-                            <span className="text-sm w-3">{stars}</span>
-                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                            <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                              <div 
-                                className="bg-yellow-400 h-2 rounded-full" 
-                                style={{ width: `${stars === 5 ? 80 : stars === 4 ? 15 : 5}%` }}
-                              ></div>
+                        {[5, 4, 3, 2, 1].map((stars) => {
+                          const count = reviewsSummary?.ratingDistribution?.[stars] || 0
+                          const total = reviewsSummary?.totalReviews || 1
+                          const percentage = total > 0 ? Math.round((count / total) * 100) : 0
+                          
+                          return (
+                            <div key={stars} className="flex items-center gap-2">
+                              <span className="text-sm w-3">{stars}</span>
+                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                              <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                                <div 
+                                  className="bg-yellow-400 h-2 rounded-full transition-all duration-300" 
+                                  style={{ width: `${percentage}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs text-gray-500 w-12 text-right">
+                                {count} ({percentage}%)
+                              </span>
                             </div>
-                            <span className="text-xs text-gray-500 w-8">{stars === 5 ? '80%' : stars === 4 ? '15%' : '5%'}</span>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     </div>
                   </div>
@@ -1233,51 +1323,56 @@ export default function ContentHubPage() {
                   <div className="space-y-4">
                     <h4 className="font-medium text-gray-900 dark:text-white">Recent reviews</h4>
                     
-                    {/* Sample reviews - in real app, these would come from API */}
-                    <div className="space-y-4">
-                      <div className="border-b border-gray-200 dark:border-gray-600 pb-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                            J
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-sm">John Smith</span>
-                              <div className="flex">
-                                {renderStars(5)}
+                    {/* Real reviews from loaded data */}
+                    {businessReviews && businessReviews.length > 0 ? (
+                      <div className="space-y-4">
+                        {businessReviews.slice(0, 3).map((review, index) => (
+                          <div key={index} className="border-b border-gray-200 dark:border-gray-600 pb-4">
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-medium">
+                                {(review.reviewer?.displayName || 'A').charAt(0).toUpperCase()}
                               </div>
-                              <span className="text-xs text-gray-500">2 weeks ago</span>
-                            </div>
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
-                              Excellent service and quality work. The team was professional and completed the project on time.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="border-b border-gray-200 dark:border-gray-600 pb-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-medium">
-                            M
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-sm">Maria Garcia</span>
-                              <div className="flex">
-                                {renderStars(5)}
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-medium text-sm">
+                                    {review.reviewer?.displayName || 'Anonymous'}
+                                  </span>
+                                  <div className="flex">
+                                    {renderStars(GoogleBusinessAPI.getStarRatingValue(review.starRating))}
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {GoogleBusinessAPI.formatReviewDate(review.createTime)}
+                                  </span>
+                                </div>
+                                {review.comment && (
+                                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                                    {review.comment}
+                                  </p>
+                                )}
+                                {review.reviewReply && (
+                                  <div className="mt-2 ml-4 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border-l-2 border-blue-500">
+                                    <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">Business Response</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                                      {review.reviewReply.comment}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
-                              <span className="text-xs text-gray-500">1 month ago</span>
                             </div>
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
-                              Amazing results! Highly recommend their construction services. Very satisfied with the outcome.
-                            </p>
                           </div>
-                        </div>
+                        ))}
                       </div>
-                    </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <Star className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No reviews available</p>
+                        <p className="text-xs">Reviews will appear here when customers leave them</p>
+                      </div>
+                    )}
                     
                     <Button variant="outline" className="w-full">
-                      View all reviews
+                      <Star className="w-4 h-4 mr-2" />
+                      View all {reviewsSummary?.totalReviews || 0} reviews
                     </Button>
                   </div>
                 </div>
