@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge'
 const navigation = [
   {
     name: 'Dashboard',
-    href: '/',
+    href: '/dashboard',
     icon: LayoutDashboard,
     gradient: 'from-blue-500 to-cyan-500',
     description: 'Overview & Analytics'
