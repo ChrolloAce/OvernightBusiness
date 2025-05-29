@@ -317,23 +317,23 @@ export default function ContentHubPage() {
       setBusinessReviews(reviewsData.reviews || [])
       
       // Calculate rating distribution
-      const distribution: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+      const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
       let repliedCount = 0
       let unrepliedCount = 0
       
-      (reviewsData.reviews || []).forEach((review: any) => {
+      const reviews = reviewsData.reviews || []
+      for (const review of reviews) {
         const rating = GoogleBusinessAPI.getStarRatingValue(review.starRating)
         if (rating >= 1 && rating <= 5) {
-          const currentCount = distribution[rating] || 0
-          distribution[rating] = currentCount + 1
+          distribution[rating as keyof typeof distribution] += 1
         }
         
         if (review.reviewReply) {
-          repliedCount++
+          repliedCount += 1
         } else {
-          unrepliedCount++
+          unrepliedCount += 1
         }
-      })
+      }
 
       setReviewsSummary({
         averageRating: reviewsData.averageRating || profile.rating || 0,
