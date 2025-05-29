@@ -236,9 +236,55 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-black dark:to-purple-900/20" />
         <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-20" />
         
-        {/* Floating Orbs */}
+        {/* Enhanced Floating Orbs */}
         <div className="absolute top-20 left-20 w-72 h-72 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float" />
         <div className="absolute top-40 right-20 w-72 h-72 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float animation-delay-2000" />
+        <div className="absolute bottom-40 left-1/3 w-64 h-64 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-float animation-delay-3000" />
+        <div className="absolute top-1/3 right-1/3 w-48 h-48 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-float animation-delay-1000" />
+        <div className="absolute bottom-20 right-40 w-56 h-56 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-float animation-delay-4000" />
+        
+        {/* Floating Icons */}
+        <div className="absolute top-32 left-1/4 animate-float animation-delay-1000 opacity-30">
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg animate-pulse">
+            <Sparkles className="w-6 h-6 text-white" />
+          </div>
+        </div>
+        <div className="absolute top-64 right-1/4 animate-float animation-delay-3000 opacity-25">
+          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+            <Star className="w-5 h-5 text-white" />
+          </div>
+        </div>
+        <div className="absolute bottom-64 left-1/3 animate-float animation-delay-2000 opacity-30">
+          <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg animate-pulse">
+            <TrendingUp className="w-7 h-7 text-white" />
+          </div>
+        </div>
+        <div className="absolute top-1/2 left-20 animate-float animation-delay-4000 opacity-20">
+          <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+            <Zap className="w-4 h-4 text-white" />
+          </div>
+        </div>
+        <div className="absolute bottom-32 right-1/4 animate-float animation-delay-1500 opacity-25">
+          <div className="w-11 h-11 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg animate-pulse">
+            <Award className="w-6 h-6 text-white" />
+          </div>
+        </div>
+        
+        {/* Glowing Particles */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={i}
+              className={`absolute w-2 h-2 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-float opacity-40`}
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 6}s`,
+                animationDuration: `${4 + Math.random() * 4}s`
+              }}
+            />
+          ))}
+        </div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -294,14 +340,14 @@ export default function LandingPage() {
               className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
             >
               <Link href="/dashboard">
-                <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 px-8 py-4 text-lg">
-                  Start Free Trial
-                  <ArrowRight className="ml-2 w-5 h-5" />
+                <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 px-8 py-4 text-lg hover-glow animate-glow hover:animate-wiggle group">
+                  <span className="group-hover:animate-pulse">Start Free Trial</span>
+                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="px-8 py-4 text-lg border-2 border-gray-300 dark:border-gray-600">
-                <Play className="mr-2 w-5 h-5" />
-                Watch Demo
+              <Button size="lg" variant="outline" className="px-8 py-4 text-lg border-2 border-gray-300 dark:border-gray-600 hover-glow floating-card group">
+                <Play className="mr-2 w-5 h-5 group-hover:animate-spin-slow transition-all duration-300" />
+                <span className="group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 group-hover:bg-clip-text transition-all duration-300">Watch Demo</span>
               </Button>
             </motion.div>
 
@@ -370,17 +416,17 @@ export default function LandingPage() {
                 transition={{ delay: index * 0.1 }}
                 className="group"
               >
-                <Card className="h-full bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-lg hover:shadow-xl transition-all duration-500 group-hover:scale-[1.02]">
+                <Card className="h-full bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-lg hover:shadow-xl transition-all duration-500 group-hover:scale-[1.02] floating-card tilt-on-hover hover-glow">
                   <CardHeader>
-                    <div className={`w-12 h-12 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center mb-4 shadow-lg group-hover:shadow-xl transition-all duration-300`}>
+                    <div className={`w-12 h-12 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center mb-4 shadow-lg group-hover:shadow-xl transition-all duration-300 animate-glow group-hover:animate-wiggle`}>
                       <feature.icon className="w-6 h-6 text-white" />
                     </div>
-                    <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">
+                    <CardTitle className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 group-hover:bg-clip-text transition-all duration-300">
                       {feature.title}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600 dark:text-gray-300">
+                    <p className="text-gray-600 dark:text-gray-300 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors duration-300">
                       {feature.description}
                     </p>
                   </CardContent>
@@ -423,25 +469,25 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Card className="h-full bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
+                <Card className="h-full bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 floating-card hover-glow group">
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-1 mb-4">
                       {[1,2,3,4,5].map((i) => (
-                        <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                        <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400 group-hover:animate-pulse" />
                       ))}
                     </div>
-                    <blockquote className="text-gray-700 dark:text-gray-300 mb-6">
+                    <blockquote className="text-gray-700 dark:text-gray-300 mb-6 group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-colors duration-300">
                       "{testimonial.content}"
                     </blockquote>
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold group-hover:animate-bounce-slow animate-glow">
                         {testimonial.image}
                       </div>
                       <div>
-                        <div className="font-semibold text-gray-900 dark:text-white">
+                        <div className="font-semibold text-gray-900 dark:text-white group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 group-hover:bg-clip-text transition-all duration-300">
                           {testimonial.name}
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                        <div className="text-sm text-gray-600 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300">
                           {testimonial.business}
                         </div>
                       </div>
@@ -489,44 +535,44 @@ export default function LandingPage() {
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                    <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white animate-glow animate-bounce-slow">
                       Most Popular
                     </Badge>
                   </div>
                 )}
-                <Card className={`h-full ${plan.popular ? 'border-blue-500 shadow-xl bg-white dark:bg-black' : 'bg-white/60 dark:bg-black/30'} backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-lg hover:shadow-xl transition-all duration-300`}>
+                <Card className={`h-full ${plan.popular ? 'border-blue-500 shadow-xl bg-white dark:bg-black animate-glow' : 'bg-white/60 dark:bg-black/30'} backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 floating-card hover-glow group ${plan.popular ? 'tilt-on-hover' : ''}`}>
                   <CardHeader className="text-center">
-                    <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <CardTitle className={`text-2xl font-bold text-gray-900 dark:text-white ${plan.popular ? 'group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 group-hover:bg-clip-text' : ''} transition-all duration-300`}>
                       {plan.name}
                     </CardTitle>
                     <div className="flex items-baseline justify-center space-x-2">
-                      <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                      <span className={`text-4xl font-bold text-gray-900 dark:text-white ${plan.popular ? 'group-hover:animate-pulse' : ''}`}>
                         {plan.price}
                       </span>
                       <span className="text-gray-600 dark:text-gray-400">
                         {plan.period}
                       </span>
                     </div>
-                    <CardDescription className="text-gray-600 dark:text-gray-300">
+                    <CardDescription className="text-gray-600 dark:text-gray-300 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors duration-300">
                       {plan.description}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-3 mb-8">
                       {plan.features.map((feature, featureIndex) => (
-                        <li key={featureIndex} className="flex items-center space-x-3">
-                          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                          <span className="text-gray-700 dark:text-gray-300">{feature}</span>
+                        <li key={featureIndex} className="flex items-center space-x-3 group-hover:translate-x-1 transition-transform duration-300" style={{ transitionDelay: `${featureIndex * 50}ms` }}>
+                          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 group-hover:animate-pulse" />
+                          <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-colors duration-300">{feature}</span>
                         </li>
                       ))}
                     </ul>
                     <Link href="/dashboard">
                       <Button 
-                        className={`w-full ${plan.popular ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                        className={`w-full ${plan.popular ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white animate-glow hover:animate-wiggle' : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700'} hover-glow group transition-all duration-300`}
                         size="lg"
                       >
-                        Get Started
-                        <ArrowRight className="ml-2 w-4 h-4" />
+                        <span className="group-hover:animate-pulse">Get Started</span>
+                        <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
                       </Button>
                     </Link>
                   </CardContent>
@@ -538,29 +584,50 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <section className="py-20 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 relative overflow-hidden">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 animate-gradient" style={{ backgroundSize: '400% 400%' }} />
+        
+        {/* Floating Elements in CTA */}
+        <div className="absolute top-10 left-10 animate-float animation-delay-1000 opacity-20">
+          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center animate-glow">
+            <Sparkles className="w-8 h-8 text-white" />
+          </div>
+        </div>
+        <div className="absolute top-20 right-20 animate-float animation-delay-3000 opacity-15">
+          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center animate-pulse">
+            <Star className="w-6 h-6 text-white" />
+          </div>
+        </div>
+        <div className="absolute bottom-10 left-1/4 animate-float animation-delay-2000 opacity-20">
+          <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center animate-bounce-slow">
+            <Award className="w-7 h-7 text-white" />
+          </div>
+        </div>
+        
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            className="floating-card"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 animate-glow">
               Ready to Transform Your Business?
             </h2>
-            <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+            <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto hover:text-white transition-colors duration-300">
               Join thousands of businesses already growing with OvernightBiz. 
               Start your free trial today and see results overnight.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/dashboard">
-                <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 px-8 py-4 text-lg">
-                  Start Free Trial
-                  <ArrowRight className="ml-2 w-5 h-5" />
+                <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 px-8 py-4 text-lg hover-glow group hover:animate-wiggle">
+                  <span className="group-hover:animate-pulse font-bold">Start Free Trial</span>
+                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-gray-900 px-8 py-4 text-lg">
-                Contact Sales
+              <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-gray-900 px-8 py-4 text-lg floating-card hover-glow group">
+                <span className="group-hover:font-bold transition-all duration-300">Contact Sales</span>
               </Button>
             </div>
           </motion.div>
