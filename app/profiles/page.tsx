@@ -544,39 +544,39 @@ export default function ProfilesPage() {
   return (
     <div className="min-h-screen">
       {/* Page Content */}
-      <main className="p-6 max-w-7xl mx-auto">
+      <main className="p-4 lg:p-6 max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
+          className="space-y-4 lg:space-y-6"
         >
           {/* Page Header */}
-          <div className="relative mb-8">
+          <div className="relative mb-6 lg:mb-8">
             {/* Background Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-3xl" />
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl lg:rounded-3xl blur-2xl lg:blur-3xl" />
             
-            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-white/20 dark:border-white/10 p-8">
-              <div className="flex items-center justify-between">
+            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-2xl lg:rounded-3xl border border-white/20 dark:border-white/10 p-4 lg:p-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
                 <div className="space-y-2">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                      <Building2 className="w-6 h-6 text-white" />
+                    <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                      <Building2 className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
                     </div>
                     <div>
-                      <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
+                      <h1 className="text-2xl lg:text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
                         Business Profiles
                       </h1>
-                      <p className="text-lg text-gray-600 dark:text-gray-300 font-medium">
+                      <p className="text-sm lg:text-lg text-gray-600 dark:text-gray-300 font-medium">
                         Manage your Google Business Profile locations with elite precision
                       </p>
                     </div>
                   </div>
                 </div>
-                <div className="flex space-x-3">
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
                   <Button 
                     variant="outline" 
                     onClick={handleRefreshProfiles}
-                    className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+                    className="w-full sm:w-auto bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
                   >
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Refresh
@@ -584,7 +584,7 @@ export default function ProfilesPage() {
                   <Button 
                     onClick={handleAddProfile} 
                     disabled={!isConnected}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
+                    className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <Plus className="mr-2 h-4 w-4 relative z-10" />
@@ -596,35 +596,35 @@ export default function ProfilesPage() {
           </div>
 
           {/* Connection Status */}
-          <div className="relative mb-8">
-            <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 rounded-3xl blur-2xl" />
+          <div className="relative mb-6 lg:mb-8">
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 rounded-2xl lg:rounded-3xl blur-xl lg:blur-2xl" />
             
-            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-white/20 dark:border-white/10 overflow-hidden">
+            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-2xl lg:rounded-3xl border border-white/20 dark:border-white/10 overflow-hidden">
               {/* Header with Gradient */}
-              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 p-6 border-b border-white/20 dark:border-white/10">
+              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 p-4 lg:p-6 border-b border-white/20 dark:border-white/10">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
-                    <Building2 className="w-5 h-5 text-white" />
+                  <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-green-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <Building2 className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Google Business Profile</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                    <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white">Google Business Profile</h3>
+                    <p className="text-xs lg:text-sm text-gray-600 dark:text-gray-300">
                       Connect your Google account to unlock premium features
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
                 {/* Connection Status Row */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
                   <div className="flex items-center space-x-4">
                     <div className="relative">
                       <div className={`w-4 h-4 rounded-full ${mounted && isConnected ? 'bg-green-500' : 'bg-red-500'} shadow-lg`}></div>
                       <div className={`absolute inset-0 w-4 h-4 rounded-full ${mounted && isConnected ? 'bg-green-500' : 'bg-red-500'} animate-ping opacity-30`}></div>
                     </div>
                     <div>
-                      <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <span className="text-base lg:text-lg font-semibold text-gray-900 dark:text-white">
                         {mounted ? (isConnected ? 'Connected' : 'Not Connected') : 'Checking...'}
                       </span>
                       {isTokenExpiringSoon() && (
@@ -637,11 +637,11 @@ export default function ProfilesPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex space-x-3">
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
                     {mounted && !isConnected && (
                       <Button 
                         onClick={handleConnectGoogle}
-                        className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                        className="w-full sm:w-auto bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
                       >
                         Connect Google Account
                       </Button>
@@ -653,7 +653,7 @@ export default function ProfilesPage() {
                           size="sm" 
                           onClick={handleRefreshToken}
                           disabled={refreshingToken}
-                          className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                          className="w-full sm:w-auto bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
                         >
                           {refreshingToken ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -665,7 +665,7 @@ export default function ProfilesPage() {
                         <Button 
                           variant="outline" 
                           onClick={handleDisconnect}
-                          className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-300"
+                          className="w-full sm:w-auto bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-300"
                         >
                           <LogOut className="mr-2 h-4 w-4" />
                           Disconnect
@@ -679,12 +679,12 @@ export default function ProfilesPage() {
                 {mounted && isConnected && userInfo && (
                   <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl p-4 border border-blue-200/50 dark:border-blue-800/50">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
-                        <User className="h-5 w-5 text-white" />
+                      <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                        <User className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900 dark:text-white">{userInfo.name}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">{userInfo.email}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm lg:text-base">{userInfo.name}</p>
+                        <p className="text-xs lg:text-sm text-gray-600 dark:text-gray-300">{userInfo.email}</p>
                       </div>
                     </div>
                   </div>
@@ -692,7 +692,7 @@ export default function ProfilesPage() {
 
                 {/* Session Info (when connected) */}
                 {mounted && isConnected && sessionInfo && (
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-white/50 dark:bg-black/20 rounded-xl p-3 border border-white/30 dark:border-white/20">
                       <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Connected</p>
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatDate(sessionInfo.created_at)}</p>
@@ -710,7 +710,7 @@ export default function ProfilesPage() {
 
                 {/* Status Description */}
                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50">
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                  <p className="text-xs lg:text-sm text-gray-600 dark:text-gray-300">
                     {mounted && isConnected 
                       ? '✨ Your Google account is connected and ready to manage business profiles with premium features.'
                       : '🔗 Connect your Google account to sync business profiles, manage posts, and unlock advanced analytics.'
@@ -738,7 +738,7 @@ export default function ProfilesPage() {
 
           {/* Profiles Grid */}
           {profiles.length > 0 && (
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 lg:gap-8 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
               {profiles.map((profile, index) => (
                 <motion.div
                   key={profile.id}
@@ -749,24 +749,24 @@ export default function ProfilesPage() {
                 >
                   <div className="relative h-full">
                     {/* Background Gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl lg:rounded-3xl blur-lg lg:blur-xl group-hover:blur-xl lg:group-hover:blur-2xl transition-all duration-500" />
                     
                     {/* Card */}
-                    <div className="relative h-full bg-white/60 dark:bg-black/30 backdrop-blur-xl rounded-3xl border border-white/30 dark:border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-[1.02] group-hover:border-white/50 dark:group-hover:border-white/30 overflow-hidden">
+                    <div className="relative h-full bg-white/60 dark:bg-black/30 backdrop-blur-xl rounded-2xl lg:rounded-3xl border border-white/30 dark:border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-[1.02] group-hover:border-white/50 dark:group-hover:border-white/30 overflow-hidden">
                       
                       {/* Header with Gradient Overlay */}
-                      <div className="relative p-6 bg-gradient-to-br from-white/20 to-transparent dark:from-black/20 border-b border-white/20 dark:border-white/10">
+                      <div className="relative p-4 lg:p-6 bg-gradient-to-br from-white/20 to-transparent dark:from-black/20 border-b border-white/20 dark:border-white/10">
                         <div className="flex items-start justify-between">
-                          <div className="flex items-start space-x-4">
+                          <div className="flex items-start space-x-3 lg:space-x-4">
                             {/* Premium Business Avatar */}
                             <div className="relative">
                               <BusinessLogo 
                                 businessName={profile.name} 
                                 website={profile.website}
-                                className="w-16 h-16"
+                                className="w-12 h-12 lg:w-16 lg:h-16"
                               />
                               {/* Status Indicator */}
-                              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-gray-900 ${
+                              <div className={`absolute -bottom-1 -right-1 w-4 h-4 lg:w-5 lg:h-5 rounded-full border-2 border-white dark:border-gray-900 ${
                                 profile.status === 'active' ? 'bg-green-500' : 
                                 profile.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
                               } shadow-lg`}>
@@ -777,50 +777,50 @@ export default function ProfilesPage() {
                               </div>
                             </div>
                             
-                            <div className="space-y-2 flex-1">
-                              <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
+                            <div className="space-y-2 flex-1 min-w-0">
+                              <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300 truncate">
                                 {profile.name}
                               </h3>
-                              <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 dark:from-blue-900/30 dark:to-purple-900/30 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50">
+                              <div className="inline-flex items-center px-2 lg:px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 dark:from-blue-900/30 dark:to-purple-900/30 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50">
                                 {profile.category}
                               </div>
                             </div>
                           </div>
                           
-                          <Badge className={`${getStatusColor(profile.status)} shadow-sm`}>
+                          <Badge className={`${getStatusColor(profile.status)} shadow-sm text-xs`}>
                             {profile.status}
                           </Badge>
                         </div>
                       </div>
 
                       {/* Content */}
-                      <div className="p-6 space-y-4">
+                      <div className="p-4 lg:p-6 space-y-3 lg:space-y-4">
                         {/* Contact Information */}
                         <div className="space-y-3">
                           <div className="flex items-start space-x-3">
-                            <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 transition-colors duration-300">
-                              <MapPin className="h-4 w-4 text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300" />
+                            <div className="w-7 h-7 lg:w-8 lg:h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 transition-colors duration-300 flex-shrink-0">
+                              <MapPin className="h-3 w-3 lg:h-4 lg:w-4 text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300" />
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{profile.address}</p>
+                            <p className="text-xs lg:text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{profile.address}</p>
                           </div>
                           
                           <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-green-100 dark:group-hover:bg-green-900/30 transition-colors duration-300">
-                              <Phone className="h-4 w-4 text-gray-600 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors duration-300" />
+                            <div className="w-7 h-7 lg:w-8 lg:h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-green-100 dark:group-hover:bg-green-900/30 transition-colors duration-300 flex-shrink-0">
+                              <Phone className="h-3 w-3 lg:h-4 lg:w-4 text-gray-600 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors duration-300" />
                             </div>
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{profile.phone}</p>
+                            <p className="text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-300">{profile.phone}</p>
                           </div>
                           
                           {profile.website && (
                             <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-purple-100 dark:group-hover:bg-purple-900/30 transition-colors duration-300">
-                                <Globe className="h-4 w-4 text-gray-600 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-300" />
+                              <div className="w-7 h-7 lg:w-8 lg:h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-purple-100 dark:group-hover:bg-purple-900/30 transition-colors duration-300 flex-shrink-0">
+                                <Globe className="h-3 w-3 lg:h-4 lg:w-4 text-gray-600 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-300" />
                               </div>
                               <a 
                                 href={profile.website} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline transition-colors duration-300 truncate"
+                                className="text-xs lg:text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline transition-colors duration-300 truncate"
                               >
                                 {profile.website.replace(/^https?:\/\//, '')}
                               </a>
@@ -829,46 +829,47 @@ export default function ProfilesPage() {
                         </div>
 
                         {/* Performance Metrics */}
-                        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl p-4 border border-yellow-200/50 dark:border-yellow-800/50">
+                        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-yellow-200/50 dark:border-yellow-800/50">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-                                <Star className="h-5 w-5 text-white fill-current" />
+                            <div className="flex items-center space-x-2 lg:space-x-3">
+                              <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg lg:rounded-xl flex items-center justify-center shadow-lg">
+                                <Star className="h-4 w-4 lg:h-5 lg:w-5 text-white fill-current" />
                               </div>
                               <div>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{profile.rating}</p>
+                                <p className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{profile.rating}</p>
                                 <p className="text-xs text-gray-600 dark:text-gray-400">Average Rating</p>
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-lg font-bold text-gray-900 dark:text-white">{profile.reviewCount}</p>
+                              <p className="text-base lg:text-lg font-bold text-gray-900 dark:text-white">{profile.reviewCount}</p>
                               <p className="text-xs text-gray-600 dark:text-gray-400">Reviews</p>
                             </div>
                           </div>
                         </div>
 
                         {/* Last Updated */}
-                        <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-3 py-2">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-2 lg:px-3 py-2">
                           Last updated: {profile.lastUpdated}
                         </div>
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="p-6 pt-0">
+                      <div className="p-4 lg:p-6 pt-0">
                         <div className="flex space-x-2">
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex-1 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 hover:scale-105"
+                            className="flex-1 text-xs lg:text-sm bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300 hover:scale-105"
                             onClick={() => handleViewProfileDetails(profile.id)}
                           >
-                            <Eye className="mr-2 h-3 w-3" />
-                            View Details
+                            <Eye className="mr-1 lg:mr-2 h-3 w-3" />
+                            <span className="hidden sm:inline">View Details</span>
+                            <span className="sm:hidden">View</span>
                           </Button>
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="w-12 h-10 p-0 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all duration-300 hover:scale-105"
+                            className="w-10 h-8 lg:w-12 lg:h-10 p-0 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all duration-300 hover:scale-105"
                             onClick={(e) => {
                               e.stopPropagation()
                               if (profile.googleBusinessId && profile.googleBusinessId.includes('accounts/')) {
@@ -880,19 +881,19 @@ export default function ProfilesPage() {
                             }}
                             title="View on Google Business"
                           >
-                            <ExternalLink className="h-4 w-4" />
+                            <ExternalLink className="h-3 w-3 lg:h-4 lg:w-4" />
                           </Button>
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="w-12 h-10 p-0 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-300 hover:scale-105"
+                            className="w-10 h-8 lg:w-12 lg:h-10 p-0 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-300 hover:scale-105"
                             onClick={(e) => {
                               e.stopPropagation()
                               handleDeleteProfile(profile.id)
                             }}
                             title="Delete Profile"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3 lg:h-4 lg:w-4" />
                           </Button>
                         </div>
                       </div>
@@ -905,14 +906,14 @@ export default function ProfilesPage() {
 
           {/* Empty State */}
           {profiles.length === 0 && isConnected && (
-            <Card className="text-center py-12">
+            <Card className="text-center py-8 lg:py-12">
               <CardContent>
-                <Building2 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Business Profiles</h3>
-                <p className="text-muted-foreground mb-4">
+                <Building2 className="mx-auto h-10 w-10 lg:h-12 lg:w-12 text-muted-foreground mb-4" />
+                <h3 className="text-base lg:text-lg font-semibold mb-2">No Business Profiles</h3>
+                <p className="text-xs lg:text-sm text-muted-foreground mb-4">
                   Connect your Google Business Profile to start managing your locations.
                 </p>
-                <Button onClick={handleAddProfile}>
+                <Button onClick={handleAddProfile} className="w-full sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Your First Profile
                 </Button>

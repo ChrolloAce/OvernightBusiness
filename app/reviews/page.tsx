@@ -383,27 +383,27 @@ export default function ReviewsPage() {
   return (
     <div className="min-h-screen">
       {/* Page Content */}
-      <main className="p-6 max-w-7xl mx-auto">
+      <main className="p-4 lg:p-6 max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
+          className="space-y-4 lg:space-y-6"
         >
           {/* Page Header */}
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 rounded-2xl blur-2xl" />
-            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-2xl border border-white/20 dark:border-white/10 p-6">
-              <div className="flex items-center justify-between">
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 rounded-xl lg:rounded-2xl blur-xl lg:blur-2xl" />
+            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-xl lg:rounded-2xl border border-white/20 dark:border-white/10 p-4 lg:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
                 <div className="space-y-1">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                      <MessageSquare className="w-5 h-5 text-white" />
+                    <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <MessageSquare className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
                     </div>
                     <div>
-                      <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-green-800 to-blue-800 dark:from-white dark:via-green-200 dark:to-blue-200 bg-clip-text text-transparent">
+                      <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 via-green-800 to-blue-800 dark:from-white dark:via-green-200 dark:to-blue-200 bg-clip-text text-transparent">
                         Reviews Management
                       </h1>
-                      <p className="text-base text-gray-600 dark:text-gray-300 font-medium">
+                      <p className="text-sm lg:text-base text-gray-600 dark:text-gray-300 font-medium">
                         Monitor and manage your Google Business Profile reviews
                       </p>
                     </div>
@@ -412,7 +412,7 @@ export default function ReviewsPage() {
                 <Button 
                   onClick={refreshReviews} 
                   disabled={loading || !selectedProfile}
-                  className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
+                  className="w-full sm:w-auto bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <RefreshCw className={`w-4 h-4 mr-2 relative z-10 ${loading ? 'animate-spin' : ''}`} />
@@ -423,27 +423,27 @@ export default function ReviewsPage() {
           </div>
 
           {/* Business Profile Selector */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
+          <Card className="bg-white/80 dark:bg-black/40 backdrop-blur-xl border-white/30 dark:border-white/20 shadow-lg">
+            <CardHeader className="pb-3 lg:pb-6">
+              <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
+                <MessageSquare className="w-4 h-4 lg:w-5 lg:h-5" />
                 Select Business Profile
               </CardTitle>
             </CardHeader>
             <CardContent>
               <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
-                <SelectTrigger className="h-16 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
+                <SelectTrigger className="h-12 lg:h-16 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
                   <SelectValue placeholder="Choose a business profile to view reviews">
                     {selectedProfile && (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 lg:gap-3">
                         <BusinessLogo 
                           businessName={selectedProfile.name} 
                           website={selectedProfile.website}
-                          className="w-10 h-10"
+                          className="w-8 h-8 lg:w-10 lg:h-10"
                         />
-                        <div className="text-left">
-                          <div className="font-medium text-gray-900 dark:text-white">{selectedProfile.name}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{selectedProfile.address}</div>
+                        <div className="text-left min-w-0 flex-1">
+                          <div className="font-medium text-gray-900 dark:text-white text-sm lg:text-base truncate">{selectedProfile.name}</div>
+                          <div className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">{selectedProfile.address}</div>
                         </div>
                       </div>
                     )}
@@ -451,16 +451,16 @@ export default function ReviewsPage() {
                 </SelectTrigger>
                 <SelectContent className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-white/20">
                   {profiles.map(profile => (
-                    <SelectItem key={profile.id} value={profile.id} className="h-16 p-3">
-                      <div className="flex items-center gap-3 w-full">
+                    <SelectItem key={profile.id} value={profile.id} className="h-12 lg:h-16 p-2 lg:p-3">
+                      <div className="flex items-center gap-2 lg:gap-3 w-full">
                         <BusinessLogo 
                           businessName={profile.name} 
                           website={profile.website}
-                          className="w-10 h-10"
+                          className="w-8 h-8 lg:w-10 lg:h-10"
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 dark:text-white">{profile.name}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{profile.address}</div>
+                          <div className="font-medium text-gray-900 dark:text-white text-sm lg:text-base truncate">{profile.name}</div>
+                          <div className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">{profile.address}</div>
                           <div className="flex items-center gap-2 mt-1">
                             <div className="flex items-center">
                               <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
