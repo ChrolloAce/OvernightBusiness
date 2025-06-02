@@ -48,6 +48,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { GoogleBusinessAPI, MediaItem, BusinessMedia } from '@/lib/google-business-api'
+import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
 
 // Business Logo Component
 interface BusinessLogoProps {
@@ -237,8 +238,6 @@ export default function ContentHubPage() {
   const [reviewsSummary, setReviewsSummary] = useState<any>(null)
   const [loadingReviews, setLoadingReviews] = useState(false)
 
-  const googleAPI = new GoogleBusinessAPI()
-
   useEffect(() => {
     loadProfiles()
   }, [])
@@ -257,7 +256,7 @@ export default function ContentHubPage() {
   }, [businessMedia])
 
   const loadProfiles = () => {
-    const savedProfiles = BusinessProfilesStorage.getAllProfiles()
+    const savedProfiles = CentralizedDataLoader.loadProfiles()
     setProfiles(savedProfiles)
     if (savedProfiles.length > 0 && !selectedProfile) {
       const firstProfile = savedProfiles[0]
@@ -266,31 +265,31 @@ export default function ContentHubPage() {
   }
 
   const loadBusinessMedia = async (profile: SavedBusinessProfile) => {
-    if (!profile.googleBusinessId) return
-
     setLoadingMedia(true)
     try {
       console.log('Loading business media for profile:', profile.name)
-      const media = await googleAPI.getBusinessMedia(profile.googleBusinessId)
-      setBusinessMedia(media)
       
-      // Update profile with media data
-      const updatedProfile = {
-        ...profile,
-        googleData: {
-          ...profile.googleData,
-          media: media,
-          coverPhotoUrl: media.coverPhoto ? GoogleBusinessAPI.getBestImageUrl(media.coverPhoto) || undefined : undefined,
-          profilePhotoUrl: media.profilePhoto ? GoogleBusinessAPI.getBestImageUrl(media.profilePhoto) || undefined : undefined,
-          displayPhotos: await googleAPI.getDisplayPhotos(profile.googleBusinessId, 6),
-          lastMediaUpdate: new Date().toISOString()
-        }
+      const result = await CentralizedDataLoader.loadBusinessMedia(profile)
+      
+      if (result.success && result.media) {
+        setBusinessMedia(result.media)
+      } else {
+        console.error('Failed to load business media:', result.error)
+        // Set empty media on error
+        setBusinessMedia({
+          exteriorPhotos: [],
+          interiorPhotos: [],
+          productPhotos: [],
+          foodAndDrinkPhotos: [],
+          menuPhotos: [],
+          teamPhotos: [],
+          additionalPhotos: [],
+          allPhotos: []
+        })
       }
-      BusinessProfilesStorage.updateProfile(profile.id, updatedProfile)
       
     } catch (error) {
       console.error('Failed to load business media:', error)
-      // Set empty media on error
       setBusinessMedia({
         exteriorPhotos: [],
         interiorPhotos: [],
@@ -307,68 +306,25 @@ export default function ContentHubPage() {
   }
 
   const loadBusinessReviews = async (profile: SavedBusinessProfile) => {
-    if (!profile.googleBusinessId) return
-
     setLoadingReviews(true)
     try {
       console.log('Loading reviews for profile:', profile.name)
-      const reviewsData = await googleAPI.getAllReviews(profile.googleBusinessId)
       
-      setBusinessReviews(reviewsData.reviews || [])
+      const result = await CentralizedDataLoader.loadReviews(profile)
       
-      // Calculate rating distribution
-      const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-      let repliedCount = 0
-      let unrepliedCount = 0
-      
-      const reviews = reviewsData.reviews || []
-      for (const review of reviews) {
-        const rating = GoogleBusinessAPI.getStarRatingValue(review.starRating)
-        if (rating >= 1 && rating <= 5) {
-          distribution[rating as keyof typeof distribution] += 1
-        }
-        
-        if (review.reviewReply) {
-          repliedCount += 1
-        } else {
-          unrepliedCount += 1
-        }
+      if (result.success && result.reviews && result.summary) {
+        setBusinessReviews(result.reviews)
+        setReviewsSummary(result.summary)
+      } else {
+        console.error('Failed to load reviews:', result.error)
+        setBusinessReviews([])
+        setReviewsSummary(null)
       }
-
-      setReviewsSummary({
-        averageRating: reviewsData.averageRating || profile.rating || 0,
-        totalReviews: reviewsData.totalReviewCount || profile.reviewCount || 0,
-        ratingDistribution: distribution,
-        repliedCount,
-        unrepliedCount
-      })
-
-      // Update profile with reviews data
-      const updatedProfile = {
-        ...profile,
-        googleData: {
-          ...profile.googleData,
-          reviews: reviewsData.reviews,
-          reviewsSummary: {
-            averageRating: reviewsData.averageRating,
-            totalReviews: reviewsData.totalReviewCount,
-            lastUpdated: new Date().toISOString()
-          }
-        }
-      }
-      BusinessProfilesStorage.updateProfile(profile.id, updatedProfile)
       
     } catch (error) {
-      console.error('Failed to load reviews:', error)
-      // Set fallback data
+      console.error('Failed to load business reviews:', error)
       setBusinessReviews([])
-      setReviewsSummary({
-        averageRating: profile.rating || 0,
-        totalReviews: profile.reviewCount || 0,
-        ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-        repliedCount: 0,
-        unrepliedCount: 0
-      })
+      setReviewsSummary(null)
     } finally {
       setLoadingReviews(false)
     }

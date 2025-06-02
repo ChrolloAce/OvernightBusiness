@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { GoogleBusinessAPI, BusinessReview } from '@/lib/google-business-api'
 import { Star, MessageSquare, RefreshCw, Search, Building2, Loader2, Reply, CheckCircle, Clock } from 'lucide-react'
+import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
 
 // Business Logo Component with fallback
 interface BusinessLogoProps {
@@ -216,8 +217,6 @@ export default function ReviewsPage() {
     unrepliedCount: number
   } | null>(null)
 
-  const googleAPI = new GoogleBusinessAPI()
-
   useEffect(() => {
     loadProfiles()
   }, [])
@@ -230,7 +229,7 @@ export default function ReviewsPage() {
   }, [selectedProfile])
 
   const loadProfiles = () => {
-    const savedProfiles = BusinessProfilesStorage.getAllProfiles()
+    const savedProfiles = CentralizedDataLoader.loadProfiles()
     setProfiles(savedProfiles)
     if (savedProfiles.length > 0 && !selectedProfile) {
       const firstProfile = savedProfiles[0]
@@ -239,53 +238,18 @@ export default function ReviewsPage() {
   }
 
   const loadReviews = async (profile: SavedBusinessProfile) => {
-    if (!profile.googleBusinessId) return
-
     setLoading(true)
     try {
       console.log('Loading reviews for profile:', profile.name)
-      const reviewsData = await googleAPI.getAllReviews(profile.googleBusinessId)
       
-      setReviews(reviewsData.reviews)
+      const result = await CentralizedDataLoader.loadReviews(profile)
       
-      // Calculate rating distribution
-      const distribution: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-      let repliedCount = 0
-      let unrepliedCount = 0
-      
-      reviewsData.reviews.forEach(review => {
-        const rating = GoogleBusinessAPI.getStarRatingValue(review.starRating)
-        if (rating > 0) distribution[rating]++
-        
-        if (review.reviewReply) {
-          repliedCount++
-        } else {
-          unrepliedCount++
-        }
-      })
-
-      setReviewsSummary({
-        averageRating: reviewsData.averageRating,
-        totalReviews: reviewsData.totalReviewCount,
-        ratingDistribution: distribution,
-        repliedCount,
-        unrepliedCount
-      })
-
-      // Update profile with reviews data
-      const updatedProfile = {
-        ...profile,
-        googleData: {
-          ...profile.googleData,
-          reviews: reviewsData.reviews,
-          reviewsSummary: {
-            averageRating: reviewsData.averageRating,
-            totalReviews: reviewsData.totalReviewCount,
-            lastUpdated: new Date().toISOString()
-          }
-        }
+      if (result.success && result.reviews && result.summary) {
+        setReviews(result.reviews)
+        setReviewsSummary(result.summary)
+      } else {
+        console.error('Failed to load reviews:', result.error)
       }
-      BusinessProfilesStorage.updateProfile(profile.id, updatedProfile)
       
     } catch (error) {
       console.error('Failed to load reviews:', error)

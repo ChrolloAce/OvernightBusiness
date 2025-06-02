@@ -28,6 +28,7 @@ import { Badge } from '@/components/ui/badge'
 import { GoogleAuthService } from '@/lib/google-auth'
 import { GoogleBusinessAPI, BusinessLocation } from '@/lib/google-business-api'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
+import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
 
 interface BusinessProfile {
   id: string
@@ -155,8 +156,6 @@ export default function ProfilesPage() {
   const [selectedProfile, setSelectedProfile] = useState<SavedBusinessProfile | null>(null)
   const [showDetailView, setShowDetailView] = useState(false)
 
-  const googleAPI = new GoogleBusinessAPI()
-
   // Check connection status after component mounts
   useEffect(() => {
     setMounted(true)
@@ -164,44 +163,19 @@ export default function ProfilesPage() {
   }, [])
 
   const checkAuthStatus = () => {
-    const authService = GoogleAuthService.getInstance()
-    const connected = authService.isAuthenticated()
-    setIsConnected(connected)
+    const authStatus = CentralizedDataLoader.checkAuthStatus()
+    setIsConnected(authStatus.isConnected)
+    setUserInfo(authStatus.userInfo || null)
+    setSessionInfo(authStatus.sessionInfo || null)
     
-    if (connected) {
-      // Get user info and session details
-      const user = authService.getUserInfo()
-      const session = authService.getSessionInfo()
-      setUserInfo(user)
-      setSessionInfo(session)
-      
-      // Load saved profiles from storage
-      const savedProfiles = BusinessProfilesStorage.getAllProfiles()
-      const convertedProfiles: BusinessProfile[] = savedProfiles.map(saved => {
-        // Use cached reviews data if available, otherwise fall back to stored values
-        const actualReviewCount = saved.googleData?.reviewsSummary?.totalReviews ?? saved.reviewCount
-        const actualRating = saved.googleData?.reviewsSummary?.averageRating ?? saved.rating
-        
-        return {
-          id: saved.id,
-          name: saved.name,
-          address: saved.address,
-          phone: saved.phone,
-          website: saved.website,
-          category: saved.category,
-          rating: actualRating,
-          reviewCount: actualReviewCount,
-          status: saved.status,
-          lastUpdated: saved.lastUpdated,
-          googleBusinessId: saved.googleBusinessId
-        }
-      })
+    if (authStatus.isConnected) {
+      // Load saved profiles from storage using centralized loader
+      const savedProfiles = CentralizedDataLoader.loadProfiles()
+      const convertedProfiles = CentralizedDataLoader.convertProfilesToDisplayFormat(savedProfiles)
       setProfiles(convertedProfiles)
       console.log('[Profiles] Loaded', savedProfiles.length, 'saved profiles from storage')
     } else {
       // Show template data when not connected
-      setUserInfo(null)
-      setSessionInfo(null)
       setProfiles([
         {
           id: '1',
@@ -289,66 +263,8 @@ export default function ProfilesPage() {
     
     try {
       console.log('Loading business profiles...')
-      
-      // Test API access first
-      const apiTest = await googleAPI.testApiAccess()
-      console.log('API Test Results:', apiTest)
-      
-      if (!apiTest.accounts) {
-        throw new Error('Cannot access Google Business accounts. Please check your OAuth permissions.')
-      }
-      
-      if (!apiTest.locations) {
-        throw new Error('Cannot access business locations. Please check your API permissions.')
-      }
-      
-      // Get accounts
-      const accounts = await googleAPI.getAccounts()
-      console.log('Found accounts:', accounts.length)
-      
-      if (accounts.length === 0) {
-        setError('No Google Business accounts found. Please make sure you have Google Business Profile accounts set up.')
-        return
-      }
-      
-      // Get locations for each account
-      let allLocations: BusinessLocation[] = []
-      for (const account of accounts) {
-        try {
-          console.log('Fetching locations for account:', account.name)
-          const locations = await googleAPI.getLocationsWithCompleteDetails(account.name)
-          console.log(`Found ${locations.length} locations for account ${account.name}`)
-          allLocations = [...allLocations, ...locations]
-        } catch (error) {
-          console.error(`Failed to load locations for account ${account.name}:`, error)
-        }
-      }
-      
-      console.log('Total locations found:', allLocations.length)
-      
-      if (allLocations.length === 0) {
-        setError('No business locations found. Please make sure you have business locations set up in Google Business Profile.')
-        return
-      }
-      
-      // Enhanced verification status checking for each location
-      const locationsWithVerification = await Promise.all(
-        allLocations.map(async (location) => {
-          try {
-            const verificationStatus = await googleAPI.getVerificationStatus(location.name)
-            return {
-              ...location,
-              verificationStatus
-            }
-          } catch (error) {
-            console.warn('Could not get verification status for location:', location.name, error)
-            return location
-          }
-        })
-      )
-      
-      setGoogleLocations(locationsWithVerification)
-      
+      const locations = await CentralizedDataLoader.loadGoogleBusinessLocations()
+      setGoogleLocations(locations)
     } catch (error) {
       console.error('Failed to load business profiles:', error)
       setError(error instanceof Error ? error.message : 'Failed to load business profiles')
@@ -372,117 +288,32 @@ export default function ProfilesPage() {
       setLoadingLocations(true)
       setError(null)
       
-      // Check if this profile already exists
-      if (BusinessProfilesStorage.profileExistsByGoogleId(location.name)) {
-        setError('This business profile has already been added.')
-        setLoadingLocations(false)
-        return
+      const result = await CentralizedDataLoader.addGoogleBusinessProfile(location)
+      
+      if (result.success && result.profile) {
+        // Convert to display format
+        const newProfile = {
+          id: result.profile.id,
+          name: result.profile.name,
+          address: result.profile.address,
+          phone: result.profile.phone,
+          website: result.profile.website,
+          category: result.profile.category,
+          rating: result.profile.rating,
+          reviewCount: result.profile.reviewCount,
+          status: result.profile.status,
+          lastUpdated: result.profile.lastUpdated,
+          googleBusinessId: result.profile.googleBusinessId
+        }
+        
+        // Update the UI
+        setProfiles(prev => [...prev, newProfile])
+        setShowAddForm(false)
+        setGoogleLocations([])
+        setError(null)
+      } else {
+        setError(result.error || 'Failed to add business profile')
       }
-
-      console.log('[Profiles] Fetching complete details for location:', location.name)
-      
-      // Fetch complete location details from Google API
-      const businessAPI = new GoogleBusinessAPI()
-      let completeLocation = location
-      
-      try {
-        completeLocation = await businessAPI.getLocationDetails(location.name)
-        // Enrich the location data with computed fields
-        completeLocation = GoogleBusinessAPI.enrichLocationData(completeLocation)
-        console.log('[Profiles] Complete location details:', completeLocation)
-      } catch (detailsError) {
-        console.warn('[Profiles] Failed to fetch complete details, using basic info:', detailsError)
-        // Continue with basic location data if detailed fetch fails
-      }
-
-      // Handle both old and new location data structures
-      const locationName = completeLocation.title || completeLocation.displayName || completeLocation.locationName || 'Unknown Business'
-      const formattedAddress = GoogleBusinessAPI.getFormattedAddress(completeLocation)
-      const allCategories = GoogleBusinessAPI.getAllCategories(completeLocation)
-      const businessHours = GoogleBusinessAPI.formatBusinessHours(completeLocation)
-      const capabilities = GoogleBusinessAPI.getBusinessCapabilities(completeLocation)
-      
-      const profileId = Date.now().toString()
-      
-      // Create the business profile with complete information
-      const newProfile: BusinessProfile = {
-        id: profileId,
-        name: locationName,
-        address: formattedAddress,
-        phone: GoogleBusinessAPI.getPrimaryPhone(completeLocation),
-        website: completeLocation.websiteUri || '',
-        category: allCategories[0] || 'Business',
-        rating: completeLocation.rating || 0,
-        reviewCount: completeLocation.reviewCount || 0,
-        status: (completeLocation.locationState?.isVerified || completeLocation.isVerified) ? 'active' : 'pending',
-        lastUpdated: new Date().toISOString().split('T')[0],
-        googleBusinessId: completeLocation.name || location.name || `temp_${profileId}`
-      }
-
-      // Create the saved profile with complete Google data
-      const savedProfile: SavedBusinessProfile = {
-        ...newProfile,
-        googleBusinessId: completeLocation.name || location.name || `temp_${profileId}`,
-        googleData: {
-          title: completeLocation.title,
-          storefrontAddress: completeLocation.storefrontAddress,
-          primaryCategory: completeLocation.primaryCategory,
-          additionalCategories: completeLocation.additionalCategories,
-          regularHours: completeLocation.regularHours,
-          moreHours: completeLocation.moreHours,
-          metadata: completeLocation.metadata,
-          latlng: completeLocation.latlng,
-          locationState: completeLocation.locationState,
-          attributes: completeLocation.attributes,
-          profile: completeLocation.profile,
-          relationshipData: completeLocation.relationshipData,
-          serviceItems: completeLocation.serviceItems,
-          openInfo: completeLocation.openInfo,
-          serviceArea: completeLocation.serviceArea,
-          labels: completeLocation.labels,
-          adWordsLocationExtensions: completeLocation.adWordsLocationExtensions,
-          // Computed fields
-          businessHours: businessHours,
-          allCategories: allCategories,
-          capabilities: capabilities,
-          isOpen: completeLocation.isOpen,
-          businessType: completeLocation.businessType,
-          // New fields
-          phoneNumbers: completeLocation.phoneNumbers,
-          categories: completeLocation.categories,
-          additionalPhones: GoogleBusinessAPI.getAdditionalPhones(completeLocation),
-          serviceTypes: GoogleBusinessAPI.getServiceTypes(completeLocation),
-          moreHoursTypes: GoogleBusinessAPI.getMoreHoursTypes(completeLocation),
-          // Additional comprehensive data
-          language: GoogleBusinessAPI.getLanguage(completeLocation),
-          storeCode: GoogleBusinessAPI.getStoreCode(completeLocation),
-          businessDescription: GoogleBusinessAPI.getBusinessDescription(completeLocation),
-          openingDate: GoogleBusinessAPI.getOpeningDate(completeLocation),
-          serviceAreaInfo: GoogleBusinessAPI.getServiceArea(completeLocation),
-          specialHours: GoogleBusinessAPI.getSpecialHours(completeLocation),
-          moreHoursData: GoogleBusinessAPI.getMoreHours(completeLocation),
-          serviceItemsData: GoogleBusinessAPI.getServiceItems(completeLocation),
-          relationshipInfo: GoogleBusinessAPI.getRelationshipData(completeLocation),
-          businessStatusInfo: GoogleBusinessAPI.getBusinessStatus(completeLocation)
-        },
-        isVerified: completeLocation.locationState?.isVerified || completeLocation.isVerified || false,
-        totalReviews: completeLocation.reviewCount || 0,
-        lastSynced: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-      }
-
-      // Save to local storage
-      BusinessProfilesStorage.saveProfile(savedProfile)
-      
-      // Update the UI
-      setProfiles(prev => [...prev, newProfile])
-      setShowAddForm(false)
-      setGoogleLocations([])
-      
-      console.log('[Profiles] Successfully added and saved profile:', locationName)
-      
-      // Show success message
-      setError(null)
       
     } catch (error) {
       console.error('[Profiles] Error adding profile:', error)

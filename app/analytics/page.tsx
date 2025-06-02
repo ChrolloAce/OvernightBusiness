@@ -43,6 +43,7 @@ import {
   AreaChart,
   Area
 } from 'recharts'
+import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
 
 // Business Logo Component (reused from profiles page)
 interface BusinessLogoProps {
@@ -214,8 +215,6 @@ export default function AnalyticsPage() {
   })
   const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('area')
 
-  const googleAPI = new GoogleBusinessAPI()
-
   useEffect(() => {
     loadProfiles()
     // Set default date range
@@ -234,7 +233,7 @@ export default function AnalyticsPage() {
   }, [selectedProfile, dateRange, enabledMetrics])
 
   const loadProfiles = () => {
-    const savedProfiles = BusinessProfilesStorage.getAllProfiles()
+    const savedProfiles = CentralizedDataLoader.loadProfiles()
     setProfiles(savedProfiles)
     if (savedProfiles.length > 0 && !selectedProfile) {
       const firstProfile = savedProfiles[0]
@@ -243,63 +242,22 @@ export default function AnalyticsPage() {
   }
 
   const loadPerformanceData = async (profile: SavedBusinessProfile, customStartDate?: string, customEndDate?: string) => {
-    if (!profile.googleBusinessId) return
-
     setLoading(true)
     try {
       console.log('Loading performance data for profile:', profile.name)
       
-      // Extract location ID from the full name
-      const locationId = profile.googleBusinessId.split('/').pop()
-      if (!locationId) {
-        throw new Error('Invalid location ID')
-      }
-
-      // Calculate date range
-      let start = new Date()
-      let end = new Date()
+      const result = await CentralizedDataLoader.loadAnalytics(profile, {
+        dateRange: customStartDate && customEndDate ? undefined : dateRange,
+        customStartDate,
+        customEndDate,
+        enabledMetrics
+      })
       
-      if (customStartDate && customEndDate) {
-        start = new Date(customStartDate)
-        end = new Date(customEndDate)
-      } else if (dateRange === 'custom' && startDate && endDate) {
-        start = new Date(startDate)
-        end = new Date(endDate)
+      if (result.success && result.data) {
+        setPerformanceData(result.data)
       } else {
-        const days = parseInt(dateRange)
-        start.setDate(end.getDate() - days)
+        console.error('Failed to load analytics:', result.error)
       }
-
-      // Get enabled metrics only
-      const enabledMetricKeys = Object.keys(enabledMetrics).filter(key => enabledMetrics[key])
-      
-      const data = await googleAPI.fetchMultiDailyMetricsTimeSeries(
-        locationId,
-        enabledMetricKeys,
-        {
-          year: start.getFullYear(),
-          month: start.getMonth() + 1,
-          day: start.getDate()
-        },
-        {
-          year: end.getFullYear(),
-          month: end.getMonth() + 1,
-          day: end.getDate()
-        }
-      )
-      
-      setPerformanceData(data)
-      
-      // Update profile with performance data
-      const updatedProfile = {
-        ...profile,
-        googleData: {
-          ...profile.googleData,
-          performanceData: data,
-          lastPerformanceUpdate: new Date().toISOString()
-        }
-      }
-      BusinessProfilesStorage.updateProfile(profile.id, updatedProfile)
       
     } catch (error) {
       console.error('Failed to load performance data:', error)
