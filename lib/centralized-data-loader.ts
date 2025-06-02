@@ -455,12 +455,23 @@ export class CentralizedDataLoader {
         return { success: false, error: 'Missing authentication data' }
       }
 
+      console.log('[CentralizedDataLoader] Calling GoogleBusinessAPI.getBusinessMedia with ID:', profile.googleBusinessId)
       const media = await this.googleAPI.getBusinessMedia(profile.googleBusinessId)
 
-      console.log('[CentralizedDataLoader] Business media loaded successfully')
+      console.log('[CentralizedDataLoader] Business media loaded successfully:', {
+        totalPhotos: media.allPhotos.length,
+        exteriorPhotos: media.exteriorPhotos.length,
+        interiorPhotos: media.interiorPhotos.length,
+        hasCoverPhoto: !!media.coverPhoto
+      })
       return { success: true, media }
     } catch (error) {
       console.error('[CentralizedDataLoader] Failed to load business media:', error)
+      console.error('[CentralizedDataLoader] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        profileId: profile.googleBusinessId,
+        profileName: profile.name
+      })
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
   }
