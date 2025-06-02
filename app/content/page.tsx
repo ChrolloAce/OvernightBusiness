@@ -390,6 +390,8 @@ export default function ContentHubPage() {
   const [loadingReviews, setLoadingReviews] = useState(false)
   const [loadingQA, setLoadingQA] = useState(false)
   const [qaError, setQAError] = useState<string | null>(null)
+  const [qaDebugInfo, setQaDebugInfo] = useState<any>(null)
+  const [showQADebug, setShowQADebug] = useState(false)
 
   useEffect(() => {
     loadProfiles()
@@ -482,6 +484,28 @@ export default function ContentHubPage() {
   const refreshData = () => {
     if (selectedProfile) {
       loadAllProfileData(selectedProfile)
+    }
+  }
+
+  const testQAApi = async () => {
+    if (!selectedProfile) return
+    
+    setLoadingQA(true)
+    setQaDebugInfo(null)
+    
+    try {
+      const result = await CentralizedDataLoader.testQAApiAccess(selectedProfile)
+      setQaDebugInfo(result)
+      console.log('[ContentHub] Q&A API test result:', result)
+    } catch (error) {
+      console.error('[ContentHub] Q&A API test error:', error)
+      setQaDebugInfo({
+        success: false,
+        details: { step: 'test_exception' },
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+    } finally {
+      setLoadingQA(false)
     }
   }
 
@@ -934,11 +958,23 @@ export default function ContentHubPage() {
                         <HelpCircle className="w-5 h-5" />
                         Questions & Answers
                       </div>
-                      {questions.length > 0 && (
-                        <Badge variant="secondary">
-                          {questions.length} questions
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {questions.length > 0 && (
+                          <Badge variant="secondary">
+                            {questions.length} questions
+                          </Badge>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={testQAApi}
+                          disabled={loadingQA}
+                          className="text-xs"
+                        >
+                          {loadingQA ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Settings className="w-3 h-3 mr-1" />}
+                          Debug API
+                        </Button>
+                      </div>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -971,6 +1007,46 @@ export default function ContentHubPage() {
                       </div>
                     ) : questions.length > 0 ? (
                       <div className="space-y-6">
+                        {/* Debug Info */}
+                        {qaDebugInfo && (
+                          <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium text-gray-900 dark:text-white">Q&A API Debug Information</h4>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setQaDebugInfo(null)}
+                                className="w-6 h-6 p-0"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-3 h-3 rounded-full ${qaDebugInfo.success ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <span className="font-medium">
+                                  API Test {qaDebugInfo.success ? 'Passed' : 'Failed'}
+                                </span>
+                              </div>
+                              
+                              {qaDebugInfo.details && (
+                                <div className="mt-3">
+                                  <pre className="text-xs bg-white dark:bg-gray-900 p-3 rounded border overflow-x-auto">
+                                    {JSON.stringify(qaDebugInfo.details, null, 2)}
+                                  </pre>
+                                </div>
+                              )}
+                              
+                              {qaDebugInfo.error && (
+                                <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+                                  <p className="text-red-700 dark:text-red-400 font-medium">Error:</p>
+                                  <p className="text-red-600 dark:text-red-300">{qaDebugInfo.error}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
                         {questions.map((question, index) => (
                           <motion.div
                             key={index}
@@ -1080,7 +1156,58 @@ export default function ContentHubPage() {
                       <div className="text-center py-12">
                         <HelpCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                         <p className="text-gray-500 dark:text-gray-400 font-medium">No questions & answers available</p>
-                        <p className="text-sm text-gray-400 dark:text-gray-500">Customers can ask questions about your business on Google</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">Customers can ask questions about your business on Google</p>
+                        
+                        {/* Debug Info */}
+                        {qaDebugInfo && (
+                          <div className="max-w-2xl mx-auto mt-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium text-gray-900 dark:text-white text-sm">Q&A API Debug Information</h4>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setQaDebugInfo(null)}
+                                className="w-6 h-6 p-0"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-2 justify-center">
+                                <span className={`w-3 h-3 rounded-full ${qaDebugInfo.success ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <span className="font-medium">
+                                  API Test {qaDebugInfo.success ? 'Passed' : 'Failed'}
+                                </span>
+                              </div>
+                              
+                              {qaDebugInfo.details && (
+                                <div className="mt-3">
+                                  <pre className="text-xs bg-white dark:bg-gray-900 p-3 rounded border overflow-x-auto text-left">
+                                    {JSON.stringify(qaDebugInfo.details, null, 2)}
+                                  </pre>
+                                </div>
+                              )}
+                              
+                              {qaDebugInfo.error && (
+                                <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+                                  <p className="text-red-700 dark:text-red-400 font-medium text-center">Error:</p>
+                                  <p className="text-red-600 dark:text-red-300 text-center">{qaDebugInfo.error}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={testQAApi}
+                          disabled={loadingQA}
+                          className="mt-4"
+                        >
+                          {loadingQA ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Settings className="w-4 h-4 mr-2" />}
+                          Test Q&A API
+                        </Button>
                       </div>
                     )}
                   </CardContent>

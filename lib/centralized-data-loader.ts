@@ -787,4 +787,101 @@ export class CentralizedDataLoader {
     
     return results
   }
+
+  // Test Q&A API access for debugging
+  static async testQAApiAccess(profile: SavedBusinessProfile): Promise<{
+    success: boolean
+    details: any
+    error?: string
+  }> {
+    console.log('[CentralizedDataLoader] Testing Q&A API access for profile:', profile.name)
+    
+    try {
+      const authService = GoogleAuthService.getInstance()
+      if (!authService.isAuthenticated()) {
+        return { success: false, details: { step: 'auth_check' }, error: 'Not authenticated' }
+      }
+
+      const accessToken = await authService.getValidAccessToken()
+      const locationMatch = profile.googleBusinessId.match(/locations\/([^\/]+)/)
+      
+      if (!locationMatch) {
+        return { 
+          success: false, 
+          details: { 
+            step: 'location_id_extraction', 
+            googleBusinessId: profile.googleBusinessId 
+          }, 
+          error: 'Invalid business ID format' 
+        }
+      }
+      
+      const locationId = locationMatch[1]
+      const details: any = {
+        profileName: profile.name,
+        googleBusinessId: profile.googleBusinessId,
+        extractedLocationId: locationId,
+        endpoint: `https://mybusinessqanda.googleapis.com/v1/locations/${locationId}/questions`,
+        steps: []
+      }
+
+      // Test 1: Try to access the questions endpoint
+      console.log('[CentralizedDataLoader] Testing questions endpoint...')
+      const questionsResponse = await fetch(`https://mybusinessqanda.googleapis.com/v1/locations/${locationId}/questions`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      details.steps.push({
+        step: 'questions_api_call',
+        status: questionsResponse.status,
+        statusText: questionsResponse.statusText,
+        ok: questionsResponse.ok
+      })
+
+      if (questionsResponse.ok) {
+        const data = await questionsResponse.json()
+        details.steps.push({
+          step: 'questions_response_parse',
+          questionsCount: data.questions?.length || 0,
+          hasQuestions: !!(data.questions && data.questions.length > 0)
+        })
+        return { success: true, details }
+      } else {
+        const errorText = await questionsResponse.text()
+        details.steps.push({
+          step: 'questions_error_details',
+          errorText: errorText,
+          possibleCauses: questionsResponse.status === 403 ? [
+            'Q&A API not enabled for this location',
+            'Insufficient OAuth scopes',
+            'Location not verified',
+            'Q&A feature not available in this region'
+          ] : questionsResponse.status === 404 ? [
+            'Location not found',
+            'Q&A not set up for this location',
+            'Invalid location ID'
+          ] : [
+            'Unknown API error',
+            'Rate limiting',
+            'Authentication issues'
+          ]
+        })
+        return { 
+          success: false, 
+          details, 
+          error: `HTTP ${questionsResponse.status}: ${questionsResponse.statusText}` 
+        }
+      }
+
+    } catch (error) {
+      return { 
+        success: false, 
+        details: { step: 'exception', error: error instanceof Error ? error.message : 'Unknown error' },
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      }
+    }
+  }
 } 
