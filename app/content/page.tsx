@@ -389,6 +389,7 @@ export default function ContentHubPage() {
   const [loadingMedia, setLoadingMedia] = useState(false)
   const [loadingReviews, setLoadingReviews] = useState(false)
   const [loadingQA, setLoadingQA] = useState(false)
+  const [qaError, setQAError] = useState<string | null>(null)
 
   useEffect(() => {
     loadProfiles()
@@ -415,6 +416,7 @@ export default function ContentHubPage() {
     setLoadingMedia(true)
     setLoadingReviews(true)
     setLoadingQA(true)
+    setQAError(null)
 
     try {
       // Load all data for the profile including Q&A
@@ -435,10 +437,28 @@ export default function ContentHubPage() {
         }
         if (result.questions) {
           setQuestions(result.questions)
+          console.log('[ContentHub] Loaded Q&A:', result.questions.length, 'questions')
+        }
+        
+        // Check for specific Q&A errors
+        if (result.errors && result.errors.length > 0) {
+          const qaErrors = result.errors.filter(error => error.includes('qa:'))
+          if (qaErrors.length > 0) {
+            setQAError(qaErrors.join('; '))
+          }
+        }
+      } else {
+        console.error('[ContentHub] Failed to load profile data:', result.errors)
+        if (result.errors) {
+          const qaErrors = result.errors.filter(error => error.includes('qa:'))
+          if (qaErrors.length > 0) {
+            setQAError(qaErrors.join('; '))
+          }
         }
       }
     } catch (error) {
       console.error('Failed to load profile data:', error)
+      setQAError(`Failed to load Q&A: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
       setLoadingMedia(false)
@@ -929,6 +949,26 @@ export default function ContentHubPage() {
                           <p className="text-lg font-medium">Loading Q&A...</p>
                         </div>
                       </div>
+                    ) : qaError ? (
+                      <div className="text-center py-12">
+                        <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-orange-500" />
+                        <p className="text-orange-600 dark:text-orange-400 font-medium mb-2">Q&A Loading Error</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{qaError}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          This could be due to API permissions or the business not having Q&A enabled.
+                          <br />
+                          Profile ID: {selectedProfile?.googleBusinessId}
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => loadAllProfileData(selectedProfile!)}
+                          className="mt-4"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Try Again
+                        </Button>
+                      </div>
                     ) : questions.length > 0 ? (
                       <div className="space-y-6">
                         {questions.map((question, index) => (
@@ -953,6 +993,18 @@ export default function ContentHubPage() {
                                     <span>{question.author.displayName}</span>
                                     <span>•</span>
                                     <span>{formatQuestionDate(question.createTime)}</span>
+                                    {question.upvoteCount && question.upvoteCount > 0 && (
+                                      <>
+                                        <span>•</span>
+                                        <span>{question.upvoteCount} upvotes</span>
+                                      </>
+                                    )}
+                                    {question.totalAnswerCount > 0 && (
+                                      <>
+                                        <span>•</span>
+                                        <span>{question.totalAnswerCount} {question.totalAnswerCount === 1 ? 'answer' : 'answers'}</span>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -991,8 +1043,22 @@ export default function ContentHubPage() {
                                               </Badge>
                                             </>
                                           )}
+                                          {answer.author.type === 'LOCAL_GUIDE' && (
+                                            <>
+                                              <span>•</span>
+                                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                                                Local Guide
+                                              </Badge>
+                                            </>
+                                          )}
                                           <span>•</span>
                                           <span>{formatQuestionDate(answer.createTime)}</span>
+                                          {answer.upvoteCount && answer.upvoteCount > 0 && (
+                                            <>
+                                              <span>•</span>
+                                              <span>{answer.upvoteCount} upvotes</span>
+                                            </>
+                                          )}
                                         </div>
                                       </div>
                                     </div>

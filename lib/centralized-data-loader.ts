@@ -8,7 +8,9 @@ export interface BusinessQuestion {
   author: {
     displayName: string
     profilePhotoUri?: string
+    type?: 'AUTHOR_TYPE_UNSPECIFIED' | 'REGULAR_USER' | 'LOCAL_GUIDE' | 'MERCHANT'
   }
+  upvoteCount?: number
   text: string
   createTime: string
   updateTime: string
@@ -21,8 +23,9 @@ export interface BusinessAnswer {
   author: {
     displayName: string
     profilePhotoUri?: string
-    type: 'MERCHANT' | 'USER'
+    type: 'AUTHOR_TYPE_UNSPECIFIED' | 'REGULAR_USER' | 'LOCAL_GUIDE' | 'MERCHANT'
   }
+  upvoteCount?: number
   text: string
   createTime: string
   updateTime: string
@@ -423,11 +426,14 @@ export class CentralizedDataLoader {
       // Extract location ID from googleBusinessId
       const locationMatch = profile.googleBusinessId.match(/locations\/([^\/]+)/)
       if (!locationMatch) {
+        console.log('[CentralizedDataLoader] Invalid business ID format:', profile.googleBusinessId)
         return { success: false, error: 'Invalid business ID format' }
       }
       
       const locationId = locationMatch[1]
       const endpoint = `https://mybusinessqanda.googleapis.com/v1/locations/${locationId}/questions`
+      
+      console.log('[CentralizedDataLoader] Q&A API endpoint:', endpoint)
 
       const response = await fetch(endpoint, {
         headers: {
@@ -436,31 +442,56 @@ export class CentralizedDataLoader {
         }
       })
 
+      console.log('[CentralizedDataLoader] Q&A API response status:', response.status, response.statusText)
+
       if (!response.ok) {
+        const errorText = await response.text()
+        console.log('[CentralizedDataLoader] Q&A API error response:', errorText)
+        
         if (response.status === 403) {
-          console.log('[CentralizedDataLoader] Q&A API access not available for this location')
+          console.log('[CentralizedDataLoader] Q&A API access not available for this location (403 Forbidden)')
           return { success: true, questions: [] }
+        } else if (response.status === 404) {
+          console.log('[CentralizedDataLoader] Q&A API not found for this location (404 Not Found)')
+          return { success: true, questions: [] }
+        } else if (response.status === 400) {
+          console.log('[CentralizedDataLoader] Q&A API bad request (400):', errorText)
+          return { success: false, error: `Bad request: ${errorText}` }
         }
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`)
       }
 
       const data = await response.json()
+      console.log('[CentralizedDataLoader] Q&A API response data:', data)
+      
       const questions: BusinessQuestion[] = data.questions || []
+      console.log(`[CentralizedDataLoader] Found ${questions.length} questions from API`)
 
-      // Load answers for each question
+      // Load answers for each question (if they don't already have topAnswers)
       for (const question of questions) {
         try {
-          const answersEndpoint = `https://mybusinessqanda.googleapis.com/v1/${question.name}/answers`
-          const answersResponse = await fetch(answersEndpoint, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            }
-          })
+          // Check if we already have answers in the question
+          if (!question.topAnswers || question.topAnswers.length === 0) {
+            console.log('[CentralizedDataLoader] Loading answers for question:', question.name)
+            const answersEndpoint = `https://mybusinessqanda.googleapis.com/v1/${question.name}/answers`
+            const answersResponse = await fetch(answersEndpoint, {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              }
+            })
 
-          if (answersResponse.ok) {
-            const answersData = await answersResponse.json()
-            question.topAnswers = answersData.answers || []
+            if (answersResponse.ok) {
+              const answersData = await answersResponse.json()
+              question.topAnswers = answersData.answers || []
+              console.log(`[CentralizedDataLoader] Loaded ${question.topAnswers.length} answers for question`)
+            } else {
+              console.warn('[CentralizedDataLoader] Failed to load answers for question:', question.name, answersResponse.status, answersResponse.statusText)
+              question.topAnswers = []
+            }
+          } else {
+            console.log(`[CentralizedDataLoader] Question already has ${question.topAnswers.length} answers`)
           }
         } catch (answerError) {
           console.warn('[CentralizedDataLoader] Failed to load answers for question:', question.name, answerError)
@@ -468,7 +499,7 @@ export class CentralizedDataLoader {
         }
       }
 
-      console.log(`[CentralizedDataLoader] Loaded ${questions.length} Q&A items successfully`)
+      console.log(`[CentralizedDataLoader] Successfully loaded ${questions.length} Q&A items with answers`)
       return { success: true, questions }
     } catch (error) {
       console.error('[CentralizedDataLoader] Failed to load Q&A:', error)
