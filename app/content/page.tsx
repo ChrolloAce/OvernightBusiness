@@ -52,7 +52,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { GoogleBusinessAPI, MediaItem, BusinessMedia, BusinessReview } from '@/lib/google-business-api'
-import { CentralizedDataLoader, BusinessQuestion } from '@/lib/centralized-data-loader'
+import { CentralizedDataLoader, BusinessQuestion, LocalPost } from '@/lib/centralized-data-loader'
 
 // Business Logo Component
 interface BusinessLogoProps {
@@ -385,10 +385,12 @@ export default function ContentHubPage() {
   const [reviews, setReviews] = useState<BusinessReview[]>([])
   const [reviewsSummary, setReviewsSummary] = useState<any>(null)
   const [questions, setQuestions] = useState<BusinessQuestion[]>([])
+  const [localPosts, setLocalPosts] = useState<LocalPost[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingMedia, setLoadingMedia] = useState(false)
   const [loadingReviews, setLoadingReviews] = useState(false)
   const [loadingQA, setLoadingQA] = useState(false)
+  const [loadingPosts, setLoadingPosts] = useState(false)
   const [qaError, setQAError] = useState<string | null>(null)
   const [qaDebugInfo, setQaDebugInfo] = useState<any>(null)
   const [showQADebug, setShowQADebug] = useState(false)
@@ -418,15 +420,17 @@ export default function ContentHubPage() {
     setLoadingMedia(true)
     setLoadingReviews(true)
     setLoadingQA(true)
+    setLoadingPosts(true)
     setQAError(null)
 
     try {
-      // Load all data for the profile including Q&A
+      // Load all data for the profile including Q&A and Local Posts
       const result = await CentralizedDataLoader.loadAllProfileData(profile, {
         includeReviews: true,
         includeAnalytics: false, // We don't need analytics in content hub
         includeMedia: true,
-        includeQA: true
+        includeQA: true,
+        includePosts: true
       })
 
       if (result.success) {
@@ -440,6 +444,10 @@ export default function ContentHubPage() {
         if (result.questions) {
           setQuestions(result.questions)
           console.log('[ContentHub] Loaded Q&A:', result.questions.length, 'questions')
+        }
+        if (result.posts) {
+          setLocalPosts(result.posts)
+          console.log('[ContentHub] Loaded Local Posts:', result.posts.length, 'posts')
         }
         
         // Check for specific Q&A errors
@@ -466,6 +474,7 @@ export default function ContentHubPage() {
       setLoadingMedia(false)
       setLoadingReviews(false)
       setLoadingQA(false)
+      setLoadingPosts(false)
     }
   }
 
@@ -478,6 +487,7 @@ export default function ContentHubPage() {
       setReviews([])
       setReviewsSummary(null)
       setQuestions([])
+      setLocalPosts([])
     }
   }
 
@@ -622,6 +632,81 @@ export default function ContentHubPage() {
       })
     } catch {
       return 'Unknown date'
+    }
+  }
+
+  // Helper functions for Local Posts
+  const formatPostDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch {
+      return 'Unknown date'
+    }
+  }
+
+  const getPostTypeIcon = (topicType: string) => {
+    switch (topicType) {
+      case 'EVENT':
+        return Calendar
+      case 'OFFER':
+        return Tag
+      case 'ALERT':
+        return AlertTriangle
+      default:
+        return FileText
+    }
+  }
+
+  const getPostTypeLabel = (topicType: string) => {
+    switch (topicType) {
+      case 'EVENT':
+        return 'Event'
+      case 'OFFER':
+        return 'Offer'
+      case 'ALERT':
+        return 'Alert'
+      case 'STANDARD':
+        return 'Update'
+      default:
+        return 'Post'
+    }
+  }
+
+  const getPostStateColor = (state: string) => {
+    switch (state) {
+      case 'LIVE':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+      case 'PROCESSING':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+    }
+  }
+
+  const getActionTypeLabel = (actionType: string) => {
+    switch (actionType) {
+      case 'BOOK':
+        return 'Book Now'
+      case 'ORDER':
+        return 'Order Now'
+      case 'SHOP':
+        return 'Shop'
+      case 'LEARN_MORE':
+        return 'Learn More'
+      case 'SIGN_UP':
+        return 'Sign Up'
+      case 'CALL':
+        return 'Call'
+      default:
+        return 'View'
     }
   }
 
@@ -1208,6 +1293,197 @@ export default function ContentHubPage() {
                           {loadingQA ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Settings className="w-4 h-4 mr-2" />}
                           Test Q&A API
                         </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Local Posts Section */}
+                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="w-5 h-5" />
+                        Business Updates
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {localPosts.length > 0 && (
+                          <Badge variant="secondary">
+                            {localPosts.length} posts
+                          </Badge>
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingPosts ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
+                          <p className="text-lg font-medium">Loading posts...</p>
+                        </div>
+                      </div>
+                    ) : localPosts.length > 0 ? (
+                      <div className="space-y-6">
+                        {localPosts.map((post, index) => {
+                          const PostIcon = getPostTypeIcon(post.topicType)
+                          
+                          return (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.1 }}
+                              className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 lg:p-6 bg-white/50 dark:bg-black/20 backdrop-blur-sm"
+                            >
+                              {/* Post Header */}
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                                    <PostIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="text-xs">
+                                        {getPostTypeLabel(post.topicType)}
+                                      </Badge>
+                                      <Badge className={`text-xs ${getPostStateColor(post.state)}`}>
+                                        {post.state.replace('_', ' ').toLowerCase()}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                      {formatPostDate(post.createTime)}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                {post.searchUrl && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => window.open(post.searchUrl, '_blank')}
+                                    className="text-xs"
+                                  >
+                                    <ExternalLink className="w-3 h-3 mr-1" />
+                                    View
+                                  </Button>
+                                )}
+                              </div>
+
+                              {/* Post Content */}
+                              <div className="space-y-4">
+                                {/* Event Title (for event posts) */}
+                                {post.event?.title && (
+                                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    {post.event.title}
+                                  </h3>
+                                )}
+
+                                {/* Post Summary */}
+                                <p className="text-gray-800 dark:text-gray-200 leading-relaxed">
+                                  {post.summary}
+                                </p>
+
+                                {/* Event Schedule */}
+                                {post.event?.schedule && (
+                                  <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                    <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                    <span className="text-sm text-blue-700 dark:text-blue-300">
+                                      {new Date(post.event.schedule.startDate.year, post.event.schedule.startDate.month - 1, post.event.schedule.startDate.day).toLocaleDateString('en-US', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                      })}
+                                      {post.event.schedule.startTime && (
+                                        ` at ${post.event.schedule.startTime.hours.toString().padStart(2, '0')}:${post.event.schedule.startTime.minutes.toString().padStart(2, '0')}`
+                                      )}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {/* Offer Details */}
+                                {post.offer && (
+                                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                    {post.offer.couponCode && (
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Tag className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                        <span className="font-mono text-sm font-bold text-green-700 dark:text-green-300">
+                                          {post.offer.couponCode}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {post.offer.termsConditions && (
+                                      <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                                        {post.offer.termsConditions}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Post Media */}
+                                {post.media && post.media.length > 0 && (
+                                  <div className="mt-4">
+                                    <ImageGrid 
+                                      images={post.media} 
+                                      maxDisplay={3}
+                                      className="w-full"
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Call to Action */}
+                                {post.callToAction && (
+                                  <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                    {post.callToAction.actionType === 'CALL' ? (
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        onClick={() => window.open(`tel:${selectedProfile?.phone}`, '_self')}
+                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                      >
+                                        <Phone className="w-4 h-4 mr-2" />
+                                        {getActionTypeLabel(post.callToAction.actionType)}
+                                      </Button>
+                                    ) : post.callToAction.url ? (
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        onClick={() => window.open(post.callToAction!.url, '_blank')}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                                      >
+                                        <ExternalLink className="w-4 h-4 mr-2" />
+                                        {getActionTypeLabel(post.callToAction.actionType)}
+                                      </Button>
+                                    ) : (
+                                      <Badge variant="outline" className="text-sm">
+                                        {getActionTypeLabel(post.callToAction.actionType)}
+                                      </Badge>
+                                    )}
+                                    
+                                    {post.offer?.redeemOnlineUrl && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => window.open(post.offer!.redeemOnlineUrl, '_blank')}
+                                        className="ml-2"
+                                      >
+                                        <Globe className="w-4 h-4 mr-2" />
+                                        Redeem Online
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">No business updates available</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500">Create posts to engage with your customers</p>
                       </div>
                     )}
                   </CardContent>

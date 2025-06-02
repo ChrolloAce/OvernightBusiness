@@ -1,5 +1,5 @@
 import { GoogleAuthService } from './google-auth'
-import { GoogleBusinessAPI, BusinessLocation, BusinessReview, PerformanceMetricsResponse, BusinessMedia, ReviewsResponse } from './google-business-api'
+import { GoogleBusinessAPI, BusinessLocation, BusinessReview, PerformanceMetricsResponse, BusinessMedia, ReviewsResponse, MediaItem } from './google-business-api'
 import { BusinessProfilesStorage, SavedBusinessProfile } from './business-profiles-storage'
 
 // Q&A interfaces
@@ -29,6 +29,70 @@ export interface BusinessAnswer {
   text: string
   createTime: string
   updateTime: string
+}
+
+// Local Posts interfaces
+export interface LocalPost {
+  name: string
+  languageCode?: string
+  summary: string
+  callToAction?: CallToAction
+  createTime: string
+  updateTime: string
+  event?: LocalPostEvent
+  state: 'LOCAL_POST_STATE_UNSPECIFIED' | 'REJECTED' | 'LIVE' | 'PROCESSING'
+  media?: MediaItem[]
+  searchUrl?: string
+  topicType: 'LOCAL_POST_TOPIC_TYPE_UNSPECIFIED' | 'STANDARD' | 'EVENT' | 'OFFER' | 'ALERT'
+  alertType?: 'ALERT_TYPE_UNSPECIFIED' | 'COVID_19'
+  offer?: LocalPostOffer
+}
+
+export interface CallToAction {
+  actionType: 'ACTION_TYPE_UNSPECIFIED' | 'BOOK' | 'ORDER' | 'SHOP' | 'LEARN_MORE' | 'SIGN_UP' | 'GET_OFFER' | 'CALL'
+  url?: string
+}
+
+export interface LocalPostEvent {
+  title: string
+  schedule: TimeInterval
+}
+
+export interface TimeInterval {
+  startDate: {
+    year: number
+    month: number
+    day: number
+  }
+  startTime?: {
+    hours: number
+    minutes: number
+    seconds?: number
+    nanos?: number
+  }
+  endDate: {
+    year: number
+    month: number
+    day: number
+  }
+  endTime?: {
+    hours: number
+    minutes: number
+    seconds?: number
+    nanos?: number
+  }
+}
+
+export interface LocalPostOffer {
+  couponCode?: string
+  redeemOnlineUrl?: string
+  termsConditions?: string
+}
+
+export interface LocalPostsResponse {
+  localPosts: LocalPost[]
+  nextPageToken?: string
+  totalSize?: number
 }
 
 // Centralized data loader for all business data operations
@@ -513,6 +577,7 @@ export class CentralizedDataLoader {
     includeReviews?: boolean
     includeMedia?: boolean
     includeQA?: boolean
+    includePosts?: boolean
     analyticsOptions?: any
   } = {}): Promise<{
     success: boolean
@@ -521,6 +586,7 @@ export class CentralizedDataLoader {
     reviewsSummary?: any
     media?: BusinessMedia
     questions?: BusinessQuestion[]
+    posts?: LocalPost[]
     errors?: string[]
   }> {
     console.log('[CentralizedDataLoader] Loading all data for profile:', profile.name)
@@ -558,6 +624,13 @@ export class CentralizedDataLoader {
             .then(result => ({ type: 'qa', result }))
         )
       }
+
+      if (options.includePosts) {
+        promises.push(
+          this.loadLocalPosts(profile)
+            .then(result => ({ type: 'posts', result }))
+        )
+      }
       
       const responses = await Promise.allSettled(promises)
       
@@ -579,6 +652,9 @@ export class CentralizedDataLoader {
                 break
               case 'qa':
                 results.questions = result.questions
+                break
+              case 'posts':
+                results.posts = result.posts
                 break
             }
           } else {
@@ -882,6 +958,84 @@ export class CentralizedDataLoader {
         details: { step: 'exception', error: error instanceof Error ? error.message : 'Unknown error' },
         error: error instanceof Error ? error.message : 'Unknown error' 
       }
+    }
+  }
+
+  // Load local posts for a specific profile
+  static async loadLocalPosts(profile: SavedBusinessProfile): Promise<{ 
+    success: boolean, 
+    posts?: LocalPost[], 
+    error?: string 
+  }> {
+    console.log('[CentralizedDataLoader] Loading local posts for profile:', profile.name)
+    
+    try {
+      const authService = GoogleAuthService.getInstance()
+      if (!authService.isAuthenticated()) {
+        return { success: false, error: 'Not authenticated' }
+      }
+
+      const sessionInfo = authService.getSessionInfo()
+      if (!sessionInfo?.expires_at) {
+        return { success: false, error: 'Missing authentication data' }
+      }
+
+      // Get valid access token
+      const accessToken = await authService.getValidAccessToken()
+
+      // Extract location ID from googleBusinessId
+      const locationMatch = profile.googleBusinessId.match(/locations\/([^\/]+)/)
+      if (!locationMatch) {
+        console.log('[CentralizedDataLoader] Invalid business ID format:', profile.googleBusinessId)
+        return { success: false, error: 'Invalid business ID format' }
+      }
+      
+      const locationId = locationMatch[1]
+      const endpoint = `https://mybusinessbusinessinformation.googleapis.com/v1/accounts/${profile.googleBusinessId.split('/')[1]}/locations/${locationId}/localPosts`
+      
+      console.log('[CentralizedDataLoader] Local Posts API endpoint:', endpoint)
+
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('[CentralizedDataLoader] Local Posts API response status:', response.status, response.statusText)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('[CentralizedDataLoader] Local Posts API error response:', errorText)
+        
+        if (response.status === 403) {
+          console.log('[CentralizedDataLoader] Local Posts API access not available for this location (403 Forbidden)')
+          return { success: true, posts: [] }
+        } else if (response.status === 404) {
+          console.log('[CentralizedDataLoader] Local Posts API not found for this location (404 Not Found)')
+          return { success: true, posts: [] }
+        } else if (response.status === 400) {
+          console.log('[CentralizedDataLoader] Local Posts API bad request (400):', errorText)
+          return { success: false, error: `Bad request: ${errorText}` }
+        }
+        
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`)
+      }
+
+      const data = await response.json()
+      console.log('[CentralizedDataLoader] Local Posts API response data:', data)
+      
+      const posts: LocalPost[] = data.localPosts || []
+      console.log(`[CentralizedDataLoader] Found ${posts.length} local posts from API`)
+
+      // Sort posts by creation time (newest first)
+      posts.sort((a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime())
+
+      console.log(`[CentralizedDataLoader] Successfully loaded ${posts.length} local posts`)
+      return { success: true, posts }
+    } catch (error) {
+      console.error('[CentralizedDataLoader] Failed to load local posts:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
   }
 } 
