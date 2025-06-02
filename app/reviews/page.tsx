@@ -8,10 +8,11 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { GoogleBusinessAPI, BusinessReview } from '@/lib/google-business-api'
+import { SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { Star, MessageSquare, RefreshCw, Search, Building2, Loader2, Reply, CheckCircle, Clock } from 'lucide-react'
 import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
+import { useProfile } from '@/contexts/profile-context'
 
 // Business Logo Component with fallback
 interface BusinessLogoProps {
@@ -201,8 +202,7 @@ function ReviewerAvatar({ reviewerName, className = "w-12 h-12" }: ReviewerAvata
 }
 
 export default function ReviewsPage() {
-  const [profiles, setProfiles] = useState<SavedBusinessProfile[]>([])
-  const [selectedProfile, setSelectedProfile] = useState<SavedBusinessProfile | null>(null)
+  const { selectedProfile } = useProfile()
   const [reviews, setReviews] = useState<BusinessReview[]>([])
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -217,25 +217,12 @@ export default function ReviewsPage() {
     unrepliedCount: number
   } | null>(null)
 
-  useEffect(() => {
-    loadProfiles()
-  }, [])
-
   // Auto-load reviews when profile changes
   useEffect(() => {
     if (selectedProfile) {
       loadReviews(selectedProfile)
     }
   }, [selectedProfile])
-
-  const loadProfiles = () => {
-    const savedProfiles = CentralizedDataLoader.loadProfiles()
-    setProfiles(savedProfiles)
-    if (savedProfiles.length > 0 && !selectedProfile) {
-      const firstProfile = savedProfiles[0]
-      setSelectedProfile(firstProfile)
-    }
-  }
 
   const loadReviews = async (profile: SavedBusinessProfile) => {
     setLoading(true)
@@ -255,14 +242,6 @@ export default function ReviewsPage() {
       console.error('Failed to load reviews:', error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleProfileSelect = (profileId: string) => {
-    const profile = profiles.find(p => p.id === profileId)
-    if (profile) {
-      setSelectedProfile(profile)
-      // Auto-loading will be handled by useEffect
     }
   }
 
@@ -387,60 +366,6 @@ export default function ReviewsPage() {
           </div>
 
           {/* Business Profile Selector */}
-          <Card className="bg-white/80 dark:bg-black/40 backdrop-blur-xl border-white/30 dark:border-white/20 shadow-lg">
-            <CardHeader className="pb-3 lg:pb-6">
-              <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
-                <MessageSquare className="w-4 h-4 lg:w-5 lg:h-5" />
-                Select Business Profile
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
-                <SelectTrigger className="h-12 lg:h-16 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
-                  <SelectValue placeholder="Choose a business profile to view reviews">
-                    {selectedProfile && (
-                      <div className="flex items-center gap-2 lg:gap-3">
-                        <BusinessLogo 
-                          businessName={selectedProfile.name} 
-                          website={selectedProfile.website}
-                          className="w-8 h-8 lg:w-10 lg:h-10"
-                        />
-                        <div className="text-left min-w-0 flex-1">
-                          <div className="font-medium text-gray-900 dark:text-white text-sm lg:text-base truncate">{selectedProfile.name}</div>
-                          <div className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">{selectedProfile.address}</div>
-                        </div>
-                      </div>
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-white/20">
-                  {profiles.map(profile => (
-                    <SelectItem key={profile.id} value={profile.id} className="h-12 lg:h-16 p-2 lg:p-3">
-                      <div className="flex items-center gap-2 lg:gap-3 w-full">
-                        <BusinessLogo 
-                          businessName={profile.name} 
-                          website={profile.website}
-                          className="w-8 h-8 lg:w-10 lg:h-10"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 dark:text-white text-sm lg:text-base truncate">{profile.name}</div>
-                          <div className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">{profile.address}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="flex items-center">
-                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
-                              <span className="text-xs text-gray-600 dark:text-gray-400">{profile.rating}</span>
-                            </div>
-                            <span className="text-xs text-gray-400">•</span>
-                            <span className="text-xs text-gray-600 dark:text-gray-400">{profile.reviewCount} reviews</span>
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
 
           {selectedProfile && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
