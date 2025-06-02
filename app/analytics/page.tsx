@@ -44,6 +44,7 @@ import {
   Area
 } from 'recharts'
 import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
+import { useProfile } from '@/contexts/profile-context'
 
 // Business Logo Component (reused from profiles page)
 interface BusinessLogoProps {
@@ -195,8 +196,7 @@ const METRIC_CONFIG = [
 ]
 
 export default function AnalyticsPage() {
-  const [profiles, setProfiles] = useState<SavedBusinessProfile[]>([])
-  const [selectedProfile, setSelectedProfile] = useState<SavedBusinessProfile | null>(null)
+  const { selectedProfile } = useProfile()
   const [performanceData, setPerformanceData] = useState<PerformanceMetricsResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [dateRange, setDateRange] = useState<string>('30')
@@ -216,7 +216,6 @@ export default function AnalyticsPage() {
   const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('area')
 
   useEffect(() => {
-    loadProfiles()
     // Set default date range
     const end = new Date()
     const start = new Date()
@@ -231,15 +230,6 @@ export default function AnalyticsPage() {
       loadPerformanceData(selectedProfile)
     }
   }, [selectedProfile, dateRange, enabledMetrics])
-
-  const loadProfiles = () => {
-    const savedProfiles = CentralizedDataLoader.loadProfiles()
-    setProfiles(savedProfiles)
-    if (savedProfiles.length > 0 && !selectedProfile) {
-      const firstProfile = savedProfiles[0]
-      setSelectedProfile(firstProfile)
-    }
-  }
 
   const loadPerformanceData = async (profile: SavedBusinessProfile) => {
     setLoading(true)
@@ -278,20 +268,6 @@ export default function AnalyticsPage() {
       setPerformanceData(null)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleProfileSelect = (profileId: string) => {
-    const profile = profiles.find(p => p.id === profileId)
-    if (profile) {
-      setSelectedProfile(profile)
-      // Auto-refresh will be handled by useEffect
-    }
-  }
-
-  const refreshData = () => {
-    if (selectedProfile) {
-      loadPerformanceData(selectedProfile)
     }
   }
 
@@ -458,7 +434,7 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <Button 
-                  onClick={refreshData} 
+                  onClick={() => selectedProfile && loadPerformanceData(selectedProfile)} 
                   disabled={loading || !selectedProfile}
                   className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
                 >
@@ -470,7 +446,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Business Profile Selector - Sticky */}
+          {/* Business Profile Selector */}
           <div className="sticky top-4 z-10">
             <Card className="bg-white/80 dark:bg-black/40 backdrop-blur-xl border-white/30 dark:border-white/20 shadow-lg">
               <CardHeader className="pb-3 lg:pb-6">
@@ -480,7 +456,7 @@ export default function AnalyticsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
+                <Select value={selectedProfile?.id || ''} onValueChange={(value) => selectedProfile && loadPerformanceData(selectedProfile)}>
                   <SelectTrigger className="h-12 lg:h-16 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
                     <SelectValue placeholder="Choose a business profile to view analytics">
                       {selectedProfile && (
@@ -499,21 +475,7 @@ export default function AnalyticsPage() {
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-white/20">
-                    {profiles.map(profile => (
-                      <SelectItem key={profile.id} value={profile.id} className="h-12 lg:h-16 p-2 lg:p-3">
-                        <div className="flex items-center gap-2 lg:gap-3 w-full">
-                          <BusinessLogo 
-                            businessName={profile.name} 
-                            website={profile.website}
-                            className="w-8 h-8 lg:w-10 lg:h-10"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-gray-900 dark:text-white text-sm lg:text-base truncate">{profile.name}</div>
-                            <div className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">{profile.address}</div>
-                          </div>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {/* Add business profiles here */}
                   </SelectContent>
                 </Select>
               </CardContent>
@@ -929,7 +891,7 @@ export default function AnalyticsPage() {
                       <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                       <p className="text-lg font-medium">No analytics data available</p>
                       <p className="text-sm text-gray-500 mb-4">Click "Refresh Data" to load performance metrics</p>
-                      <Button onClick={refreshData} disabled={!selectedProfile}>
+                      <Button onClick={() => selectedProfile && loadPerformanceData(selectedProfile)} disabled={!selectedProfile}>
                         <RefreshCw className="w-4 h-4 mr-2" />
                         Load Analytics Data
                       </Button>

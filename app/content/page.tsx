@@ -49,10 +49,10 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { GoogleBusinessAPI, MediaItem, BusinessMedia, BusinessReview } from '@/lib/google-business-api'
 import { CentralizedDataLoader, BusinessQuestion, LocalPost } from '@/lib/centralized-data-loader'
+import { useProfile } from '@/contexts/profile-context'
 
 // Business Logo Component
 interface BusinessLogoProps {
@@ -379,8 +379,7 @@ function ImageGrid({ images, maxDisplay = 6, className = "" }: ImageGridProps) {
 }
 
 export default function ContentHubPage() {
-  const [profiles, setProfiles] = useState<SavedBusinessProfile[]>([])
-  const [selectedProfile, setSelectedProfile] = useState<SavedBusinessProfile | null>(null)
+  const { selectedProfile } = useProfile()
   const [businessMedia, setBusinessMedia] = useState<BusinessMedia | null>(null)
   const [reviews, setReviews] = useState<BusinessReview[]>([])
   const [reviewsSummary, setReviewsSummary] = useState<any>(null)
@@ -395,25 +394,12 @@ export default function ContentHubPage() {
   const [qaDebugInfo, setQaDebugInfo] = useState<any>(null)
   const [showQADebug, setShowQADebug] = useState(false)
 
-  useEffect(() => {
-    loadProfiles()
-  }, [])
-
   // Auto-load data when profile changes
   useEffect(() => {
     if (selectedProfile) {
       loadAllProfileData(selectedProfile)
     }
   }, [selectedProfile])
-
-  const loadProfiles = () => {
-    const savedProfiles = CentralizedDataLoader.loadProfiles()
-    setProfiles(savedProfiles)
-    if (savedProfiles.length > 0 && !selectedProfile) {
-      const firstProfile = savedProfiles[0]
-      setSelectedProfile(firstProfile)
-    }
-  }
 
   const loadAllProfileData = async (profile: SavedBusinessProfile) => {
     setLoading(true)
@@ -475,19 +461,6 @@ export default function ContentHubPage() {
       setLoadingReviews(false)
       setLoadingQA(false)
       setLoadingPosts(false)
-    }
-  }
-
-  const handleProfileSelect = (profileId: string) => {
-    const profile = profiles.find(p => p.id === profileId)
-    if (profile) {
-      setSelectedProfile(profile)
-      // Reset data for new profile
-      setBusinessMedia(null)
-      setReviews([])
-      setReviewsSummary(null)
-      setQuestions([])
-      setLocalPosts([])
     }
   }
 
@@ -729,54 +702,6 @@ export default function ContentHubPage() {
               </div>
             </div>
           </div>
-
-          {/* Business Profile Selector */}
-          <Card className="bg-white/80 dark:bg-black/40 backdrop-blur-xl border-white/30 dark:border-white/20 shadow-lg">
-            <CardHeader className="pb-3 lg:pb-6">
-              <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
-                <Building2 className="w-4 h-4 lg:w-5 lg:h-5" />
-                Select Business Profile
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
-                <SelectTrigger className="h-12 lg:h-16 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
-                  <SelectValue placeholder="Choose a business profile to manage content">
-                    {selectedProfile && (
-                      <div className="flex items-center gap-2 lg:gap-3">
-                        <BusinessLogo 
-                          businessName={selectedProfile.name} 
-                          website={selectedProfile.website}
-                          className="w-8 h-8 lg:w-10 lg:h-10"
-                        />
-                        <div className="text-left min-w-0 flex-1">
-                          <div className="font-medium text-gray-900 dark:text-white text-sm lg:text-base truncate">{selectedProfile.name}</div>
-                          <div className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">{selectedProfile.address}</div>
-                        </div>
-                      </div>
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-white/20">
-                  {profiles.map(profile => (
-                    <SelectItem key={profile.id} value={profile.id} className="h-12 lg:h-16 p-2 lg:p-3">
-                      <div className="flex items-center gap-2 lg:gap-3 w-full">
-                        <BusinessLogo 
-                          businessName={profile.name} 
-                          website={profile.website}
-                          className="w-8 h-8 lg:w-10 lg:h-10"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 dark:text-white text-sm lg:text-base truncate">{profile.name}</div>
-                          <div className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">{profile.address}</div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
 
           {selectedProfile && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

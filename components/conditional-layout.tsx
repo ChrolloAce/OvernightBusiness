@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sidebar } from '@/components/sidebar'
+import FloatingProfileSelector from '@/components/floating-profile-selector'
+import { useProfile } from '@/contexts/profile-context'
 
 interface ConditionalLayoutProps {
   children: React.ReactNode
@@ -14,6 +16,7 @@ interface ConditionalLayoutProps {
 export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { selectedProfile, setSelectedProfile } = useProfile()
   
   // Show sidebar for dashboard and internal pages, but not for landing page
   const showSidebar = pathname !== '/'
@@ -91,6 +94,12 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
             {children}
           </main>
         </div>
+
+        {/* Floating Profile Selector */}
+        <FloatingProfileSelector 
+          selectedProfile={selectedProfile}
+          onProfileSelect={setSelectedProfile}
+        />
       </div>
     )
   }
