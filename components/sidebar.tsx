@@ -67,7 +67,11 @@ const navigation = [
   }
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  onItemClick?: () => void
+}
+
+export function Sidebar({ onItemClick }: SidebarProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
@@ -112,7 +116,9 @@ export function Sidebar() {
                 onHoverEnd={() => setHoveredItem(null)}
               >
                 <Link href={item.href}>
-                  <div className={`
+                  <div 
+                    onClick={onItemClick}
+                    className={`
                     group relative flex items-center space-x-3 px-4 py-3 rounded-2xl transition-all duration-300 cursor-pointer
                     ${isActive 
                       ? 'bg-white/80 dark:bg-black/40 shadow-lg border border-white/30 dark:border-white/20' 
@@ -216,7 +222,9 @@ export function Sidebar() {
 
           {/* Settings Link */}
           <Link href="/settings">
-            <div className="flex items-center space-x-3 px-4 py-3 rounded-2xl hover:bg-white/50 dark:hover:bg-black/20 transition-all duration-300 group">
+            <div 
+              onClick={onItemClick}
+              className="flex items-center space-x-3 px-4 py-3 rounded-2xl hover:bg-white/50 dark:hover:bg-black/20 transition-all duration-300 group">
               <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-700 transition-colors duration-300">
                 <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </div>
