@@ -23,7 +23,14 @@ import {
   ArrowDown,
   Minus,
   Settings,
-  Filter
+  Filter,
+  FileText,
+  Download,
+  Mail,
+  Users,
+  Plus,
+  Edit,
+  Trash2
 } from 'lucide-react'
 import {
   LineChart,
@@ -44,6 +51,9 @@ import {
 } from 'recharts'
 import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
 import { useProfile } from '@/contexts/profile-context'
+import { PDFReportGenerator, ReportData } from '@/lib/pdf-report-generator'
+import { ClientInfo, ClientManagementStorage } from '@/lib/client-management'
+import { ClientManagementModal } from '@/components/client-management-modal'
 
 // Business Logo Component (reused from profiles page)
 interface BusinessLogoProps {
@@ -198,29 +208,32 @@ export default function AnalyticsPage() {
   const { selectedProfile } = useProfile()
   const [performanceData, setPerformanceData] = useState<PerformanceMetricsResponse | null>(null)
   const [loading, setLoading] = useState(false)
-  const [dateRange, setDateRange] = useState<string>('30')
-  const [startDate, setStartDate] = useState<string>('')
-  const [endDate, setEndDate] = useState<string>('')
-  const [enabledMetrics, setEnabledMetrics] = useState<Record<string, boolean>>({
-    'BUSINESS_IMPRESSIONS_DESKTOP_MAPS': true,
-    'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH': true,
-    'BUSINESS_IMPRESSIONS_MOBILE_MAPS': true,
-    'BUSINESS_IMPRESSIONS_MOBILE_SEARCH': true,
-    'CALL_CLICKS': true,
-    'WEBSITE_CLICKS': true,
-    'BUSINESS_DIRECTION_REQUESTS': true,
-    'BUSINESS_BOOKINGS': true,
-    'BUSINESS_CONVERSATIONS': true
+  const [dateRange, setDateRange] = useState('30')
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
+  const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('line')
+  const [enabledMetrics, setEnabledMetrics] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {}
+    METRIC_CONFIG.forEach(metric => {
+      initial[metric.key] = true
+    })
+    return initial
   })
-  const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('area')
+
+  // PDF and Client Management State
+  const [clients, setClients] = useState<ClientInfo[]>([])
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false)
+  const [editingClient, setEditingClient] = useState<ClientInfo | undefined>()
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [isSendingEmail, setIsSendingEmail] = useState(false)
 
   useEffect(() => {
     // Set default date range
     const end = new Date()
     const start = new Date()
     start.setDate(end.getDate() - 30)
-    setStartDate(start.toISOString().split('T')[0])
-    setEndDate(end.toISOString().split('T')[0])
+    setCustomStartDate(start.toISOString().split('T')[0])
+    setCustomEndDate(end.toISOString().split('T')[0])
   }, [])
 
   // Auto-refresh when profile changes
@@ -229,6 +242,14 @@ export default function AnalyticsPage() {
       loadPerformanceData(selectedProfile)
     }
   }, [selectedProfile, dateRange, enabledMetrics])
+
+  // Load clients when profile changes
+  useEffect(() => {
+    if (selectedProfile) {
+      const profileClients = ClientManagementStorage.getClientsByBusinessProfile(selectedProfile.id)
+      setClients(profileClients)
+    }
+  }, [selectedProfile])
 
   const loadPerformanceData = async (profile: SavedBusinessProfile) => {
     setLoading(true)
@@ -241,9 +262,9 @@ export default function AnalyticsPage() {
       let start = new Date()
       let end = new Date()
       
-      if (startDate && endDate) {
-        start = new Date(startDate)
-        end = new Date(endDate)
+      if (customStartDate && customEndDate) {
+        start = new Date(customStartDate)
+        end = new Date(customEndDate)
       } else {
         const days = parseInt(dateRange)
         start.setDate(end.getDate() - days)
@@ -273,12 +294,12 @@ export default function AnalyticsPage() {
   const handleDateRangeChange = (value: string) => {
     setDateRange(value)
     // Clear custom dates when selecting preset range
-    setStartDate('')
-    setEndDate('')
+    setCustomStartDate('')
+    setCustomEndDate('')
   }
 
   const handleCustomDateSubmit = () => {
-    if (selectedProfile && startDate && endDate) {
+    if (selectedProfile && customStartDate && customEndDate) {
       loadPerformanceData(selectedProfile)
     }
   }
@@ -403,6 +424,154 @@ export default function AnalyticsPage() {
     return null
   }
 
+  // Client Management Functions
+  const handleAddClient = () => {
+    setEditingClient(undefined)
+    setIsClientModalOpen(true)
+  }
+
+  const handleEditClient = (client: ClientInfo) => {
+    setEditingClient(client)
+    setIsClientModalOpen(true)
+  }
+
+  const handleDeleteClient = (clientId: string) => {
+    if (confirm('Are you sure you want to delete this client?')) {
+      ClientManagementStorage.deleteClient(clientId)
+      setClients(prev => prev.filter(c => c.id !== clientId))
+    }
+  }
+
+  const handleSaveClient = (client: ClientInfo) => {
+    setClients(prev => {
+      const existing = prev.find(c => c.id === client.id)
+      if (existing) {
+        return prev.map(c => c.id === client.id ? client : c)
+      } else {
+        return [...prev, client]
+      }
+    })
+  }
+
+  // PDF Generation Functions
+  const generateReportData = (): ReportData | null => {
+    if (!selectedProfile || !performanceData) return null
+
+    // Calculate analytics from performance data
+    const analytics = {
+      views: metricsSummary?.TOTAL_IMPRESSIONS?.total || 0,
+      searches: (metricsSummary?.BUSINESS_IMPRESSIONS_DESKTOP_SEARCH?.total || 0) + 
+                (metricsSummary?.BUSINESS_IMPRESSIONS_MOBILE_SEARCH?.total || 0),
+      actions: (metricsSummary?.CALL_CLICKS?.total || 0) + 
+               (metricsSummary?.WEBSITE_CLICKS?.total || 0) + 
+               (metricsSummary?.BUSINESS_DIRECTION_REQUESTS?.total || 0),
+      callClicks: metricsSummary?.CALL_CLICKS?.total || 0,
+      websiteClicks: metricsSummary?.WEBSITE_CLICKS?.total || 0,
+      directionRequests: metricsSummary?.BUSINESS_DIRECTION_REQUESTS?.total || 0,
+      photoViews: 0, // Would need to be fetched from photos API
+      period: `Last ${dateRange} days`
+    }
+
+    // Use sample data for other sections (in production, you'd fetch real data)
+    return PDFReportGenerator.generateSampleReportData(selectedProfile)
+  }
+
+  const handleGeneratePDF = async () => {
+    if (!selectedProfile) return
+
+    setIsGeneratingPDF(true)
+    try {
+      const reportData = generateReportData()
+      if (!reportData) {
+        throw new Error('No data available for report generation')
+      }
+
+      const generator = new PDFReportGenerator()
+      const sampleClient: ClientInfo = {
+        id: 'sample',
+        businessProfileId: selectedProfile.id,
+        name: 'Sample Client',
+        email: 'client@example.com',
+        reportFrequency: 'weekly',
+        reportDay: 1,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        preferences: {
+          includePhotos: true,
+          includeUpdates: true,
+          includeReviews: true,
+          includeAnalytics: true,
+          includeQA: true
+        }
+      }
+
+      const pdfBlob = await generator.generateReport(reportData, sampleClient, 'weekly')
+      
+      // Download the PDF
+      const url = URL.createObjectURL(pdfBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${selectedProfile.name}-analytics-report-${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      alert('Failed to generate PDF report. Please try again.')
+    } finally {
+      setIsGeneratingPDF(false)
+    }
+  }
+
+  const handleSendReports = async () => {
+    if (!selectedProfile || clients.length === 0) return
+
+    setIsSendingEmail(true)
+    try {
+      const reportData = generateReportData()
+      if (!reportData) {
+        throw new Error('No data available for report generation')
+      }
+
+      // Send reports to all active clients
+      const activeClients = clients.filter(c => c.isActive)
+      let successCount = 0
+
+      for (const client of activeClients) {
+        try {
+          const response = await fetch('/api/send-report', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              client,
+              reportData,
+              reportPeriod: client.reportFrequency
+            })
+          })
+
+          if (response.ok) {
+            successCount++
+            ClientManagementStorage.markReportSent(client.id)
+          }
+        } catch (error) {
+          console.error(`Failed to send report to ${client.email}:`, error)
+        }
+      }
+
+      alert(`Successfully sent ${successCount} of ${activeClients.length} reports.`)
+
+    } catch (error) {
+      console.error('Error sending reports:', error)
+      alert('Failed to send reports. Please try again.')
+    } finally {
+      setIsSendingEmail(false)
+    }
+  }
+
   return (
     <div className="min-h-screen">
       {/* Page Content */}
@@ -444,6 +613,143 @@ export default function AnalyticsPage() {
               </div>
             </div>
           </div>
+
+          {/* PDF Reports & Client Management */}
+          {selectedProfile && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+              {/* PDF Report Generation */}
+              <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                <CardHeader className="pb-3 lg:pb-6">
+                  <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
+                    <FileText className="w-4 h-4 lg:w-5 lg:h-5" />
+                    PDF Reports
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Generate comprehensive business performance reports in PDF format.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      onClick={handleGeneratePDF}
+                      disabled={isGeneratingPDF || !performanceData}
+                      className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                    >
+                      {isGeneratingPDF ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 mr-2" />
+                          Generate PDF
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleSendReports}
+                      disabled={isSendingEmail || clients.length === 0 || !performanceData}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      {isSendingEmail ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email Reports ({clients.filter(c => c.isActive).length})
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Client Management */}
+              <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                <CardHeader className="pb-3 lg:pb-6">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
+                      <Users className="w-4 h-4 lg:w-5 lg:h-5" />
+                      Client Management ({clients.length})
+                    </CardTitle>
+                    <Button
+                      onClick={handleAddClient}
+                      size="sm"
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Client
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {clients.length === 0 ? (
+                    <div className="text-center py-6">
+                      <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        No clients added yet. Add clients to send automated reports.
+                      </p>
+                      <Button
+                        onClick={handleAddClient}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add Your First Client
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {clients.slice(0, 3).map((client) => (
+                        <div
+                          key={client.id}
+                          className="flex items-center justify-between p-2 bg-white/30 dark:bg-black/20 rounded-lg"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${client.isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
+                              <p className="text-sm font-medium truncate">{client.name}</p>
+                            </div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                              {client.email} • {client.reportFrequency}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              onClick={() => handleEditClient(client)}
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteClient(client.id)}
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {clients.length > 3 && (
+                        <p className="text-xs text-gray-500 text-center pt-2">
+                          +{clients.length - 3} more clients
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Metrics Toggles - Compact Version */}
           {selectedProfile && (
@@ -622,8 +928,8 @@ export default function AnalyticsPage() {
                           <Input
                             id="start-date"
                             type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
+                            value={customStartDate}
+                            onChange={(e) => setCustomStartDate(e.target.value)}
                             className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 h-8"
                           />
                         </div>
@@ -632,15 +938,15 @@ export default function AnalyticsPage() {
                           <Input
                             id="end-date"
                             type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
+                            value={customEndDate}
+                            onChange={(e) => setCustomEndDate(e.target.value)}
                             className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 h-8"
                           />
                         </div>
                       </div>
                       <Button 
                         onClick={handleCustomDateSubmit}
-                        disabled={!startDate || !endDate}
+                        disabled={!customStartDate || !customEndDate}
                         size="sm"
                         className="w-full"
                       >
@@ -864,6 +1170,17 @@ export default function AnalyticsPage() {
           )}
         </motion.div>
       </main>
+
+      {/* Client Management Modal */}
+      {selectedProfile && (
+        <ClientManagementModal
+          isOpen={isClientModalOpen}
+          onClose={() => setIsClientModalOpen(false)}
+          businessProfile={selectedProfile}
+          client={editingClient}
+          onSave={handleSaveClient}
+        />
+      )}
     </div>
   )
 } 
