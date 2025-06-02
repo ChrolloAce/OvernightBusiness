@@ -484,31 +484,84 @@ export class CentralizedDataLoader {
         return { success: false, error: 'Missing authentication data' }
       }
 
-      // Use the new API route instead of direct browser request
-      const response = await fetch(`/api/business/questions?profileId=${encodeURIComponent(profile.id)}&googleBusinessId=${encodeURIComponent(profile.googleBusinessId)}`, {
-        method: 'GET',
+      // Get valid access token
+      const accessToken = await authService.getValidAccessToken()
+
+      // Extract location ID from googleBusinessId
+      const locationMatch = profile.googleBusinessId.match(/locations\/([^\/]+)/)
+      if (!locationMatch) {
+        console.log('[CentralizedDataLoader] Invalid business ID format:', profile.googleBusinessId)
+        return { success: false, error: 'Invalid business ID format' }
+      }
+      
+      const locationId = locationMatch[1]
+      const endpoint = `https://mybusinessqanda.googleapis.com/v1/locations/${locationId}/questions`
+      
+      console.log('[CentralizedDataLoader] Q&A API endpoint:', endpoint)
+
+      const response = await fetch(endpoint, {
         headers: {
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         }
       })
 
-      console.log('[CentralizedDataLoader] Q&A API route response status:', response.status, response.statusText)
+      console.log('[CentralizedDataLoader] Q&A API response status:', response.status, response.statusText)
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.log('[CentralizedDataLoader] Q&A API route error response:', errorText)
+        console.log('[CentralizedDataLoader] Q&A API error response:', errorText)
+        
+        if (response.status === 403) {
+          console.log('[CentralizedDataLoader] Q&A API access not available for this location (403 Forbidden)')
+          return { success: true, questions: [] }
+        } else if (response.status === 404) {
+          console.log('[CentralizedDataLoader] Q&A API not found for this location (404 Not Found)')
+          return { success: true, questions: [] }
+        } else if (response.status === 400) {
+          console.log('[CentralizedDataLoader] Q&A API bad request (400):', errorText)
+          return { success: false, error: `Bad request: ${errorText}` }
+        }
+        
         throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`)
       }
 
       const data = await response.json()
-      console.log('[CentralizedDataLoader] Q&A API route response data:', data)
+      console.log('[CentralizedDataLoader] Q&A API response data:', data)
       
-      if (!data.success) {
-        return { success: false, error: data.error || 'Unknown error' }
-      }
-
       const questions: BusinessQuestion[] = data.questions || []
-      console.log(`[CentralizedDataLoader] Found ${questions.length} questions from API route`)
+      console.log(`[CentralizedDataLoader] Found ${questions.length} questions from API`)
+
+      // Load answers for each question (if they don't already have topAnswers)
+      for (const question of questions) {
+        try {
+          // Check if we already have answers in the question
+          if (!question.topAnswers || question.topAnswers.length === 0) {
+            console.log('[CentralizedDataLoader] Loading answers for question:', question.name)
+            const answersEndpoint = `https://mybusinessqanda.googleapis.com/v1/${question.name}/answers`
+            const answersResponse = await fetch(answersEndpoint, {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              }
+            })
+
+            if (answersResponse.ok) {
+              const answersData = await answersResponse.json()
+              question.topAnswers = answersData.answers || []
+              console.log(`[CentralizedDataLoader] Loaded ${question.topAnswers.length} answers for question`)
+            } else {
+              console.warn('[CentralizedDataLoader] Failed to load answers for question:', question.name, answersResponse.status, answersResponse.statusText)
+              question.topAnswers = []
+            }
+          } else {
+            console.log(`[CentralizedDataLoader] Question already has ${question.topAnswers.length} answers`)
+          }
+        } catch (answerError) {
+          console.warn('[CentralizedDataLoader] Failed to load answers for question:', question.name, answerError)
+          question.topAnswers = []
+        }
+      }
 
       console.log(`[CentralizedDataLoader] Successfully loaded ${questions.length} Q&A items with answers`)
       return { success: true, questions }
@@ -811,93 +864,6 @@ export class CentralizedDataLoader {
     return results
   }
 
-  // Test Q&A API access for debugging
-  static async testQAApiAccess(profile: SavedBusinessProfile): Promise<{
-    success: boolean
-    details: any
-    error?: string
-  }> {
-    console.log('[CentralizedDataLoader] Testing Q&A API access for profile:', profile.name)
-    
-    try {
-      const authService = GoogleAuthService.getInstance()
-      if (!authService.isAuthenticated()) {
-        return { success: false, details: { step: 'auth_check' }, error: 'Not authenticated' }
-      }
-
-      const details: any = {
-        profileName: profile.name,
-        googleBusinessId: profile.googleBusinessId,
-        endpoint: `/api/business/questions?profileId=${encodeURIComponent(profile.id)}&googleBusinessId=${encodeURIComponent(profile.googleBusinessId)}`,
-        steps: []
-      }
-
-      // Test: Try to access the questions endpoint via our API route
-      console.log('[CentralizedDataLoader] Testing questions endpoint via API route...')
-      const questionsResponse = await fetch(`/api/business/questions?profileId=${encodeURIComponent(profile.id)}&googleBusinessId=${encodeURIComponent(profile.googleBusinessId)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-
-      details.steps.push({
-        step: 'questions_api_route_call',
-        status: questionsResponse.status,
-        statusText: questionsResponse.statusText,
-        ok: questionsResponse.ok
-      })
-
-      if (questionsResponse.ok) {
-        const data = await questionsResponse.json()
-        details.steps.push({
-          step: 'questions_response_parse',
-          questionsCount: data.questions?.length || 0,
-          hasQuestions: !!(data.questions && data.questions.length > 0),
-          success: data.success,
-          message: data.message
-        })
-        return { success: true, details }
-      } else {
-        const errorText = await questionsResponse.text()
-        details.steps.push({
-          step: 'questions_error_details',
-          errorText: errorText,
-          possibleCauses: questionsResponse.status === 403 ? [
-            'Q&A API not enabled for this location',
-            'Insufficient OAuth scopes',
-            'Location not verified',
-            'Q&A feature not available in this region'
-          ] : questionsResponse.status === 404 ? [
-            'Location not found',
-            'Q&A not set up for this location',
-            'Invalid location ID'
-          ] : questionsResponse.status === 401 ? [
-            'Authentication issues',
-            'Access token expired',
-            'Invalid credentials'
-          ] : [
-            'Unknown API error',
-            'Rate limiting',
-            'Server issues'
-          ]
-        })
-        return { 
-          success: false, 
-          details, 
-          error: `HTTP ${questionsResponse.status}: ${questionsResponse.statusText}` 
-        }
-      }
-
-    } catch (error) {
-      return { 
-        success: false, 
-        details: { step: 'exception', error: error instanceof Error ? error.message : 'Unknown error' },
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      }
-    }
-  }
-
   // Load local posts for a specific profile
   static async loadLocalPosts(profile: SavedBusinessProfile): Promise<{ 
     success: boolean, 
@@ -917,34 +883,36 @@ export class CentralizedDataLoader {
         return { success: false, error: 'Missing authentication data' }
       }
 
-      // Use the new API route instead of direct browser request
-      const response = await fetch(`/api/business/local-posts?profileId=${encodeURIComponent(profile.id)}&googleBusinessId=${encodeURIComponent(profile.googleBusinessId)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-
-      console.log('[CentralizedDataLoader] Local Posts API route response status:', response.status, response.statusText)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.log('[CentralizedDataLoader] Local Posts API route error response:', errorText)
-        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`)
-      }
-
-      const data = await response.json()
-      console.log('[CentralizedDataLoader] Local Posts API route response data:', data)
+      // Use the GoogleBusinessAPI method instead of direct fetch to avoid CORS issues
+      const posts = await this.googleAPI.getPosts(profile.googleBusinessId)
       
-      if (!data.success) {
-        return { success: false, error: data.error || 'Unknown error' }
-      }
+      // Convert BusinessPost[] to LocalPost[] format
+      const localPosts: LocalPost[] = posts.map(post => ({
+        name: post.name,
+        languageCode: post.languageCode,
+        summary: post.summary,
+        callToAction: post.callToAction ? {
+          actionType: post.callToAction.actionType as any,
+          url: post.callToAction.url
+        } : undefined,
+        createTime: post.createTime,
+        updateTime: post.updateTime,
+        state: 'LIVE' as const, // BusinessPost doesn't have state, assume LIVE
+        searchUrl: post.searchUrl,
+        topicType: post.topicType as any || 'STANDARD',
+        media: post.media ? post.media.map(m => ({
+          name: '',
+          mediaFormat: m.mediaFormat as any,
+          sourceUrl: m.sourceUrl,
+          googleUrl: m.sourceUrl
+        })) : undefined
+      }))
 
-      const posts: LocalPost[] = data.posts || []
-      console.log(`[CentralizedDataLoader] Found ${posts.length} local posts from API route`)
+      // Sort posts by creation time (newest first)
+      localPosts.sort((a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime())
 
-      console.log(`[CentralizedDataLoader] Successfully loaded ${posts.length} local posts`)
-      return { success: true, posts }
+      console.log(`[CentralizedDataLoader] Successfully loaded ${localPosts.length} local posts`)
+      return { success: true, posts: localPosts }
     } catch (error) {
       console.error('[CentralizedDataLoader] Failed to load local posts:', error)
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
