@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { 
   Search, 
@@ -40,14 +40,18 @@ import {
   Edit3,
   HelpCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X,
+  ZoomIn,
+  Download,
+  Copy
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
-import { GoogleBusinessAPI, MediaItem, BusinessMedia } from '@/lib/google-business-api'
+import { GoogleBusinessAPI, MediaItem, BusinessMedia, BusinessReview } from '@/lib/google-business-api'
 import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
 
 // Business Logo Component
@@ -135,125 +139,265 @@ function BusinessLogo({ businessName, website, className = "w-16 h-16" }: Busine
   )
 }
 
-// Audit Issue Types
-interface AuditIssue {
-  id: string
-  category: 'critical' | 'important' | 'recommended' | 'optimization'
-  title: string
-  description: string
-  impact: string
-  solution: string
-  priority: number
-  icon: React.ReactNode
-  status: 'missing' | 'incomplete' | 'outdated' | 'good'
-  section: 'header' | 'photos' | 'description' | 'hours' | 'contact' | 'reviews' | 'qa' | 'posts' | 'services'
+// Image Gallery Modal Component
+interface ImageGalleryModalProps {
+  images: MediaItem[]
+  isOpen: boolean
+  onClose: () => void
+  selectedImageIndex?: number
 }
 
-// Profile Audit Analysis
-interface ProfileAudit {
-  profileId: string
-  overallScore: number
-  completionPercentage: number
-  issues: AuditIssue[]
-  strengths: string[]
-  lastAuditDate: string
-  recommendations: {
-    immediate: AuditIssue[]
-    shortTerm: AuditIssue[]
-    longTerm: AuditIssue[]
+function ImageGalleryModal({ images, isOpen, onClose, selectedImageIndex = 0 }: ImageGalleryModalProps) {
+  const [currentIndex, setCurrentIndex] = useState(selectedImageIndex)
+
+  useEffect(() => {
+    setCurrentIndex(selectedImageIndex)
+  }, [selectedImageIndex])
+
+  if (!isOpen) return null
+
+  const currentImage = images[currentIndex]
+
+  const nextImage = () => {
+    setCurrentIndex((prev) => (prev + 1) % images.length)
   }
-}
 
-// Audit Highlight Component
-interface AuditHighlightProps {
-  issue: AuditIssue
-  children: React.ReactNode
-  className?: string
-}
+  const prevImage = () => {
+    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length)
+  }
 
-function AuditHighlight({ issue, children, className = "" }: AuditHighlightProps) {
-  const [showTooltip, setShowTooltip] = useState(false)
-  
-  const getBorderColor = (category: string) => {
-    switch (category) {
-      case 'critical': return 'border-red-500 shadow-red-500/50'
-      case 'important': return 'border-orange-500 shadow-orange-500/50'
-      case 'recommended': return 'border-blue-500 shadow-blue-500/50'
-      case 'optimization': return 'border-purple-500 shadow-purple-500/50'
-      default: return 'border-gray-500 shadow-gray-500/50'
+  const downloadImage = () => {
+    if (currentImage) {
+      const link = document.createElement('a')
+      link.href = GoogleBusinessAPI.getBestImageUrl(currentImage) || ''
+      link.download = `business-image-${currentIndex + 1}.jpg`
+      link.click()
     }
   }
 
-  const getTooltipColor = (category: string) => {
-    switch (category) {
-      case 'critical': return 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950 dark:border-red-800 dark:text-red-200'
-      case 'important': return 'bg-orange-50 border-orange-200 text-orange-800 dark:bg-orange-950 dark:border-orange-800 dark:text-orange-200'
-      case 'recommended': return 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-200'
-      case 'optimization': return 'bg-purple-50 border-purple-200 text-purple-800 dark:bg-purple-950 dark:border-purple-800 dark:text-purple-200'
-      default: return 'bg-gray-50 border-gray-200 text-gray-800 dark:bg-gray-950 dark:border-gray-800 dark:text-gray-200'
+  const copyImageUrl = async () => {
+    if (currentImage) {
+      const imageUrl = GoogleBusinessAPI.getBestImageUrl(currentImage) || ''
+      await navigator.clipboard.writeText(imageUrl)
     }
   }
 
   return (
-    <div 
-      className={`relative ${className}`}
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
-    >
-      <div className={`border-2 border-dashed rounded-lg p-2 shadow-lg ${getBorderColor(issue.category)} animate-pulse`}>
-        {children}
-      </div>
-      
-      {showTooltip && (
+    <AnimatePresence>
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`absolute z-50 top-full left-0 mt-2 p-4 rounded-lg border shadow-xl max-w-sm ${getTooltipColor(issue.category)}`}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.9 }}
+          className="relative w-full max-w-6xl h-full max-h-[90vh] bg-white/95 dark:bg-black/95 backdrop-blur-xl rounded-3xl border border-white/30 dark:border-white/20 shadow-2xl overflow-hidden"
         >
-          <div className="flex items-center gap-2 mb-2">
-            {issue.icon}
-            <span className="font-semibold text-sm">{issue.title}</span>
-            <Badge variant="outline" className="text-xs capitalize">
-              {issue.category}
-            </Badge>
+          {/* Header */}
+          <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/50 to-transparent p-6">
+            <div className="flex items-center justify-between">
+              <div className="text-white">
+                <h3 className="text-xl font-bold">Business Photos</h3>
+                <p className="text-sm opacity-75">{currentIndex + 1} of {images.length}</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={downloadImage}
+                  className="text-white hover:bg-white/20 backdrop-blur-sm"
+                >
+                  <Download className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={copyImageUrl}
+                  className="text-white hover:bg-white/20 backdrop-blur-sm"
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClose}
+                  className="text-white hover:bg-white/20 backdrop-blur-sm"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
           </div>
-          <p className="text-xs mb-2">{issue.description}</p>
-          <p className="text-xs font-medium">Solution: {issue.solution}</p>
+
+          {/* Main Image */}
+          <div className="relative w-full h-full flex items-center justify-center">
+            {currentImage && (
+              <Image
+                src={GoogleBusinessAPI.getBestImageUrl(currentImage) || ''}
+                alt={`Business photo ${currentIndex + 1}`}
+                width={1200}
+                height={800}
+                className="max-w-full max-h-full object-contain"
+                unoptimized
+              />
+            )}
+
+            {/* Navigation Arrows */}
+            {images.length > 1 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  onClick={prevImage}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 backdrop-blur-sm rounded-full"
+                >
+                  <ChevronLeft className="w-8 h-8" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  onClick={nextImage}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 backdrop-blur-sm rounded-full"
+                >
+                  <ChevronRight className="w-8 h-8" />
+                </Button>
+              </>
+            )}
+          </div>
+
+          {/* Thumbnail Grid */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-6">
+            <div className="flex space-x-2 overflow-x-auto">
+              {images.map((image, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentIndex(index)}
+                  className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                    index === currentIndex ? 'border-white' : 'border-white/30 hover:border-white/60'
+                  }`}
+                >
+                  <Image
+                    src={GoogleBusinessAPI.getBestImageUrl(image) || ''}
+                    alt={`Thumbnail ${index + 1}`}
+                    width={64}
+                    height={64}
+                    className="w-full h-full object-cover"
+                    unoptimized
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
         </motion.div>
-      )}
-    </div>
+      </div>
+    </AnimatePresence>
+  )
+}
+
+// Image Grid Component
+interface ImageGridProps {
+  images: MediaItem[]
+  maxDisplay?: number
+  className?: string
+}
+
+function ImageGrid({ images, maxDisplay = 6, className = "" }: ImageGridProps) {
+  const [showModal, setShowModal] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(0)
+
+  if (!images || images.length === 0) {
+    return (
+      <div className={`${className} bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-600 p-8 text-center`}>
+        <Camera className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+        <p className="text-gray-500 dark:text-gray-400 font-medium">No photos available</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500">Add photos to showcase your business</p>
+      </div>
+    )
+  }
+
+  const displayImages = images.slice(0, maxDisplay)
+  const remainingCount = Math.max(0, images.length - maxDisplay)
+
+  const openModal = (index: number) => {
+    setSelectedIndex(index)
+    setShowModal(true)
+  }
+
+  return (
+    <>
+      <div className={`${className} grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4`}>
+        {displayImages.map((image, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: index * 0.1 }}
+            className="relative group cursor-pointer"
+            onClick={() => openModal(index)}
+          >
+            <div className="aspect-square relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+              <Image
+                src={GoogleBusinessAPI.getBestImageUrl(image) || ''}
+                alt={`Business photo ${index + 1}`}
+                fill
+                className="object-cover"
+                unoptimized
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center">
+                <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-all duration-300" />
+              </div>
+            </div>
+          </motion.div>
+        ))}
+        
+        {remainingCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: displayImages.length * 0.1 }}
+            className="relative group cursor-pointer"
+            onClick={() => openModal(maxDisplay)}
+          >
+            <div className="aspect-square relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 border-dashed border-blue-300 dark:border-blue-600 shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-105 flex items-center justify-center">
+              <div className="text-center">
+                <Plus className="w-8 h-8 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                  +{remainingCount} more
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      <ImageGalleryModal
+        images={images}
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        selectedImageIndex={selectedIndex}
+      />
+    </>
   )
 }
 
 export default function ContentHubPage() {
   const [profiles, setProfiles] = useState<SavedBusinessProfile[]>([])
   const [selectedProfile, setSelectedProfile] = useState<SavedBusinessProfile | null>(null)
-  const [profileAudit, setProfileAudit] = useState<ProfileAudit | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [auditMode, setAuditMode] = useState(false)
   const [businessMedia, setBusinessMedia] = useState<BusinessMedia | null>(null)
-  const [loadingMedia, setLoadingMedia] = useState(false)
-  const [selectedImageModal, setSelectedImageModal] = useState<MediaItem | null>(null)
-  const [businessReviews, setBusinessReviews] = useState<any[]>([])
+  const [reviews, setReviews] = useState<BusinessReview[]>([])
   const [reviewsSummary, setReviewsSummary] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [loadingMedia, setLoadingMedia] = useState(false)
   const [loadingReviews, setLoadingReviews] = useState(false)
 
   useEffect(() => {
     loadProfiles()
   }, [])
 
+  // Auto-load data when profile changes
   useEffect(() => {
     if (selectedProfile) {
-      performProfileAudit(selectedProfile)
+      loadAllProfileData(selectedProfile)
     }
   }, [selectedProfile])
-
-  // Debug effect for businessMedia state changes
-  useEffect(() => {
-    console.log('businessMedia state changed:', businessMedia)
-    console.log('Cover photo available:', businessMedia?.coverPhoto ? 'Yes' : 'No')
-    console.log('All photos count:', businessMedia?.allPhotos?.length || 0)
-  }, [businessMedia])
 
   const loadProfiles = () => {
     const savedProfiles = CentralizedDataLoader.loadProfiles()
@@ -264,275 +408,34 @@ export default function ContentHubPage() {
     }
   }
 
-  const loadBusinessMedia = async (profile: SavedBusinessProfile) => {
-    setLoadingMedia(true)
-    try {
-      console.log('Loading business media for profile:', profile.name)
-      
-      const result = await CentralizedDataLoader.loadBusinessMedia(profile)
-      
-      if (result.success && result.media) {
-        setBusinessMedia(result.media)
-      } else {
-        console.error('Failed to load business media:', result.error)
-        // Set empty media on error
-        setBusinessMedia({
-          exteriorPhotos: [],
-          interiorPhotos: [],
-          productPhotos: [],
-          foodAndDrinkPhotos: [],
-          menuPhotos: [],
-          teamPhotos: [],
-          additionalPhotos: [],
-          allPhotos: []
-        })
-      }
-      
-    } catch (error) {
-      console.error('Failed to load business media:', error)
-      setBusinessMedia({
-        exteriorPhotos: [],
-        interiorPhotos: [],
-        productPhotos: [],
-        foodAndDrinkPhotos: [],
-        menuPhotos: [],
-        teamPhotos: [],
-        additionalPhotos: [],
-        allPhotos: []
-      })
-    } finally {
-      setLoadingMedia(false)
-    }
-  }
-
-  const loadBusinessReviews = async (profile: SavedBusinessProfile) => {
-    setLoadingReviews(true)
-    try {
-      console.log('Loading reviews for profile:', profile.name)
-      
-      const result = await CentralizedDataLoader.loadReviews(profile)
-      
-      if (result.success && result.reviews && result.summary) {
-        setBusinessReviews(result.reviews)
-        setReviewsSummary(result.summary)
-      } else {
-        console.error('Failed to load reviews:', result.error)
-        setBusinessReviews([])
-        setReviewsSummary(null)
-      }
-      
-    } catch (error) {
-      console.error('Failed to load business reviews:', error)
-      setBusinessReviews([])
-      setReviewsSummary(null)
-    } finally {
-      setLoadingReviews(false)
-    }
-  }
-
-  const performProfileAudit = async (profile: SavedBusinessProfile) => {
+  const loadAllProfileData = async (profile: SavedBusinessProfile) => {
     setLoading(true)
-    
+    setLoadingMedia(true)
+    setLoadingReviews(true)
+
     try {
-      // Load business media and reviews first
-      await Promise.all([
-        loadBusinessMedia(profile),
-        loadBusinessReviews(profile)
-      ])
-      
-      // Simulate audit analysis
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const issues: AuditIssue[] = []
-      let score = 100
-      let completionItems = 0
-      let totalItems = 15 // Total possible optimization items
+      // Load all data for the profile
+      const result = await CentralizedDataLoader.loadAllProfileData(profile, {
+        includeReviews: true,
+        includeAnalytics: false, // We don't need analytics in content hub
+        includeMedia: true
+      })
 
-      // Critical Issues
-      if (!profile.googleData?.businessDescription || profile.googleData.businessDescription.length < 100) {
-        issues.push({
-          id: 'business-description',
-          category: 'critical',
-          title: 'Missing Business Description',
-          description: 'Your business description is missing or too short',
-          impact: 'Reduces search visibility and customer understanding',
-          solution: 'Add a detailed 150-250 character description',
-          priority: 1,
-          icon: <FileText className="w-4 h-4" />,
-          status: !profile.googleData?.businessDescription ? 'missing' : 'incomplete',
-          section: 'description'
-        })
-        score -= 15
-      } else {
-        completionItems++
-      }
-
-      if (!profile.website || profile.website === '') {
-        issues.push({
-          id: 'website-missing',
-          category: 'critical',
-          title: 'No Website Listed',
-          description: 'Your business profile is missing a website URL',
-          impact: 'Customers cannot find your online presence',
-          solution: 'Add your business website URL',
-          priority: 2,
-          icon: <Globe className="w-4 h-4" />,
-          status: 'missing',
-          section: 'contact'
-        })
-        score -= 12
-      } else {
-        completionItems++
-      }
-
-      if (!profile.phone || profile.phone === '') {
-        issues.push({
-          id: 'phone-missing',
-          category: 'critical',
-          title: 'No Phone Number',
-          description: 'Your business profile is missing a contact phone number',
-          impact: 'Customers cannot easily call your business',
-          solution: 'Add your primary business phone number',
-          priority: 3,
-          icon: <Phone className="w-4 h-4" />,
-          status: 'missing',
-          section: 'contact'
-        })
-        score -= 10
-      } else {
-        completionItems++
-      }
-
-      // Important Issues
-      if (!profile.googleData?.businessHours || Object.keys(profile.googleData.businessHours).length === 0) {
-        issues.push({
-          id: 'business-hours',
-          category: 'important',
-          title: 'Missing Business Hours',
-          description: 'Your business hours are not specified',
-          impact: 'Customers don\'t know when you\'re open',
-          solution: 'Add complete business hours for all days',
-          priority: 4,
-          icon: <Clock className="w-4 h-4" />,
-          status: 'missing',
-          section: 'hours'
-        })
-        score -= 8
-      } else {
-        completionItems++
-      }
-
-      // Check photos using loaded media data
-      const totalPhotos = businessMedia?.allPhotos?.length || 0
-      if (totalPhotos < 5) {
-        issues.push({
-          id: 'insufficient-photos',
-          category: 'important',
-          title: 'Need More Photos',
-          description: `Only ${totalPhotos} photos (recommended: 10+)`,
-          impact: 'Fewer photos reduce customer engagement',
-          solution: 'Add high-quality photos of your business',
-          priority: 5,
-          icon: <Camera className="w-4 h-4" />,
-          status: 'incomplete',
-          section: 'photos'
-        })
-        score -= 7
-      } else if (totalPhotos >= 5) {
-        completionItems++
-      }
-
-      if ((reviewsSummary?.totalReviews || 0) < 10) {
-        issues.push({
-          id: 'low-review-count',
-          category: 'recommended',
-          title: 'Need More Reviews',
-          description: `Only ${reviewsSummary?.totalReviews || 0} reviews (target: 25+)`,
-          impact: 'Fewer reviews reduce credibility',
-          solution: 'Encourage satisfied customers to leave reviews',
-          priority: 6,
-          icon: <Star className="w-4 h-4" />,
-          status: 'incomplete',
-          section: 'reviews'
-        })
-        score -= 4
-      } else if ((reviewsSummary?.totalReviews || 0) >= 10) {
-        completionItems++
-      }
-
-      // Optimization Opportunities
-      if (!(profile.googleData as any)?.posts || (profile.googleData as any).posts?.length === 0) {
-        issues.push({
-          id: 'no-posts',
-          category: 'optimization',
-          title: 'No Recent Posts',
-          description: 'Your profile has no recent posts or updates',
-          impact: 'Missed opportunities to engage customers',
-          solution: 'Create regular posts about offers and updates',
-          priority: 7,
-          icon: <MessageSquare className="w-4 h-4" />,
-          status: 'missing',
-          section: 'posts'
-        })
-        score -= 3
-      } else {
-        completionItems++
-      }
-
-      if (!(profile.googleData as any)?.qAndA || (profile.googleData as any).qAndA?.length === 0) {
-        issues.push({
-          id: 'no-qa',
-          category: 'optimization',
-          title: 'No Q&A Section',
-          description: 'Your profile has no questions and answers',
-          impact: 'Customers can\'t find quick answers',
-          solution: 'Add frequently asked questions',
-          priority: 8,
-          icon: <HelpCircle className="w-4 h-4" />,
-          status: 'missing',
-          section: 'qa'
-        })
-        score -= 2
-      } else {
-        completionItems++
-      }
-
-      // Calculate completion percentage
-      const completionPercentage = Math.round((completionItems / totalItems) * 100)
-
-      // Categorize recommendations
-      const immediate = issues.filter(issue => issue.category === 'critical').slice(0, 3)
-      const shortTerm = issues.filter(issue => issue.category === 'important').slice(0, 3)
-      const longTerm = issues.filter(issue => ['recommended', 'optimization'].includes(issue.category)).slice(0, 4)
-
-      // Identify strengths using real data
-      const strengths: string[] = []
-      if (reviewsSummary?.averageRating && reviewsSummary.averageRating >= 4.0) strengths.push('High customer rating')
-      if (reviewsSummary?.totalReviews && reviewsSummary.totalReviews >= 25) strengths.push('Strong review count')
-      if (profile.googleData?.businessDescription && profile.googleData.businessDescription.length >= 100) strengths.push('Detailed business description')
-      if (profile.website) strengths.push('Website listed')
-      if (profile.phone) strengths.push('Contact information complete')
-      if (totalPhotos >= 10) strengths.push('Rich photo gallery')
-
-      const audit: ProfileAudit = {
-        profileId: profile.id,
-        overallScore: Math.max(0, Math.round(score)),
-        completionPercentage,
-        issues: issues.sort((a, b) => a.priority - b.priority),
-        strengths,
-        lastAuditDate: new Date().toISOString(),
-        recommendations: {
-          immediate,
-          shortTerm,
-          longTerm
+      if (result.success) {
+        if (result.media) {
+          setBusinessMedia(result.media)
+        }
+        if (result.reviews && result.reviewsSummary) {
+          setReviews(result.reviews)
+          setReviewsSummary(result.reviewsSummary)
         }
       }
-
-      setProfileAudit(audit)
     } catch (error) {
-      console.error('Failed to perform audit:', error)
+      console.error('Failed to load profile data:', error)
     } finally {
       setLoading(false)
+      setLoadingMedia(false)
+      setLoadingReviews(false)
     }
   }
 
@@ -540,22 +443,67 @@ export default function ContentHubPage() {
     const profile = profiles.find(p => p.id === profileId)
     if (profile) {
       setSelectedProfile(profile)
+      // Reset data for new profile
+      setBusinessMedia(null)
+      setReviews([])
+      setReviewsSummary(null)
     }
   }
 
-  const refreshAudit = () => {
+  const refreshData = () => {
     if (selectedProfile) {
-      performProfileAudit(selectedProfile)
+      loadAllProfileData(selectedProfile)
     }
   }
 
-  const getIssueForSection = (section: string) => {
-    return profileAudit?.issues.find(issue => issue.section === section)
+  // Action button handlers
+  const handleWebsiteClick = () => {
+    if (selectedProfile?.website) {
+      window.open(selectedProfile.website, '_blank')
+    }
+  }
+
+  const handleDirectionsClick = () => {
+    if (selectedProfile?.address) {
+      const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(selectedProfile.address)}`
+      window.open(mapsUrl, '_blank')
+    }
+  }
+
+  const handleReviewsClick = () => {
+    if (selectedProfile?.googleBusinessId) {
+      // Try to construct Google Business reviews URL
+      const locationId = selectedProfile.googleBusinessId.split('/').pop()
+      const reviewsUrl = `https://business.google.com/dashboard/l/${locationId}/reviews`
+      window.open(reviewsUrl, '_blank')
+    }
+  }
+
+  const handleShareClick = async () => {
+    if (selectedProfile) {
+      const shareData = {
+        title: selectedProfile.name,
+        text: `Check out ${selectedProfile.name} - ${selectedProfile.category}`,
+        url: selectedProfile.website || window.location.href
+      }
+
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData)
+        } else {
+          // Fallback: copy to clipboard
+          await navigator.clipboard.writeText(shareData.url)
+          alert('Link copied to clipboard!')
+        }
+      } catch (error) {
+        console.error('Error sharing:', error)
+      }
+    }
   }
 
   const renderStars = (rating: number) => {
     return (
-      <div className="flex">
+      <div className="flex items-center">
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
@@ -568,1108 +516,378 @@ export default function ContentHubPage() {
     )
   }
 
-  const formatBusinessHours = (hours: any) => {
-    if (!hours || typeof hours !== 'object') return 'Hours not specified'
-    
-    try {
-      // Handle different hour formats from Google Business API
-      if (hours.regularHours && Array.isArray(hours.regularHours)) {
-        const today = new Date().getDay() // 0 = Sunday, 1 = Monday, etc.
-        const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
-        const todayName = dayNames[today]
-        
-        // Find today's hours
-        const todayHours = hours.regularHours.find((day: any) => day.day === todayName)
-        
-        if (todayHours && todayHours.openTime && todayHours.closeTime) {
-          const openTime = formatTime(todayHours.openTime)
-          const closeTime = formatTime(todayHours.closeTime)
-          return `Open • Closes ${closeTime}`
-        } else if (todayHours && todayHours.isClosed) {
-          return 'Closed today'
-        }
-      }
-      
-      // Fallback for other formats
-      if (typeof hours === 'string') return hours
-      
-      return 'Hours available'
-    } catch (error) {
-      console.error('Error formatting business hours:', error)
-      return 'Hours not specified'
+  const formatBusinessHours = (profile: SavedBusinessProfile) => {
+    const hours = profile.googleData?.businessHours
+    if (!hours || hours.length === 0) {
+      return ['Hours not available']
     }
-  }
 
-  const formatTime = (timeObj: any) => {
-    if (!timeObj) return ''
+    // Group hours by time to show ranges like "Mon-Fri: 9:00 AM - 5:00 PM"
+    const groupedHours: { [key: string]: string[] } = {}
     
-    try {
-      if (typeof timeObj === 'string') return timeObj
-      
-      if (timeObj.hours !== undefined && timeObj.minutes !== undefined) {
-        const hours = timeObj.hours
-        const minutes = timeObj.minutes
-        const period = hours >= 12 ? 'PM' : 'AM'
-        const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours
-        return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+    hours.forEach(hour => {
+      const [day, time] = hour.split(': ')
+      if (!groupedHours[time]) {
+        groupedHours[time] = []
+      }
+      groupedHours[time].push(day)
+    })
+
+    return Object.entries(groupedHours).map(([time, days]) => {
+      let dayRange = ''
+      if (days.length === 1) {
+        dayRange = days[0]
+      } else if (days.length === 5 && days.includes('Monday') && days.includes('Friday')) {
+        dayRange = 'Mon-Fri'
+      } else if (days.length === 2 && days.includes('Saturday') && days.includes('Sunday')) {
+        dayRange = 'Weekends'
+      } else if (days.length === 7) {
+        dayRange = 'Every day'
+      } else {
+        dayRange = days.join(', ')
       }
       
-      return timeObj.toString()
-    } catch (error) {
-      return ''
-    }
+      return `${dayRange}: ${time}`
+    })
   }
 
   const getBusinessCategories = (profile: SavedBusinessProfile) => {
-    const categories = []
-    
-    if (profile.googleData?.primaryCategory) {
-      categories.push(profile.googleData.primaryCategory)
-    }
-    
-    if (profile.googleData?.additionalCategories) {
-      categories.push(...profile.googleData.additionalCategories.slice(0, 2))
-    }
-    
-    return categories
+    return profile.googleData?.allCategories || [profile.category]
   }
 
   const getBusinessServices = (profile: SavedBusinessProfile) => {
-    const services = []
-    
-    // Get services from Google Business data
-    if (profile.googleData?.serviceItems) {
-      services.push(...profile.googleData.serviceItems.slice(0, 6))
-    }
-    
-    // Get services from categories
-    if (profile.googleData?.categories?.additionalCategories) {
-      profile.googleData.categories.additionalCategories.forEach((category: any) => {
-        if (category.serviceTypes) {
-          services.push(...category.serviceTypes.slice(0, 3))
-        }
-      })
-    }
-    
-    return services.slice(0, 8) // Limit to 8 services
-  }
-
-  if (!selectedProfile) {
-    return (
-      <div className="min-h-screen p-6">
-        <Card>
-          <CardContent className="p-12 text-center">
-            <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h2 className="text-2xl font-bold mb-4">No Business Profiles</h2>
-            <p className="text-gray-600 mb-6">Add business profiles to start auditing them</p>
-            <Button onClick={() => window.location.href = '/profiles'}>
-              Add Business Profiles
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return profile.googleData?.serviceTypes?.map(service => service.displayName) || []
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header Controls */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
-            <h1 className="text-lg sm:text-xl font-bold">Profile Audit Simulator</h1>
-            <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
-              <SelectTrigger className="w-full sm:w-64">
-                <SelectValue placeholder="Select business profile">
-                  {selectedProfile && (
-                    <div className="flex items-center gap-2">
+    <div className="min-h-screen">
+      {/* Page Content */}
+      <main className="p-4 lg:p-6 max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4 lg:space-y-6"
+        >
+          {/* Page Header */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-red-500/10 rounded-xl lg:rounded-2xl blur-xl lg:blur-2xl" />
+            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-xl lg:rounded-2xl border border-white/20 dark:border-white/10 p-4 lg:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 via-purple-800 to-pink-800 dark:from-white dark:via-purple-200 dark:to-pink-200 bg-clip-text text-transparent">
+                        Content Hub
+                      </h1>
+                      <p className="text-sm lg:text-base text-gray-600 dark:text-gray-300 font-medium">
+                        Manage your business profile content and media
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <Button 
+                  onClick={refreshData} 
+                  disabled={loading || !selectedProfile}
+                  className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <RefreshCw className={`w-4 h-4 mr-2 relative z-10 ${loading ? 'animate-spin' : ''}`} />
+                  <span className="relative z-10">Refresh Content</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Business Profile Selector */}
+          <Card className="bg-white/80 dark:bg-black/40 backdrop-blur-xl border-white/30 dark:border-white/20 shadow-lg">
+            <CardHeader className="pb-3 lg:pb-6">
+              <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
+                <Building2 className="w-4 h-4 lg:w-5 lg:h-5" />
+                Select Business Profile
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
+                <SelectTrigger className="h-12 lg:h-16 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
+                  <SelectValue placeholder="Choose a business profile to manage content">
+                    {selectedProfile && (
+                      <div className="flex items-center gap-2 lg:gap-3">
+                        <BusinessLogo 
+                          businessName={selectedProfile.name} 
+                          website={selectedProfile.website}
+                          className="w-8 h-8 lg:w-10 lg:h-10"
+                        />
+                        <div className="text-left min-w-0 flex-1">
+                          <div className="font-medium text-gray-900 dark:text-white text-sm lg:text-base truncate">{selectedProfile.name}</div>
+                          <div className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">{selectedProfile.address}</div>
+                        </div>
+                      </div>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  {profiles.map(profile => (
+                    <SelectItem key={profile.id} value={profile.id} className="h-12 lg:h-16 p-2 lg:p-3">
+                      <div className="flex items-center gap-2 lg:gap-3 w-full">
+                        <BusinessLogo 
+                          businessName={profile.name} 
+                          website={profile.website}
+                          className="w-8 h-8 lg:w-10 lg:h-10"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 dark:text-white text-sm lg:text-base truncate">{profile.name}</div>
+                          <div className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">{profile.address}</div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
+          {selectedProfile && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - Business Overview */}
+              <div className="lg:col-span-1 space-y-6">
+                {/* Business Info Card */}
+                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-4">
                       <BusinessLogo 
                         businessName={selectedProfile.name} 
                         website={selectedProfile.website}
-                        className="w-5 h-5 sm:w-6 sm:h-6"
+                        className="w-16 h-16 lg:w-20 lg:h-20"
                       />
-                      <span className="truncate text-sm sm:text-base">{selectedProfile.name}</span>
-                    </div>
-                  )}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {profiles.map(profile => (
-                  <SelectItem key={profile.id} value={profile.id}>
-                    <div className="flex items-center gap-2">
-                      <BusinessLogo 
-                        businessName={profile.name} 
-                        website={profile.website}
-                        className="w-5 h-5 sm:w-6 sm:h-6"
-                      />
-                      <span className="text-sm sm:text-base">{profile.name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-            <Button
-              variant={auditMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => setAuditMode(!auditMode)}
-              className="flex-1 sm:flex-none text-xs sm:text-sm"
-            >
-              <Target className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              {auditMode ? 'Hide Audit' : 'Show Audit'}
-            </Button>
-            <Button onClick={refreshAudit} disabled={loading} size="sm" className="flex-1 sm:flex-none text-xs sm:text-sm">
-              <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Google Business Profile Simulator */}
-      <div className="max-w-4xl mx-auto p-3 sm:p-6">
-        {loading ? (
-          <Card>
-            <CardContent className="flex items-center justify-center py-8 sm:py-12">
-              <div className="text-center">
-                <RefreshCw className="w-6 h-6 sm:w-8 sm:h-8 animate-spin mx-auto mb-3 sm:mb-4" />
-                <p className="text-base sm:text-lg font-medium">Analyzing Profile...</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-            {/* Profile Header */}
-            <div className="relative">
-              {/* Cover Photo Area */}
-              <div className="h-32 sm:h-40 md:h-48 bg-gradient-to-r from-blue-500 to-purple-600 relative overflow-hidden">
-                {/* Display actual cover photo if available */}
-                {businessMedia?.coverPhoto ? (
-                  <img
-                    src={GoogleBusinessAPI.getBestImageUrl(businessMedia.coverPhoto) || ''}
-                    alt="Business cover photo"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Fallback to gradient background on error
-                      e.currentTarget.style.display = 'none'
-                    }}
-                  />
-                ) : (
-                  /* Show placeholder when no cover photo */
-                  <div className="absolute inset-2 sm:inset-4 bg-black/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                    <div className="text-center text-white">
-                      <Camera className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2" />
-                      <p className="text-xs sm:text-sm">No cover photo</p>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Audit overlay - show on top of photos when in audit mode */}
-                {auditMode && getIssueForSection('photos') && (
-                  <AuditHighlight 
-                    issue={getIssueForSection('photos')!}
-                    className="absolute inset-2 sm:inset-4"
-                  >
-                    <div className="h-full bg-black/60 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                      <div className="text-center text-white">
-                        <Camera className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2" />
-                        <p className="text-xs sm:text-sm font-medium">
-                          {businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 
-                            ? `${businessMedia.allPhotos.length} photos (need ${Math.max(0, 10 - businessMedia.allPhotos.length)} more)`
-                            : 'Add photos'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                  </AuditHighlight>
-                )}
-                
-                {/* Loading overlay */}
-                {loadingMedia && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <div className="text-center text-white">
-                      <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 animate-spin" />
-                      <p className="text-xs sm:text-sm">Loading photos...</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Business Info */}
-              <div className="p-3 sm:p-4 md:p-6">
-                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-                  {/* Use profile photo if available, otherwise fallback to logo */}
-                  {businessMedia?.profilePhoto ? (
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shadow-lg bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 mx-auto sm:mx-0">
-                      <img
-                        src={GoogleBusinessAPI.getBestImageUrl(businessMedia.profilePhoto) || ''}
-                        alt={`${selectedProfile.name} profile`}
-                        className="w-full h-full object-contain p-2"
-                        onError={(e) => {
-                          // Fallback to BusinessLogo component on error
-                          e.currentTarget.parentElement!.innerHTML = ''
-                          const logoDiv = document.createElement('div')
-                          e.currentTarget.parentElement!.appendChild(logoDiv)
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <BusinessLogo 
-                      businessName={selectedProfile.name} 
-                      website={selectedProfile.website}
-                      className="w-16 h-16 sm:w-20 sm:h-20 mx-auto sm:mx-0"
-                    />
-                  )}
-                  
-                  <div className="flex-1 text-center sm:text-left w-full">
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3">
-                      <div className="w-full sm:flex-1">
-                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                      <div className="flex-1 min-w-0">
+                        <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
                           {selectedProfile.name}
-                        </h1>
-                        
-                        <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
-                          {renderStars(selectedProfile.rating || 0)}
-                          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                            {selectedProfile.rating} • {selectedProfile.reviewCount} Google reviews
+                        </h2>
+                        <p className="text-sm lg:text-base text-gray-600 dark:text-gray-400 truncate">
+                          {selectedProfile.category}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          {renderStars(selectedProfile.rating)}
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            {selectedProfile.rating} • {reviewsSummary?.totalReviews || selectedProfile.reviewCount || 0} Google reviews
                           </span>
                         </div>
-                        
-                        {/* Business Categories */}
-                        <div className="flex flex-wrap justify-center sm:justify-start gap-1 sm:gap-2 mb-3">
-                          {getBusinessCategories(selectedProfile).map((category: any, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {category.displayName || category.name || category}
-                            </Badge>
-                          ))}
-                        </div>
-                        
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 px-2 sm:px-0">
-                          {selectedProfile.googleData?.businessDescription?.substring(0, 100) || 
-                           `Business in ${selectedProfile.address?.split(',')[1] || 'Miami-Dade County'}, Florida`}
-                        </p>
                       </div>
-                      
-                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs whitespace-nowrap">
-                        You manage this Business Profile
-                      </Badge>
                     </div>
-
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     {/* Action Buttons */}
-                    <div className="flex flex-wrap justify-center sm:justify-start gap-1 sm:gap-2 mb-4">
-                      {auditMode && getIssueForSection('contact') ? (
-                        <AuditHighlight issue={getIssueForSection('contact')!}>
-                          <Button variant="outline" size="sm" className="opacity-50 text-xs flex-1 sm:flex-none min-w-0">
-                            <Globe className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                            <span className="hidden sm:inline">Website</span>
-                            <span className="sm:hidden">Web</span>
-                          </Button>
-                        </AuditHighlight>
-                      ) : (
-                        <Button variant="outline" size="sm" className="text-xs flex-1 sm:flex-none min-w-0">
-                          <Globe className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedProfile.website && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleWebsiteClick}
+                          className="flex items-center justify-center gap-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                        >
+                          <Globe className="w-4 h-4" />
                           <span className="hidden sm:inline">Website</span>
-                          <span className="sm:hidden">Web</span>
                         </Button>
                       )}
-                      
-                      <Button variant="outline" size="sm" className="text-xs flex-1 sm:flex-none min-w-0">
-                        <Navigation className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Directions</span>
-                        <span className="sm:hidden">Dir</span>
-                      </Button>
-                      
-                      <Button variant="outline" size="sm" className="text-xs flex-1 sm:flex-none min-w-0">
-                        <Star className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      {selectedProfile.address && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleDirectionsClick}
+                          className="flex items-center justify-center gap-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                        >
+                          <Navigation className="w-4 h-4" />
+                          <span className="hidden sm:inline">Directions</span>
+                        </Button>
+                      )}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleReviewsClick}
+                        className="flex items-center justify-center gap-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                      >
+                        <MessageSquare className="w-4 h-4" />
                         <span className="hidden sm:inline">Reviews</span>
-                        <span className="sm:hidden">Rev</span>
                       </Button>
-                      
-                      <Button variant="outline" size="sm" className="text-xs flex-1 sm:flex-none min-w-0">
-                        <Share className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleShareClick}
+                        className="flex items-center justify-center gap-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                      >
+                        <Share className="w-4 h-4" />
                         <span className="hidden sm:inline">Share</span>
-                        <span className="sm:hidden">Shr</span>
                       </Button>
                     </div>
 
-                    {/* Contact Info */}
-                    <div className="space-y-2 text-xs sm:text-sm">
-                      <div className="flex items-center justify-center sm:justify-start gap-2">
-                        <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />
-                        <span className="text-center sm:text-left">{selectedProfile.address}</span>
-                      </div>
+                    {/* Contact Information */}
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-gray-900 dark:text-white">Contact Information</h3>
                       
-                      {auditMode && getIssueForSection('contact') ? (
-                        <AuditHighlight issue={getIssueForSection('contact')!}>
-                          <div className="flex items-center justify-center sm:justify-start gap-2 text-gray-400">
-                            <Phone className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                            <span>Phone number missing</span>
-                          </div>
-                        </AuditHighlight>
-                      ) : (
-                        <div className="flex items-center justify-center sm:justify-start gap-2">
-                          <Phone className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />
-                          <span>{selectedProfile.phone || '(786) 257-8816'}</span>
-                        </div>
-                      )}
-                      
-                      {auditMode && getIssueForSection('hours') ? (
-                        <AuditHighlight issue={getIssueForSection('hours')!}>
-                          <div className="flex items-center justify-center sm:justify-start gap-2 text-gray-400">
-                            <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                            <span>Hours not specified</span>
-                          </div>
-                        </AuditHighlight>
-                      ) : (
-                        <div className="flex items-center justify-center sm:justify-start gap-2">
-                          <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />
-                          <span className="text-center sm:text-left">{formatBusinessHours(selectedProfile.googleData?.businessHours)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Business Description */}
-            <div className="px-3 sm:px-4 md:px-6 pb-3 sm:pb-4">
-              {auditMode && getIssueForSection('description') ? (
-                <AuditHighlight issue={getIssueForSection('description')!}>
-                  <div className="bg-gray-50 dark:bg-gray-700 p-3 sm:p-4 rounded-lg">
-                    <p className="text-gray-500 italic text-xs sm:text-sm">Business description missing or too short</p>
-                  </div>
-                </AuditHighlight>
-              ) : (
-                <div className="bg-gray-50 dark:bg-gray-700 p-3 sm:p-4 rounded-lg">
-                  <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                    {selectedProfile.googleData?.businessDescription || 
-                     "AG Construction redefines new construction, home building, and remodeling in Miami through cutting-edge design, premium craftsmanship, and exceptional service."}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Image Gallery Section */}
-            {businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 && (
-              <div className="px-3 sm:px-4 md:px-6 pb-4 sm:pb-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
-                  <h3 className="font-semibold text-sm sm:text-base">Photos ({businessMedia.allPhotos.length})</h3>
-                  <Button variant="outline" size="sm" className="text-xs sm:text-sm w-full sm:w-auto">
-                    <Camera className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    View all
-                  </Button>
-                </div>
-                
-                {/* Responsive Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-                  {businessMedia.allPhotos.slice(0, 8).map((photo, index) => (
-                    <div 
-                      key={index} 
-                      className={`relative overflow-hidden rounded-lg cursor-pointer hover:opacity-90 transition-opacity ${
-                        index === 0 ? 'col-span-2 row-span-2' : ''
-                      }`}
-                      onClick={() => setSelectedImageModal(photo)}
-                    >
-                      <img
-                        src={GoogleBusinessAPI.getBestImageUrl(photo) || ''}
-                        alt={`Business photo ${index + 1}`}
-                        className={`w-full object-cover ${
-                          index === 0 ? 'h-32 sm:h-48 md:h-64' : 'h-16 sm:h-24 md:h-32'
-                        }`}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
-                      {/* Overlay for first image if there are more */}
-                      {index === 7 && businessMedia.allPhotos.length > 8 && (
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                          <span className="text-white font-semibold text-xs sm:text-sm">
-                            +{businessMedia.allPhotos.length - 8} more
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Products/Services Section */}
-            <div className="px-3 sm:px-4 md:px-6 pb-4 sm:pb-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
-                <h3 className="font-semibold text-sm sm:text-base">Services & Products</h3>
-                <Button variant="outline" size="sm" className="text-xs sm:text-sm w-full sm:w-auto">
-                  <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  Add service
-                </Button>
-              </div>
-              
-              {(() => {
-                const services = getBusinessServices(selectedProfile)
-                
-                if (services.length > 0) {
-                  return (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                      {services.map((service: any, index) => (
-                        <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-600">
-                          <div className="flex items-start gap-2 sm:gap-3">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Tag className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-xs sm:text-sm mb-1 truncate">
-                                {service.displayName || service.name || service.title || 'Service'}
-                              </h4>
-                              {service.description && (
-                                <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
-                                  {service.description.substring(0, 60)}...
-                                </p>
-                              )}
-                              {service.price && (
-                                <p className="text-xs font-medium text-green-600 dark:text-green-400 mt-1">
-                                  {service.price}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {/* Add service card */}
-                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 sm:p-4 text-center flex items-center justify-center min-h-[60px] sm:min-h-[80px] hover:border-gray-400 dark:hover:border-gray-500 transition-colors cursor-pointer">
-                        <div className="text-gray-500 dark:text-gray-400">
-                          <Plus className="w-4 h-4 sm:w-6 sm:h-6 mx-auto mb-1" />
-                          <p className="text-xs">Add service</p>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                } else {
-                  return (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 sm:p-4 text-center">
-                        <div className="w-full h-12 sm:h-16 bg-gray-200 dark:bg-gray-600 rounded mb-2 flex items-center justify-center">
-                          <Tag className="w-4 h-4 sm:w-6 sm:h-6 text-gray-400" />
-                        </div>
-                        <p className="text-xs sm:text-sm font-medium">REMODELING</p>
-                      </div>
-                      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 sm:p-4 text-center">
-                        <div className="w-full h-12 sm:h-16 bg-gray-200 dark:bg-gray-600 rounded mb-2 flex items-center justify-center">
-                          <Building2 className="w-4 h-4 sm:w-6 sm:h-6 text-gray-400" />
-                        </div>
-                        <p className="text-xs sm:text-sm font-medium">Construction</p>
-                      </div>
-                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 sm:p-4 text-center flex items-center justify-center col-span-1 sm:col-span-2 lg:col-span-1">
-                        <div className="text-gray-400">
-                          <Plus className="w-4 h-4 sm:w-6 sm:h-6 mx-auto mb-1" />
-                          <p className="text-xs">Add service</p>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                }
-              })()}
-            </div>
-
-            {/* Business Hours Section */}
-            <div className="px-3 sm:px-4 md:px-6 pb-4 sm:pb-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
-                <h3 className="font-semibold text-sm sm:text-base">Business Hours</h3>
-                <Button variant="outline" size="sm" className="text-xs sm:text-sm w-full sm:w-auto">
-                  <Clock className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  Edit hours
-                </Button>
-              </div>
-              
-              {(() => {
-                const hours = selectedProfile.googleData?.businessHours
-                
-                if (hours && typeof hours === 'object' && !Array.isArray(hours) && (hours as any).regularHours && Array.isArray((hours as any).regularHours)) {
-                  const dayNames = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
-                  const dayDisplayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-                  const regularHours = (hours as any).regularHours
-                  
-                  return (
-                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-600">
-                      <div className="space-y-2 sm:space-y-3">
-                        {dayNames.map((day, index) => {
-                          const dayHours = regularHours.find((h: any) => h.day === day)
-                          const today = new Date().getDay()
-                          const isToday = (today === 0 ? 6 : today - 1) === index // Adjust for Sunday = 0
-                          
-                          return (
-                            <div key={day} className={`flex items-center justify-between py-2 px-2 sm:px-3 rounded ${
-                              isToday ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800' : ''
-                            }`}>
-                              <span className={`text-xs sm:text-sm font-medium ${
-                                isToday ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'
-                              }`}>
-                                {dayDisplayNames[index]}
-                                {isToday && <span className="ml-1 sm:ml-2 text-xs">(Today)</span>}
-                              </span>
-                              
-                              <span className={`text-xs sm:text-sm ${
-                                isToday ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-600 dark:text-gray-400'
-                              }`}>
-                                {dayHours && dayHours.openTime && dayHours.closeTime ? (
-                                  `${formatTime(dayHours.openTime)} - ${formatTime(dayHours.closeTime)}`
-                                ) : (
-                                  <span className="text-red-500 dark:text-red-400">Closed</span>
-                                )}
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                      
-                      {/* Special Hours */}
-                      {(hours as any).specialHours && Array.isArray((hours as any).specialHours) && (hours as any).specialHours.length > 0 && (
-                        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-600">
-                          <h4 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Special Hours</h4>
-                          <div className="space-y-2">
-                            {(hours as any).specialHours.slice(0, 3).map((special: any, index: number) => (
-                              <div key={index} className="flex items-center justify-between text-xs sm:text-sm">
-                                <span className="text-orange-600 dark:text-orange-400 truncate mr-2">
-                                  {special.date || 'Special day'}
-                                </span>
-                                <span className="text-gray-600 dark:text-gray-400 text-right">
-                                  {special.isClosed ? 'Closed' : `${formatTime(special.openTime)} - ${formatTime(special.closeTime)}`}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                } else {
-                  return (
-                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-600">
-                      <div className="text-center py-4 sm:py-4">
-                        <Clock className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 text-gray-400" />
-                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-2">Business hours not specified</p>
-                        <Button variant="outline" size="sm" className="text-xs sm:text-sm">
-                          Add business hours
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                }
-              })()}
-            </div>
-
-            {/* Q&A Section */}
-            <div className="px-3 sm:px-4 md:px-6 pb-3 sm:pb-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 sm:mb-3 gap-2">
-                <h3 className="font-semibold text-sm sm:text-base">Questions & answers</h3>
-                <Button variant="outline" size="sm" className="text-xs sm:text-sm w-full sm:w-auto">Ask a question</Button>
-              </div>
-              
-              {auditMode && getIssueForSection('qa') ? (
-                <AuditHighlight issue={getIssueForSection('qa')!}>
-                  <div className="text-center py-6 sm:py-8 text-gray-500">
-                    <HelpCircle className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2" />
-                    <p className="text-xs sm:text-sm">No questions and answers yet</p>
-                  </div>
-                </AuditHighlight>
-              ) : (
-                <div className="text-center py-6 sm:py-8 text-gray-500">
-                  <HelpCircle className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2" />
-                  <p className="text-xs sm:text-sm">See all questions (1)</p>
-                </div>
-              )}
-            </div>
-
-            {/* Reviews Section */}
-            <div className="px-3 sm:px-4 md:px-6 pb-4 sm:pb-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
-                <h3 className="font-semibold text-sm sm:text-base">Reviews</h3>
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                  <Button variant="outline" size="sm" className="text-xs sm:text-sm">
-                    <Star className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    Get more reviews
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs sm:text-sm">
-                    <Camera className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    Add a photo
-                  </Button>
-                </div>
-              </div>
-              
-              {auditMode && getIssueForSection('reviews') ? (
-                <AuditHighlight issue={getIssueForSection('reviews')!}>
-                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-600">
-                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-4">
-                      <div className="text-center">
-                        <div className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">{selectedProfile.rating || '5.0'}</div>
-                        <div className="flex justify-center mb-1">
-                          {renderStars(selectedProfile.rating || 5)}
-                        </div>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                          {selectedProfile.reviewCount || 7} reviews (Need more reviews)
-                        </p>
-                      </div>
-                      
-                      <div className="flex-1 w-full">
-                        <div className="space-y-2">
-                          {[5, 4, 3, 2, 1].map((stars) => {
-                            const count = reviewsSummary?.ratingDistribution?.[stars] || 0
-                            const total = reviewsSummary?.totalReviews || 1
-                            const percentage = total > 0 ? Math.round((count / total) * 100) : 0
-                            
-                            return (
-                              <div key={stars} className="flex items-center gap-2">
-                                <span className="text-xs sm:text-sm w-3">{stars}</span>
-                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                                  <div 
-                                    className="bg-yellow-400 h-2 rounded-full transition-all duration-300" 
-                                    style={{ width: `${percentage}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-xs text-gray-500 w-8 sm:w-12 text-right">
-                                  {count} ({percentage}%)
-                                </span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </AuditHighlight>
-              ) : (
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-600">
-                  <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-4 sm:mb-6">
-                    <div className="text-center">
-                      <div className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">{selectedProfile.rating || '5.0'}</div>
-                      <div className="text-4xl font-bold text-gray-900 dark:text-white">{selectedProfile.rating || '5.0'}</div>
-                      <div className="flex justify-center mb-1">
-                        {renderStars(selectedProfile.rating || 5)}
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {selectedProfile.reviewCount || 7} Google reviews
-                      </p>
-                    </div>
-                    
-                    <div className="flex-1">
                       <div className="space-y-2">
-                        {[5, 4, 3, 2, 1].map((stars) => {
-                          const count = reviewsSummary?.ratingDistribution?.[stars] || 0
-                          const total = reviewsSummary?.totalReviews || 1
-                          const percentage = total > 0 ? Math.round((count / total) * 100) : 0
-                          
-                          return (
-                            <div key={stars} className="flex items-center gap-2">
-                              <span className="text-sm w-3">{stars}</span>
-                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                              <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                                <div 
-                                  className="bg-yellow-400 h-2 rounded-full transition-all duration-300" 
-                                  style={{ width: `${percentage}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-xs text-gray-500 w-12 text-right">
-                                {count} ({percentage}%)
-                              </span>
-                            </div>
-                          )
-                        })}
+                        <div className="flex items-start gap-3">
+                          <MapPin className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                            {selectedProfile.address}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            {selectedProfile.phone}
+                          </p>
+                        </div>
+                        
+                        {selectedProfile.website && (
+                          <div className="flex items-center gap-3">
+                            <Globe className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                            <a 
+                              href={selectedProfile.website} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline transition-colors duration-300 truncate"
+                            >
+                              {selectedProfile.website.replace(/^https?:\/\//, '')}
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                  
-                  {/* Recent Reviews */}
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-gray-900 dark:text-white">Recent reviews</h4>
-                    
-                    {/* Real reviews from loaded data */}
-                    {businessReviews && businessReviews.length > 0 ? (
-                      <div className="space-y-4">
-                        {businessReviews.slice(0, 3).map((review, index) => (
-                          <div key={index} className="border-b border-gray-200 dark:border-gray-600 pb-4">
-                            <div className="flex items-start gap-3">
-                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-medium">
-                                {(review.reviewer?.displayName || 'A').charAt(0).toUpperCase()}
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-medium text-sm">
-                                    {review.reviewer?.displayName || 'Anonymous'}
-                                  </span>
-                                  <div className="flex">
-                                    {renderStars(GoogleBusinessAPI.getStarRatingValue(review.starRating))}
-                                  </div>
-                                  <span className="text-xs text-gray-500">
-                                    {GoogleBusinessAPI.formatReviewDate(review.createTime)}
-                                  </span>
-                                </div>
-                                {review.comment && (
-                                  <p className="text-sm text-gray-700 dark:text-gray-300">
-                                    {review.comment}
-                                  </p>
-                                )}
-                                {review.reviewReply && (
-                                  <div className="mt-2 ml-4 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border-l-2 border-blue-500">
-                                    <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">Business Response</p>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                                      {review.reviewReply.comment}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+
+                    {/* Business Hours */}
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Business Hours
+                      </h3>
+                      <div className="space-y-1">
+                        {formatBusinessHours(selectedProfile).slice(0, 4).map((hour, index) => (
+                          <div key={index} className="flex justify-between items-center py-1 px-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                            <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                              {hour.split(': ')[0]}
+                            </span>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {hour.split(': ')[1]}
+                            </span>
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <Star className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No reviews available</p>
-                        <p className="text-xs">Reviews will appear here when customers leave them</p>
+                    </div>
+
+                    {/* Categories */}
+                    {getBusinessCategories(selectedProfile).length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="font-semibold text-gray-900 dark:text-white">Categories</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {getBusinessCategories(selectedProfile).slice(0, 4).map((category, index) => (
+                            <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                              {category}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     )}
-                    
-                    <Button variant="outline" className="w-full">
-                      <Star className="w-4 h-4 mr-2" />
-                      View all {reviewsSummary?.totalReviews || 0} reviews
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+                  </CardContent>
+                </Card>
 
-            {/* Posts Section */}
-            <div className="px-6 pb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Posts & Updates</h3>
-                <Button variant="outline" size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create post
-                </Button>
+                {/* Services */}
+                {getBusinessServices(selectedProfile).length > 0 && (
+                  <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Tag className="w-5 h-5" />
+                        Services
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        {getBusinessServices(selectedProfile).slice(0, 6).map((service, index) => (
+                          <Badge key={index} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
+                            {service}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-              
-              {auditMode && getIssueForSection('posts') ? (
-                <AuditHighlight issue={getIssueForSection('posts')!}>
-                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 text-center">
-                    <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">No posts yet</h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                      Start sharing updates, offers, and events to engage with customers
-                    </p>
-                    <div className="flex gap-2 justify-center">
-                      <Button size="sm">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create post
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Calendar className="w-4 h-4 mr-2" />
-                        Add event
-                      </Button>
-                    </div>
-                  </div>
-                </AuditHighlight>
-              ) : (
-                <div className="space-y-4">
-                  {/* Sample posts - in real app, these would come from API */}
-                  <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <BusinessLogo 
-                        businessName={selectedProfile.name} 
-                        website={selectedProfile.website}
-                        className="w-10 h-10"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="font-medium text-sm">{selectedProfile.name}</span>
-                          <Badge variant="outline" className="text-xs">
-                            <Sparkles className="w-3 h-3 mr-1" />
-                            Offer
-                          </Badge>
-                          <span className="text-xs text-gray-500">3 days ago</span>
-                        </div>
-                        <h4 className="font-medium mb-2">🏗️ Special Winter Construction Discount!</h4>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                          Get 15% off all construction and remodeling projects booked this month. 
-                          Professional quality work with premium materials. Contact us today!
-                        </p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <button className="flex items-center gap-1 hover:text-blue-600">
-                            <Star className="w-3 h-3" />
-                            12 likes
-                          </button>
-                          <button className="flex items-center gap-1 hover:text-blue-600">
-                            <MessageSquare className="w-3 h-3" />
-                            3 comments
-                          </button>
-                          <button className="flex items-center gap-1 hover:text-blue-600">
-                            <Share className="w-3 h-3" />
-                            Share
-                          </button>
+
+              {/* Right Column - Content Management */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Business Photos */}
+                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Camera className="w-5 h-5" />
+                        Business Photos
+                      </div>
+                      {businessMedia && businessMedia.allPhotos.length > 0 && (
+                        <Badge variant="secondary">
+                          {businessMedia.allPhotos.length} photos
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingMedia ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
+                          <p className="text-lg font-medium">Loading photos...</p>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <BusinessLogo 
-                        businessName={selectedProfile.name} 
-                        website={selectedProfile.website}
-                        className="w-10 h-10"
+                    ) : (
+                      <ImageGrid 
+                        images={businessMedia?.allPhotos || []} 
+                        maxDisplay={6}
+                        className="w-full"
                       />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="font-medium text-sm">{selectedProfile.name}</span>
-                          <Badge variant="outline" className="text-xs">
-                            <Calendar className="w-3 h-3 mr-1" />
-                            Update
-                          </Badge>
-                          <span className="text-xs text-gray-500">1 week ago</span>
-                        </div>
-                        <h4 className="font-medium mb-2">📸 Recent Project Completion</h4>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                          Just completed another successful home renovation project! 
-                          Check out the amazing transformation we achieved for our client.
-                        </p>
-                        
-                        {/* Sample project images */}
-                        {businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 && (
-                          <div className="grid grid-cols-2 gap-2 mb-3">
-                            {businessMedia.allPhotos.slice(0, 2).map((photo, index) => (
-                              <div key={index} className="relative overflow-hidden rounded-lg h-32">
-                                <img
-                                  src={GoogleBusinessAPI.getBestImageUrl(photo) || ''}
-                                  alt={`Project photo ${index + 1}`}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none'
-                                  }}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <button className="flex items-center gap-1 hover:text-blue-600">
-                            <Star className="w-3 h-3" />
-                            24 likes
-                          </button>
-                          <button className="flex items-center gap-1 hover:text-blue-600">
-                            <MessageSquare className="w-3 h-3" />
-                            8 comments
-                          </button>
-                          <button className="flex items-center gap-1 hover:text-blue-600">
-                            <Share className="w-3 h-3" />
-                            Share
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Photo Categories */}
+                {businessMedia && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                      { title: 'Exterior Photos', photos: businessMedia.exteriorPhotos, icon: Building2 },
+                      { title: 'Interior Photos', photos: businessMedia.interiorPhotos, icon: Building2 },
+                      { title: 'Product Photos', photos: businessMedia.productPhotos, icon: Tag },
+                      { title: 'Team Photos', photos: businessMedia.teamPhotos, icon: Users }
+                    ].map(({ title, photos, icon: Icon }) => 
+                      photos.length > 0 && (
+                        <Card key={title} className="bg-white/40 dark:bg-black/20 backdrop-blur-xl border-white/30 dark:border-white/20">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                              <Icon className="w-4 h-4" />
+                              {title}
+                              <Badge variant="secondary" className="ml-auto">
+                                {photos.length}
+                              </Badge>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <ImageGrid 
+                              images={photos} 
+                              maxDisplay={4}
+                              className="w-full"
+                            />
+                          </CardContent>
+                        </Card>
+                      )
+                    )}
                   </div>
-                  
-                  <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <BusinessLogo 
-                        businessName={selectedProfile.name} 
-                        website={selectedProfile.website}
-                        className="w-10 h-10"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="font-medium text-sm">{selectedProfile.name}</span>
-                          <Badge variant="outline" className="text-xs">
-                            <Calendar className="w-3 h-3 mr-1" />
-                            Event
-                          </Badge>
-                          <span className="text-xs text-gray-500">2 weeks ago</span>
-                        </div>
-                        <h4 className="font-medium mb-2">🎉 Free Consultation Week</h4>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                          Join us for Free Consultation Week! Get expert advice on your next construction 
-                          or remodeling project. Book your appointment today.
-                        </p>
-                        <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 mb-3">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="w-4 h-4 text-blue-600" />
-                            <span className="font-medium">December 15-22, 2024</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm mt-1">
-                            <MapPin className="w-4 h-4 text-blue-600" />
-                            <span>Our Office & Virtual Consultations</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <button className="flex items-center gap-1 hover:text-blue-600">
-                            <Star className="w-3 h-3" />
-                            18 likes
-                          </button>
-                          <button className="flex items-center gap-1 hover:text-blue-600">
-                            <MessageSquare className="w-3 h-3" />
-                            5 comments
-                          </button>
-                          <button className="flex items-center gap-1 hover:text-blue-600">
-                            <Share className="w-3 h-3" />
-                            Share
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Button variant="outline" className="w-full">
-                    View all posts
-                  </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Audit Summary Panel */}
-        {auditMode && profileAudit && !loading && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 sm:mt-6"
-          >
-            <Card className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 border-purple-200 dark:border-purple-800">
-              <CardHeader className="p-3 sm:p-4 md:p-6">
-                <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-200 text-sm sm:text-base">
-                  <Target className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Audit Summary
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
-                <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                  <div className="text-center">
-                    <div className="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400">
-                      {profileAudit.overallScore}
-                    </div>
-                    <p className="text-xs sm:text-sm text-purple-700 dark:text-purple-300">Overall Score</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">
-                      {profileAudit.completionPercentage}%
-                    </div>
-                    <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">Complete</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl sm:text-3xl font-bold text-orange-600 dark:text-orange-400">
-                      {profileAudit.issues.length}
-                    </div>
-                    <p className="text-xs sm:text-sm text-orange-700 dark:text-orange-300">Issues Found</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-                  {/* Immediate Actions */}
-                  <div>
-                    <h4 className="font-semibold text-red-700 dark:text-red-300 mb-2 flex items-center gap-2 text-xs sm:text-sm">
-                      <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
-                      Immediate ({profileAudit.recommendations.immediate.length})
-                    </h4>
-                    <div className="space-y-2">
-                      {profileAudit.recommendations.immediate.map((issue) => (
-                        <div key={issue.id} className="text-xs p-2 bg-red-100 dark:bg-red-900 rounded">
-                          {issue.title}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Short-term */}
-                  <div>
-                    <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-2 flex items-center gap-2 text-xs sm:text-sm">
-                      <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
-                      Short-term ({profileAudit.recommendations.shortTerm.length})
-                    </h4>
-                    <div className="space-y-2">
-                      {profileAudit.recommendations.shortTerm.map((issue) => (
-                        <div key={issue.id} className="text-xs p-2 bg-orange-100 dark:bg-orange-900 rounded">
-                          {issue.title}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Long-term */}
-                  <div>
-                    <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-2 text-xs sm:text-sm">
-                      <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
-                      Long-term ({profileAudit.recommendations.longTerm.length})
-                    </h4>
-                    <div className="space-y-2">
-                      {profileAudit.recommendations.longTerm.map((issue) => (
-                        <div key={issue.id} className="text-xs p-2 bg-blue-100 dark:bg-blue-900 rounded">
-                          {issue.title}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Image Modal */}
-      {selectedImageModal && (
-        <div 
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-2 sm:p-4"
-          onClick={() => setSelectedImageModal(null)}
-        >
-          <div className="relative max-w-full max-h-full w-full h-full sm:w-auto sm:h-auto">
-            <button
-              onClick={() => setSelectedImageModal(null)}
-              className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors touch-manipulation"
-            >
-              <XCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
-            
-            <img
-              src={GoogleBusinessAPI.getBestImageUrl(selectedImageModal) || ''}
-              alt="Business photo"
-              className="max-w-full max-h-full w-full h-full sm:w-auto sm:h-auto object-contain rounded-none sm:rounded-lg"
-              onClick={(e) => e.stopPropagation()}
-            />
-            
-            {/* Navigation buttons if there are multiple photos */}
-            {businessMedia?.allPhotos && businessMedia.allPhotos.length > 1 && (
-              <>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    const currentIndex = businessMedia.allPhotos.findIndex(p => p === selectedImageModal)
-                    const prevIndex = currentIndex > 0 ? currentIndex - 1 : businessMedia.allPhotos.length - 1
-                    setSelectedImageModal(businessMedia.allPhotos[prevIndex])
-                  }}
-                  className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-3 sm:p-2 hover:bg-black/70 transition-colors touch-manipulation"
-                >
-                  <ChevronLeft className="w-6 h-6 sm:w-6 sm:h-6" />
-                </button>
-                
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    const currentIndex = businessMedia.allPhotos.findIndex(p => p === selectedImageModal)
-                    const nextIndex = currentIndex < businessMedia.allPhotos.length - 1 ? currentIndex + 1 : 0
-                    setSelectedImageModal(businessMedia.allPhotos[nextIndex])
-                  }}
-                  className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-3 sm:p-2 hover:bg-black/70 transition-colors touch-manipulation"
-                >
-                  <ChevronRight className="w-6 h-6 sm:w-6 sm:h-6" />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+          )}
+        </motion.div>
+      </main>
     </div>
   )
 } 
