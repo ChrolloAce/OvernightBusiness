@@ -610,19 +610,29 @@ export class GoogleBusinessAPI {
 
   // Get posts for a location
   async getPosts(locationName: string): Promise<BusinessPost[]> {
-    const accessToken = await this.authService.getValidAccessToken()
-    
     console.log('[Google Business API] Fetching posts for location:', locationName)
     
-    const response = await fetch(`${this.postsBaseUrl}/${locationName}/localPosts`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    const data = await this.handleApiResponse(response, 'Fetch Posts')
-    return data.localPosts || []
+    try {
+      const accessToken = await this.authService.getValidAccessToken()
+      
+      const response = await fetch(`/api/google-business/local-posts?locationName=${encodeURIComponent(locationName)}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+      
+      const data = await response.json()
+      return data.localPosts || []
+    } catch (error) {
+      console.error('[Google Business API] Failed to fetch posts:', error)
+      throw error
+    }
   }
 
   // Get reviews for a location
