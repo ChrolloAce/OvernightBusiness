@@ -90,12 +90,34 @@ function BusinessLogo({ businessName, website, className = "w-16 h-16" }: Busine
         ].filter(Boolean)
 
         if (logoSources.length > 0) {
-          setLogoUrl(logoSources[0] as string)
-          setIsLoading(false)
-        } else {
-          setHasError(true)
-          setIsLoading(false)
+          // Test if the first logo source is accessible
+          try {
+            const response = await fetch(logoSources[0] as string, { method: 'HEAD' })
+            if (response.ok) {
+              setLogoUrl(logoSources[0] as string)
+              setIsLoading(false)
+              return
+            }
+          } catch {
+            // First source failed, try second if available
+            if (logoSources.length > 1) {
+              try {
+                const response = await fetch(logoSources[1] as string, { method: 'HEAD' })
+                if (response.ok) {
+                  setLogoUrl(logoSources[1] as string)
+                  setIsLoading(false)
+                  return
+                }
+              } catch {
+                // Both sources failed
+              }
+            }
+          }
         }
+        
+        // All sources failed or no sources available
+        setHasError(true)
+        setIsLoading(false)
       } catch (error) {
         setHasError(true)
         setIsLoading(false)
@@ -114,9 +136,14 @@ function BusinessLogo({ businessName, website, className = "w-16 h-16" }: Busine
   }
 
   if (hasError || !logoUrl) {
+    // Clean professional fallback with business initial
+    const businessInitial = businessName ? businessName.charAt(0).toUpperCase() : 'B'
     return (
-      <div className={`${className} bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg`}>
-        <Building2 className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
+      <div className={`${className} bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl flex flex-col items-center justify-center shadow-lg border border-blue-500/20`}>
+        <div className="text-white font-bold text-lg sm:text-xl md:text-2xl">
+          {businessInitial}
+        </div>
+        <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-blue-200 mt-1 opacity-60" />
       </div>
     )
   }
@@ -133,6 +160,7 @@ function BusinessLogo({ businessName, website, className = "w-16 h-16" }: Busine
           setHasError(true)
           setLogoUrl(null)
         }}
+        onLoad={() => setHasError(false)}
         unoptimized
       />
     </div>
@@ -378,6 +406,451 @@ function ImageGrid({ images, maxDisplay = 6, className = "" }: ImageGridProps) {
   )
 }
 
+// Business Updates Slider Component
+interface BusinessUpdatesSliderProps {
+  posts: LocalPost[]
+  selectedProfile: SavedBusinessProfile
+  formatPostDate: (dateString: string) => string
+  getPostTypeIcon: (topicType: string) => any
+  getPostTypeLabel: (topicType: string) => string
+  getPostStateColor: (state: string) => string
+  getActionTypeLabel: (actionType: string) => string
+}
+
+function BusinessUpdatesSlider({ 
+  posts, 
+  selectedProfile, 
+  formatPostDate, 
+  getPostTypeIcon, 
+  getPostTypeLabel, 
+  getPostStateColor, 
+  getActionTypeLabel 
+}: BusinessUpdatesSliderProps) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const itemsPerView = 1 // Show one update at a time for better mobile experience
+  const maxIndex = Math.max(0, posts.length - itemsPerView)
+
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1))
+  }
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev <= 0 ? maxIndex : prev - 1))
+  }
+
+  if (posts.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+        <p className="text-gray-500 dark:text-gray-400 font-medium">No business updates available</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500">Create posts to engage with your customers</p>
+        <Button className="mt-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
+          <Plus className="w-4 h-4 mr-2" />
+          Create Update
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative">
+      {/* Slider Navigation */}
+      {posts.length > 1 && (
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            {posts.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentIndex(index)}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  index === currentIndex
+                    ? 'bg-blue-600 w-8'
+                    : 'bg-gray-300 hover:bg-gray-400'
+                }`}
+              />
+            ))}
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={prevSlide}
+              disabled={posts.length <= 1}
+              className="w-8 h-8 p-0"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={nextSlide}
+              disabled={posts.length <= 1}
+              className="w-8 h-8 p-0"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Updates Slider */}
+      <div className="overflow-hidden rounded-xl">
+        <div 
+          className="flex transition-transform duration-500 ease-in-out"
+          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        >
+          {posts.map((post, index) => {
+            const PostIcon = getPostTypeIcon(post.topicType)
+            
+            return (
+              <div
+                key={index}
+                className="w-full flex-shrink-0 px-1"
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 lg:p-6 bg-white/50 dark:bg-black/20 backdrop-blur-sm"
+                >
+                  {/* Post Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                        <PostIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {getPostTypeLabel(post.topicType)}
+                          </Badge>
+                          <Badge className={`text-xs ${getPostStateColor(post.state)}`}>
+                            {post.state.replace('_', ' ').toLowerCase()}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          {formatPostDate(post.createTime)}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {post.searchUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(post.searchUrl, '_blank')}
+                        className="text-xs"
+                      >
+                        <ExternalLink className="w-3 h-3 mr-1" />
+                        View
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Post Content */}
+                  <div className="space-y-4">
+                    {/* Event Title */}
+                    {post.event?.title && (
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {post.event.title}
+                      </h3>
+                    )}
+
+                    {/* Post Summary */}
+                    <p className="text-gray-800 dark:text-gray-200 leading-relaxed">
+                      {post.summary}
+                    </p>
+
+                    {/* Event Schedule */}
+                    {post.event?.schedule && (
+                      <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span className="text-sm text-blue-700 dark:text-blue-300">
+                          {new Date(post.event.schedule.startDate.year, post.event.schedule.startDate.month - 1, post.event.schedule.startDate.day).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                          {post.event.schedule.startTime && (
+                            ` at ${post.event.schedule.startTime.hours.toString().padStart(2, '0')}:${post.event.schedule.startTime.minutes.toString().padStart(2, '0')}`
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Offer Details */}
+                    {post.offer && (
+                      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                        {post.offer.couponCode && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <Tag className="w-4 h-4 text-green-600 dark:text-green-400" />
+                            <span className="font-mono text-sm font-bold text-green-700 dark:text-green-300">
+                              {post.offer.couponCode}
+                            </span>
+                          </div>
+                        )}
+                        {post.offer.termsConditions && (
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                            {post.offer.termsConditions}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Post Media */}
+                    {post.media && post.media.length > 0 && (
+                      <div className="mt-4">
+                        <ImageGrid 
+                          images={post.media} 
+                          maxDisplay={3}
+                          className="w-full"
+                        />
+                      </div>
+                    )}
+
+                    {/* Call to Action */}
+                    {post.callToAction && (
+                      <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        {post.callToAction.actionType === 'CALL' ? (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => window.open(`tel:${selectedProfile?.phone}`, '_self')}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            <Phone className="w-4 h-4 mr-2" />
+                            {getActionTypeLabel(post.callToAction.actionType)}
+                          </Button>
+                        ) : post.callToAction.url ? (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => window.open(post.callToAction!.url, '_blank')}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            {getActionTypeLabel(post.callToAction.actionType)}
+                          </Button>
+                        ) : (
+                          <Badge variant="outline" className="text-sm">
+                            {getActionTypeLabel(post.callToAction.actionType)}
+                          </Badge>
+                        )}
+                        
+                        {post.offer?.redeemOnlineUrl && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(post.offer!.redeemOnlineUrl, '_blank')}
+                            className="ml-2"
+                          >
+                            <Globe className="w-4 h-4 mr-2" />
+                            Redeem Online
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Products Slider Component
+interface Product {
+  id: string
+  name: string
+  description?: string
+  price?: string
+  image?: string
+  category?: string
+  availability?: 'available' | 'out_of_stock' | 'discontinued'
+}
+
+interface ProductsSliderProps {
+  products: Product[]
+  onAddProduct?: () => void
+  onEditProduct?: (product: Product) => void
+}
+
+function ProductsSlider({ products, onAddProduct, onEditProduct }: ProductsSliderProps) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [itemsPerView, setItemsPerView] = useState(1)
+
+  // Handle responsive breakpoints
+  useEffect(() => {
+    const updateItemsPerView = () => {
+      if (typeof window !== 'undefined') {
+        setItemsPerView(window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1)
+      }
+    }
+
+    updateItemsPerView()
+    window.addEventListener('resize', updateItemsPerView)
+    return () => window.removeEventListener('resize', updateItemsPerView)
+  }, [])
+
+  const maxIndex = Math.max(0, products.length - itemsPerView)
+
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1))
+  }
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev <= 0 ? maxIndex : prev - 1))
+  }
+
+  if (products.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Tag className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+        <p className="text-gray-500 dark:text-gray-400 font-medium">No products added yet</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">Showcase your products and services to customers</p>
+        <Button 
+          onClick={onAddProduct}
+          className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Product
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative">
+      {/* Slider Navigation */}
+      {products.length > itemsPerView && (
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {currentIndex + 1} - {Math.min(currentIndex + itemsPerView, products.length)} of {products.length}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={prevSlide}
+              disabled={currentIndex === 0}
+              className="w-8 h-8 p-0"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={nextSlide}
+              disabled={currentIndex >= maxIndex}
+              className="w-8 h-8 p-0"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onAddProduct}
+              className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Products Slider */}
+      <div className="overflow-hidden rounded-xl">
+        <div 
+          className="flex transition-transform duration-500 ease-in-out gap-4"
+          style={{ transform: `translateX(-${currentIndex * (100 / itemsPerView)}%)` }}
+        >
+          {products.map((product, index) => (
+            <div
+              key={product.id}
+              className="flex-shrink-0"
+              style={{ width: `${100 / itemsPerView}%` }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group"
+                onClick={() => onEditProduct?.(product)}
+              >
+                {/* Product Image */}
+                <div className="aspect-square bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 relative overflow-hidden">
+                  {product.image ? (
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      width={300}
+                      height={300}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Tag className="w-12 h-12 text-gray-400" />
+                    </div>
+                  )}
+                  
+                  {/* Availability Badge */}
+                  <div className="absolute top-2 right-2">
+                    <Badge 
+                      className={`text-xs ${
+                        product.availability === 'available' 
+                          ? 'bg-green-100 text-green-800 border-green-200' 
+                          : product.availability === 'out_of_stock'
+                          ? 'bg-orange-100 text-orange-800 border-orange-200'
+                          : 'bg-red-100 text-red-800 border-red-200'
+                      }`}
+                    >
+                      {product.availability === 'available' ? 'Available' : 
+                       product.availability === 'out_of_stock' ? 'Out of Stock' : 'Discontinued'}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Product Info */}
+                <div className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-semibold text-gray-900 dark:text-white text-sm line-clamp-2">
+                      {product.name}
+                    </h3>
+                    {product.price && (
+                      <span className="text-sm font-bold text-green-600 dark:text-green-400 ml-2">
+                        {product.price}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {product.description && (
+                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
+                      {product.description}
+                    </p>
+                  )}
+                  
+                  {product.category && (
+                    <Badge variant="secondary" className="text-xs">
+                      {product.category}
+                    </Badge>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ContentHubPage() {
   const { selectedProfile } = useProfile()
   const [businessMedia, setBusinessMedia] = useState<BusinessMedia | null>(null)
@@ -393,6 +866,40 @@ export default function ContentHubPage() {
   const [qaError, setQAError] = useState<string | null>(null)
   const [qaDebugInfo, setQaDebugInfo] = useState<any>(null)
   const [showQADebug, setShowQADebug] = useState(false)
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+
+  // Products state
+  const [products, setProducts] = useState<Product[]>([
+    // Sample products for demonstration
+    {
+      id: '1',
+      name: 'Premium Outdoor Kitchen Design',
+      description: 'Custom outdoor kitchen with premium materials and professional installation',
+      price: 'Starting at $15,000',
+      category: 'Outdoor Kitchens',
+      availability: 'available',
+      image: '/api/placeholder/400/400'
+    },
+    {
+      id: '2',
+      name: 'Garden Landscape Design',
+      description: 'Beautiful landscape design with native plants and modern aesthetics',
+      price: '$5,000 - $12,000',
+      category: 'Landscaping',
+      availability: 'available',
+      image: '/api/placeholder/400/400'
+    },
+    {
+      id: '3',
+      name: 'Patio Construction',
+      description: 'Professional patio construction with various material options',
+      price: 'Starting at $8,000',
+      category: 'Construction',
+      availability: 'available',
+      image: '/api/placeholder/400/400'
+    }
+  ])
 
   // Auto-load data when profile changes
   useEffect(() => {
@@ -646,19 +1153,30 @@ export default function ContentHubPage() {
     switch (actionType) {
       case 'BOOK':
         return 'Book Now'
-      case 'ORDER':
-        return 'Order Now'
-      case 'SHOP':
-        return 'Shop'
+      case 'ORDER_ONLINE':
+        return 'Order Online'
+      case 'BUY':
+        return 'Buy Now'
       case 'LEARN_MORE':
         return 'Learn More'
       case 'SIGN_UP':
         return 'Sign Up'
       case 'CALL':
-        return 'Call'
+        return 'Call Now'
       default:
-        return 'View'
+        return actionType.replace('_', ' ').toLowerCase()
     }
+  }
+
+  // Product management functions
+  const handleAddProduct = () => {
+    // TODO: Open product creation modal
+    console.log('Add product clicked')
+  }
+
+  const handleEditProduct = (product: Product) => {
+    // TODO: Open product edit modal
+    console.log('Edit product:', product)
   }
 
   return (
@@ -1166,166 +1684,61 @@ export default function ContentHubPage() {
                         </div>
                       </div>
                     ) : localPosts.length > 0 ? (
-                      <div className="space-y-6">
-                        {localPosts.map((post, index) => {
-                          const PostIcon = getPostTypeIcon(post.topicType)
-                          
-                          return (
-                            <motion.div
-                              key={index}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.1 }}
-                              className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 lg:p-6 bg-white/50 dark:bg-black/20 backdrop-blur-sm"
-                            >
-                              {/* Post Header */}
-                              <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                                    <PostIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                                  </div>
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline" className="text-xs">
-                                        {getPostTypeLabel(post.topicType)}
-                                      </Badge>
-                                      <Badge className={`text-xs ${getPostStateColor(post.state)}`}>
-                                        {post.state.replace('_', ' ').toLowerCase()}
-                                      </Badge>
-                                    </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                      {formatPostDate(post.createTime)}
-                                    </p>
-                                  </div>
-                                </div>
-                                
-                                {post.searchUrl && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => window.open(post.searchUrl, '_blank')}
-                                    className="text-xs"
-                                  >
-                                    <ExternalLink className="w-3 h-3 mr-1" />
-                                    View
-                                  </Button>
-                                )}
-                              </div>
-
-                              {/* Post Content */}
-                              <div className="space-y-4">
-                                {/* Event Title (for event posts) */}
-                                {post.event?.title && (
-                                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                    {post.event.title}
-                                  </h3>
-                                )}
-
-                                {/* Post Summary */}
-                                <p className="text-gray-800 dark:text-gray-200 leading-relaxed">
-                                  {post.summary}
-                                </p>
-
-                                {/* Event Schedule */}
-                                {post.event?.schedule && (
-                                  <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                                    <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                    <span className="text-sm text-blue-700 dark:text-blue-300">
-                                      {new Date(post.event.schedule.startDate.year, post.event.schedule.startDate.month - 1, post.event.schedule.startDate.day).toLocaleDateString('en-US', {
-                                        weekday: 'long',
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric'
-                                      })}
-                                      {post.event.schedule.startTime && (
-                                        ` at ${post.event.schedule.startTime.hours.toString().padStart(2, '0')}:${post.event.schedule.startTime.minutes.toString().padStart(2, '0')}`
-                                      )}
-                                    </span>
-                                  </div>
-                                )}
-
-                                {/* Offer Details */}
-                                {post.offer && (
-                                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                                    {post.offer.couponCode && (
-                                      <div className="flex items-center gap-2 mb-2">
-                                        <Tag className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                        <span className="font-mono text-sm font-bold text-green-700 dark:text-green-300">
-                                          {post.offer.couponCode}
-                                        </span>
-                                      </div>
-                                    )}
-                                    {post.offer.termsConditions && (
-                                      <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                                        {post.offer.termsConditions}
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-
-                                {/* Post Media */}
-                                {post.media && post.media.length > 0 && (
-                                  <div className="mt-4">
-                                    <ImageGrid 
-                                      images={post.media} 
-                                      maxDisplay={3}
-                                      className="w-full"
-                                    />
-                                  </div>
-                                )}
-
-                                {/* Call to Action */}
-                                {post.callToAction && (
-                                  <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                    {post.callToAction.actionType === 'CALL' ? (
-                                      <Button
-                                        variant="default"
-                                        size="sm"
-                                        onClick={() => window.open(`tel:${selectedProfile?.phone}`, '_self')}
-                                        className="bg-green-600 hover:bg-green-700 text-white"
-                                      >
-                                        <Phone className="w-4 h-4 mr-2" />
-                                        {getActionTypeLabel(post.callToAction.actionType)}
-                                      </Button>
-                                    ) : post.callToAction.url ? (
-                                      <Button
-                                        variant="default"
-                                        size="sm"
-                                        onClick={() => window.open(post.callToAction!.url, '_blank')}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                                      >
-                                        <ExternalLink className="w-4 h-4 mr-2" />
-                                        {getActionTypeLabel(post.callToAction.actionType)}
-                                      </Button>
-                                    ) : (
-                                      <Badge variant="outline" className="text-sm">
-                                        {getActionTypeLabel(post.callToAction.actionType)}
-                                      </Badge>
-                                    )}
-                                    
-                                    {post.offer?.redeemOnlineUrl && (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => window.open(post.offer!.redeemOnlineUrl, '_blank')}
-                                        className="ml-2"
-                                      >
-                                        <Globe className="w-4 h-4 mr-2" />
-                                        Redeem Online
-                                      </Button>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </motion.div>
-                          )
-                        })}
-                      </div>
+                      <BusinessUpdatesSlider
+                        posts={localPosts}
+                        selectedProfile={selectedProfile}
+                        formatPostDate={formatPostDate}
+                        getPostTypeIcon={getPostTypeIcon}
+                        getPostTypeLabel={getPostTypeLabel}
+                        getPostStateColor={getPostStateColor}
+                        getActionTypeLabel={getActionTypeLabel}
+                      />
                     ) : (
                       <div className="text-center py-12">
                         <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                         <p className="text-gray-500 dark:text-gray-400 font-medium">No business updates available</p>
                         <p className="text-sm text-gray-400 dark:text-gray-500">Create posts to engage with your customers</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Products Section */}
+                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-5 h-5" />
+                        Products
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {products.length > 0 && (
+                          <Badge variant="secondary">
+                            {products.length} products
+                          </Badge>
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
+                          <p className="text-lg font-medium">Loading products...</p>
+                        </div>
+                      </div>
+                    ) : products.length > 0 ? (
+                      <ProductsSlider
+                        products={products}
+                        onAddProduct={handleAddProduct}
+                        onEditProduct={handleEditProduct}
+                      />
+                    ) : (
+                      <div className="text-center py-12">
+                        <Tag className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">No products added yet</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500">Showcase your products and services to customers</p>
                       </div>
                     )}
                   </CardContent>
