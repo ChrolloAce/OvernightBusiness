@@ -114,29 +114,53 @@ function BusinessLogo({ businessName, website, className = "w-16 h-16", fallback
 
 // Reviewer Avatar Component with profile image loading
 interface ReviewerAvatarProps {
-  reviewerName: string
+  reviewer?: {
+    displayName?: string
+    profilePhotoUrl?: string
+    isAnonymous?: boolean
+  }
   className?: string
 }
 
-function ReviewerAvatar({ reviewerName, className = "w-12 h-12" }: ReviewerAvatarProps) {
+function ReviewerAvatar({ reviewer, className = "w-12 h-12" }: ReviewerAvatarProps) {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
+  const reviewerName = reviewer?.displayName || 'Anonymous'
+  const isAnonymous = reviewer?.isAnonymous !== false // Default to anonymous if not explicitly false
+
   useEffect(() => {
     const loadProfileImage = async () => {
-      if (!reviewerName || reviewerName === 'Anonymous') {
+      // If reviewer is anonymous or no reviewer data, show error state immediately
+      if (isAnonymous || !reviewer?.displayName) {
         setIsLoading(false)
         setHasError(true)
         return
       }
 
+      // If we have a profile photo URL from Google Business API, use it first
+      if (reviewer.profilePhotoUrl) {
+        try {
+          // Test if the profile photo URL is accessible
+          const response = await fetch(reviewer.profilePhotoUrl, { method: 'HEAD' })
+          if (response.ok) {
+            setProfileImageUrl(reviewer.profilePhotoUrl)
+            setIsLoading(false)
+            return
+          }
+        } catch (error) {
+          console.log('Google profile photo not accessible, trying fallback sources')
+        }
+      }
+
+      // Fallback to generated avatars if Google photo is not available
       try {
         // Try to get profile image from various sources
         const imageSources = [
           // Gravatar (most common for email-based profiles)
           `https://www.gravatar.com/avatar/${btoa(reviewerName.toLowerCase())}?s=128&d=404`,
-          // UI Avatars (generates nice avatars from names)
+          // UI Avatars (generates nice avatars from names) - always works as final fallback
           `https://ui-avatars.com/api/?name=${encodeURIComponent(reviewerName)}&size=128&background=random&color=fff&bold=true`,
         ]
 
@@ -165,7 +189,7 @@ function ReviewerAvatar({ reviewerName, className = "w-12 h-12" }: ReviewerAvata
     }
 
     loadProfileImage()
-  }, [reviewerName])
+  }, [reviewer, reviewerName, isAnonymous])
 
   if (isLoading) {
     return (
@@ -175,10 +199,10 @@ function ReviewerAvatar({ reviewerName, className = "w-12 h-12" }: ReviewerAvata
     )
   }
 
-  if (hasError || !profileImageUrl) {
+  if (hasError || !profileImageUrl || isAnonymous) {
     return (
       <div className={`${className} rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-lg`}>
-        {reviewerName.charAt(0).toUpperCase()}
+        {isAnonymous ? '?' : reviewerName.charAt(0).toUpperCase()}
       </div>
     )
   }
@@ -538,7 +562,7 @@ export default function ReviewsPage() {
                             <div className="relative bg-white/60 dark:bg-black/30 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/20 p-6 space-y-4 hover:shadow-lg transition-all duration-300">
                               <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-4">
-                                  <ReviewerAvatar reviewerName={review.reviewer?.displayName || 'Anonymous'} />
+                                  <ReviewerAvatar reviewer={review.reviewer} />
                                   <div>
                                     <div className="font-semibold text-gray-900 dark:text-white">
                                       {review.reviewer?.displayName || 'Anonymous'}
