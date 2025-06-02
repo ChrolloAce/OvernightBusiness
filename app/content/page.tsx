@@ -44,9 +44,6 @@ import {
   X,
   ZoomIn,
   Download,
-  Heart,
-  ThumbsUp,
-  Send,
   Copy
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -54,8 +51,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
-import { GoogleBusinessAPI, MediaItem, BusinessMedia, BusinessReview, BusinessQuestion } from '@/lib/google-business-api'
-import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
+import { GoogleBusinessAPI, MediaItem, BusinessMedia, BusinessReview } from '@/lib/google-business-api'
+import { CentralizedDataLoader, BusinessQuestion } from '@/lib/centralized-data-loader'
 
 // Business Logo Component
 interface BusinessLogoProps {
@@ -384,48 +381,46 @@ function ImageGrid({ images, maxDisplay = 6, className = "" }: ImageGridProps) {
 export default function ContentHubPage() {
   const [profiles, setProfiles] = useState<SavedBusinessProfile[]>([])
   const [selectedProfile, setSelectedProfile] = useState<SavedBusinessProfile | null>(null)
-  const [loading, setLoading] = useState(false)
   const [businessMedia, setBusinessMedia] = useState<BusinessMedia | null>(null)
-  const [loadingMedia, setLoadingMedia] = useState(false)
   const [reviews, setReviews] = useState<BusinessReview[]>([])
   const [reviewsSummary, setReviewsSummary] = useState<any>(null)
-  const [loadingReviews, setLoadingReviews] = useState(false)
   const [questions, setQuestions] = useState<BusinessQuestion[]>([])
-  const [loadingQuestions, setLoadingQuestions] = useState(false)
-  const [showImageModal, setShowImageModal] = useState(false)
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
-  const [showQAModal, setShowQAModal] = useState(false)
-  const [newQuestion, setNewQuestion] = useState('')
-  const [newAnswer, setNewAnswer] = useState('')
-  const [selectedQuestionForAnswer, setSelectedQuestionForAnswer] = useState<BusinessQuestion | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [loadingMedia, setLoadingMedia] = useState(false)
+  const [loadingReviews, setLoadingReviews] = useState(false)
+  const [loadingQA, setLoadingQA] = useState(false)
 
-  // Load profiles on mount
   useEffect(() => {
-    const savedProfiles = CentralizedDataLoader.loadProfiles()
-    setProfiles(savedProfiles)
-    if (savedProfiles.length > 0) {
-      setSelectedProfile(savedProfiles[0])
-    }
+    loadProfiles()
   }, [])
 
-  // Load all data when profile changes
+  // Auto-load data when profile changes
   useEffect(() => {
     if (selectedProfile) {
-      loadAllProfileData()
+      loadAllProfileData(selectedProfile)
     }
   }, [selectedProfile])
 
-  const loadAllProfileData = async () => {
-    if (!selectedProfile) return
-    
+  const loadProfiles = () => {
+    const savedProfiles = CentralizedDataLoader.loadProfiles()
+    setProfiles(savedProfiles)
+    if (savedProfiles.length > 0 && !selectedProfile) {
+      const firstProfile = savedProfiles[0]
+      setSelectedProfile(firstProfile)
+    }
+  }
+
+  const loadAllProfileData = async (profile: SavedBusinessProfile) => {
     setLoading(true)
     setLoadingMedia(true)
     setLoadingReviews(true)
-    setLoadingQuestions(true)
+    setLoadingQA(true)
 
     try {
-      const result = await CentralizedDataLoader.loadAllProfileData(selectedProfile, {
+      // Load all data for the profile including Q&A
+      const result = await CentralizedDataLoader.loadAllProfileData(profile, {
         includeReviews: true,
+        includeAnalytics: false, // We don't need analytics in content hub
         includeMedia: true,
         includeQA: true
       })
@@ -448,555 +443,587 @@ export default function ContentHubPage() {
       setLoading(false)
       setLoadingMedia(false)
       setLoadingReviews(false)
-      setLoadingQuestions(false)
+      setLoadingQA(false)
     }
   }
 
-  // Helper function to safely format address
-  const getFormattedAddress = (profile: SavedBusinessProfile): string => {
-    if (profile.googleData?.storefrontAddress) {
-      // Create a minimal BusinessLocation object for the API call
-      const locationData = {
-        name: profile.googleBusinessId || '',
-        storefrontAddress: profile.googleData.storefrontAddress,
-        address: profile.googleData.storefrontAddress
-      } as any
-      return GoogleBusinessAPI.getFormattedAddress(locationData)
-    }
-    return profile.address || 'Address not available'
-  }
-
-  const handleDirections = () => {
-    if (selectedProfile?.googleData?.storefrontAddress || selectedProfile?.address) {
-      const address = getFormattedAddress(selectedProfile)
-      const encodedAddress = encodeURIComponent(address)
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank')
+  const handleProfileSelect = (profileId: string) => {
+    const profile = profiles.find(p => p.id === profileId)
+    if (profile) {
+      setSelectedProfile(profile)
+      // Reset data for new profile
+      setBusinessMedia(null)
+      setReviews([])
+      setReviewsSummary(null)
+      setQuestions([])
     }
   }
 
-  const handleWebsite = () => {
+  const refreshData = () => {
+    if (selectedProfile) {
+      loadAllProfileData(selectedProfile)
+    }
+  }
+
+  // Action button handlers
+  const handleWebsiteClick = () => {
     if (selectedProfile?.website) {
-      const url = selectedProfile.website.startsWith('http') ? selectedProfile.website : `https://${selectedProfile.website}`
-      window.open(url, '_blank')
+      window.open(selectedProfile.website, '_blank')
     }
   }
 
-  const handleShare = async () => {
+  const handleDirectionsClick = () => {
+    if (selectedProfile?.address) {
+      const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(selectedProfile.address)}`
+      window.open(mapsUrl, '_blank')
+    }
+  }
+
+  const handleReviewsClick = () => {
+    if (selectedProfile?.googleBusinessId) {
+      // Try to construct Google Business reviews URL
+      const locationId = selectedProfile.googleBusinessId.split('/').pop()
+      const reviewsUrl = `https://business.google.com/dashboard/l/${locationId}/reviews`
+      window.open(reviewsUrl, '_blank')
+    }
+  }
+
+  const handleShareClick = async () => {
     if (selectedProfile) {
       const shareData = {
         title: selectedProfile.name,
-        text: `Check out ${selectedProfile.name}`,
+        text: `Check out ${selectedProfile.name} - ${selectedProfile.category}`,
         url: selectedProfile.website || window.location.href
       }
-      
-      if (navigator.share) {
-        try {
+
+      try {
+        if (navigator.share) {
           await navigator.share(shareData)
-        } catch (error) {
-          console.log('Share cancelled')
+        } else {
+          // Fallback: copy to clipboard
+          await navigator.clipboard.writeText(shareData.url)
+          alert('Link copied to clipboard!')
         }
-      } else {
-        // Fallback to clipboard
-        navigator.clipboard.writeText(shareData.url || window.location.href)
-        alert('Link copied to clipboard!')
+      } catch (error) {
+        console.error('Error sharing:', error)
       }
     }
   }
 
-  const openImageModal = (index: number) => {
-    setSelectedImageIndex(index)
-    setShowImageModal(true)
-  }
-
-  const nextImage = () => {
-    if (businessMedia?.allPhotos) {
-      setSelectedImageIndex((prev) => (prev + 1) % businessMedia.allPhotos.length)
-    }
-  }
-
-  const prevImage = () => {
-    if (businessMedia?.allPhotos) {
-      setSelectedImageIndex((prev) => (prev - 1 + businessMedia.allPhotos.length) % businessMedia.allPhotos.length)
-    }
-  }
-
-  const createQuestion = async () => {
-    if (!selectedProfile || !newQuestion.trim()) return
-
-    try {
-      const result = await CentralizedDataLoader.createQuestion(selectedProfile, newQuestion.trim())
-      if (result.success) {
-        setNewQuestion('')
-        loadAllProfileData() // Refresh questions
-      }
-    } catch (error) {
-      console.error('Failed to create question:', error)
-    }
-  }
-
-  const answerQuestion = async () => {
-    if (!selectedQuestionForAnswer || !newAnswer.trim()) return
-
-    try {
-      const result = await CentralizedDataLoader.answerQuestion(selectedQuestionForAnswer.name, newAnswer.trim())
-      if (result.success) {
-        setNewAnswer('')
-        setSelectedQuestionForAnswer(null)
-        loadAllProfileData() // Refresh questions
-      }
-    } catch (error) {
-      console.error('Failed to answer question:', error)
-    }
-  }
-
-  if (!selectedProfile) {
+  const renderStars = (rating: number) => {
     return (
-      <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
-        <div className="text-center py-12">
-          <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-600 mb-2">No Business Profiles</h2>
-          <p className="text-gray-500">Add a business profile to get started with content management.</p>
-        </div>
+      <div className="flex items-center">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`w-4 h-4 ${
+              star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+            }`}
+          />
+        ))}
       </div>
     )
   }
 
-  const businessHours = selectedProfile.googleData?.businessHours || []
-  const allCategories = selectedProfile.googleData?.allCategories || [selectedProfile.category]
-  const actualRating = reviewsSummary?.averageRating || selectedProfile.googleData?.reviewsSummary?.averageRating || selectedProfile.rating || 0
-  const actualReviewCount = reviewsSummary?.totalReviews || selectedProfile.googleData?.reviewsSummary?.totalReviews || selectedProfile.reviewCount || 0
-  const formattedAddress = getFormattedAddress(selectedProfile)
-  const hasAddress = formattedAddress && formattedAddress !== 'Address not available'
+  const formatBusinessHours = (profile: SavedBusinessProfile) => {
+    const hours = profile.googleData?.businessHours
+    if (!hours || hours.length === 0) {
+      return ['Hours not available']
+    }
+
+    // Group hours by time to show ranges like "Mon-Fri: 9:00 AM - 5:00 PM"
+    const groupedHours: { [key: string]: string[] } = {}
+    
+    hours.forEach(hour => {
+      const [day, time] = hour.split(': ')
+      if (!groupedHours[time]) {
+        groupedHours[time] = []
+      }
+      groupedHours[time].push(day)
+    })
+
+    return Object.entries(groupedHours).map(([time, days]) => {
+      let dayRange = ''
+      if (days.length === 1) {
+        dayRange = days[0]
+      } else if (days.length === 5 && days.includes('Monday') && days.includes('Friday')) {
+        dayRange = 'Mon-Fri'
+      } else if (days.length === 2 && days.includes('Saturday') && days.includes('Sunday')) {
+        dayRange = 'Weekends'
+      } else if (days.length === 7) {
+        dayRange = 'Every day'
+      } else {
+        dayRange = days.join(', ')
+      }
+      
+      return `${dayRange}: ${time}`
+    })
+  }
+
+  const getBusinessCategories = (profile: SavedBusinessProfile) => {
+    return profile.googleData?.allCategories || [profile.category]
+  }
+
+  const getBusinessServices = (profile: SavedBusinessProfile) => {
+    return profile.googleData?.serviceTypes?.map(service => service.displayName) || []
+  }
+
+  // Helper function to format question date
+  const formatQuestionDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    } catch {
+      return 'Unknown date'
+    }
+  }
 
   return (
-    <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Content Hub</h1>
-          <p className="text-gray-600 mt-1">Manage your business content and engagement</p>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <select
-            value={selectedProfile?.id || ''}
-            onChange={(e) => {
-              const profile = profiles.find(p => p.id === e.target.value)
-              setSelectedProfile(profile || null)
-            }}
-            className="px-4 py-2 border border-gray-300 rounded-xl lg:rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-auto"
-          >
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.name}
-              </option>
-            ))}
-          </select>
-          
-          <button
-            onClick={loadAllProfileData}
-            disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-xl lg:rounded-2xl hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 w-full sm:w-auto justify-center"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* Business Overview Card */}
-      <div className="bg-white rounded-xl lg:rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 lg:p-6">
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Business Info */}
-            <div className="flex-1">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl lg:rounded-2xl flex items-center justify-center text-white text-xl lg:text-2xl font-bold">
-                  {selectedProfile.name.charAt(0)}
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">{selectedProfile.name}</h2>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex items-center">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-4 h-4 ${
-                            i < Math.floor(actualRating)
-                              ? 'text-yellow-400 fill-current'
-                              : 'text-gray-300'
-                          }`}
-                        />
-                      ))}
+    <div className="min-h-screen">
+      {/* Page Content */}
+      <main className="p-4 lg:p-6 max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4 lg:space-y-6"
+        >
+          {/* Page Header */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-red-500/10 rounded-xl lg:rounded-2xl blur-xl lg:blur-2xl" />
+            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-xl lg:rounded-2xl border border-white/20 dark:border-white/10 p-4 lg:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
                     </div>
-                    <span className="text-sm text-gray-600">
-                      {actualRating.toFixed(1)} ({actualReviewCount} reviews)
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {allCategories.map((category, index) => (
-                      <span
-                        key={index}
-                        className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-lg"
-                      >
-                        {category}
-                      </span>
-                    ))}
+                    <div>
+                      <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 via-purple-800 to-pink-800 dark:from-white dark:via-purple-200 dark:to-pink-200 bg-clip-text text-transparent">
+                        Content Hub
+                      </h1>
+                      <p className="text-sm lg:text-base text-gray-600 dark:text-gray-300 font-medium">
+                        Manage your business profile content and media
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Contact Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                {selectedProfile.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-700">{selectedProfile.phone}</span>
-                  </div>
-                )}
-                {hasAddress && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-700 truncate">{formattedAddress}</span>
-                  </div>
-                )}
-                {selectedProfile.website && (
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-700 truncate">{selectedProfile.website}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Business Hours */}
-              {businessHours.length > 0 && (
-                <div className="mb-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Business Hours
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-sm">
-                    {businessHours.map((hours, index) => (
-                      <div key={index} className="text-gray-600">
-                        {hours}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2">
-                {selectedProfile.website && (
-                  <button
-                    onClick={handleWebsite}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto"
-                  >
-                    <Globe className="w-4 h-4" />
-                    Website
-                  </button>
-                )}
-                {hasAddress && (
-                  <button
-                    onClick={handleDirections}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors w-full sm:w-auto"
-                  >
-                    <Navigation className="w-4 h-4" />
-                    Directions
-                  </button>
-                )}
-                <button
-                  onClick={handleShare}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors w-full sm:w-auto"
+                <Button 
+                  onClick={refreshData} 
+                  disabled={loading || !selectedProfile}
+                  className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
                 >
-                  <Share className="w-4 h-4" />
-                  Share
-                </button>
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <RefreshCw className={`w-4 h-4 mr-2 relative z-10 ${loading ? 'animate-spin' : ''}`} />
+                  <span className="relative z-10">Refresh Content</span>
+                </Button>
               </div>
             </div>
+          </div>
 
-            {/* Photos Section */}
-            <div className="lg:w-80">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Camera className="w-5 h-5" />
-                Photos ({businessMedia?.allPhotos?.length || 0})
-              </h3>
-              
-              {loadingMedia ? (
-                <div className="flex items-center justify-center h-48 bg-gray-100 rounded-lg">
-                  <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-                </div>
-              ) : businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {businessMedia.allPhotos.slice(0, 6).map((photo, index) => {
-                    const imageUrl = GoogleBusinessAPI.getBestImageUrl(photo)
-                    return imageUrl ? (
-                      <div
-                        key={index}
-                        className="aspect-square relative rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => openImageModal(index)}
-                      >
-                        <Image
-                          src={imageUrl}
-                          alt={`Business photo ${index + 1}`}
-                          fill
-                          className="object-cover"
+          {/* Business Profile Selector */}
+          <Card className="bg-white/80 dark:bg-black/40 backdrop-blur-xl border-white/30 dark:border-white/20 shadow-lg">
+            <CardHeader className="pb-3 lg:pb-6">
+              <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
+                <Building2 className="w-4 h-4 lg:w-5 lg:h-5" />
+                Select Business Profile
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
+                <SelectTrigger className="h-12 lg:h-16 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300">
+                  <SelectValue placeholder="Choose a business profile to manage content">
+                    {selectedProfile && (
+                      <div className="flex items-center gap-2 lg:gap-3">
+                        <BusinessLogo 
+                          businessName={selectedProfile.name} 
+                          website={selectedProfile.website}
+                          className="w-8 h-8 lg:w-10 lg:h-10"
                         />
-                        {index === 5 && businessMedia.allPhotos.length > 6 && (
-                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white font-semibold">
-                            +{businessMedia.allPhotos.length - 6}
+                        <div className="text-left min-w-0 flex-1">
+                          <div className="font-medium text-gray-900 dark:text-white text-sm lg:text-base truncate">{selectedProfile.name}</div>
+                          <div className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">{selectedProfile.address}</div>
+                        </div>
+                      </div>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  {profiles.map(profile => (
+                    <SelectItem key={profile.id} value={profile.id} className="h-12 lg:h-16 p-2 lg:p-3">
+                      <div className="flex items-center gap-2 lg:gap-3 w-full">
+                        <BusinessLogo 
+                          businessName={profile.name} 
+                          website={profile.website}
+                          className="w-8 h-8 lg:w-10 lg:h-10"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 dark:text-white text-sm lg:text-base truncate">{profile.name}</div>
+                          <div className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 truncate">{profile.address}</div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
+          {selectedProfile && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - Business Overview */}
+              <div className="lg:col-span-1 space-y-6">
+                {/* Business Info Card */}
+                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-4">
+                      <BusinessLogo 
+                        businessName={selectedProfile.name} 
+                        website={selectedProfile.website}
+                        className="w-16 h-16 lg:w-20 lg:h-20"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                          {selectedProfile.name}
+                        </h2>
+                        <p className="text-sm lg:text-base text-gray-600 dark:text-gray-400 truncate">
+                          {selectedProfile.category}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          {renderStars(reviewsSummary?.averageRating || selectedProfile.rating)}
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            {(reviewsSummary?.averageRating || selectedProfile.rating).toFixed(1)} • {reviewsSummary?.totalReviews || selectedProfile.reviewCount || 0} Google reviews
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedProfile.website && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleWebsiteClick}
+                          className="flex items-center justify-center gap-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                        >
+                          <Globe className="w-4 h-4" />
+                          <span className="hidden sm:inline">Website</span>
+                        </Button>
+                      )}
+                      {selectedProfile.address && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleDirectionsClick}
+                          className="flex items-center justify-center gap-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                        >
+                          <Navigation className="w-4 h-4" />
+                          <span className="hidden sm:inline">Directions</span>
+                        </Button>
+                      )}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleReviewsClick}
+                        className="flex items-center justify-center gap-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        <span className="hidden sm:inline">Reviews</span>
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleShareClick}
+                        className="flex items-center justify-center gap-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                      >
+                        <Share className="w-4 h-4" />
+                        <span className="hidden sm:inline">Share</span>
+                      </Button>
+                    </div>
+
+                    {/* Contact Information */}
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-gray-900 dark:text-white">Contact Information</h3>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <MapPin className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                            {selectedProfile.address}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            {selectedProfile.phone}
+                          </p>
+                        </div>
+                        
+                        {selectedProfile.website && (
+                          <div className="flex items-center gap-3">
+                            <Globe className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                            <a 
+                              href={selectedProfile.website} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline transition-colors duration-300 truncate"
+                            >
+                              {selectedProfile.website.replace(/^https?:\/\//, '')}
+                            </a>
                           </div>
                         )}
                       </div>
-                    ) : null
-                  })}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-48 bg-gray-100 rounded-lg">
-                  <div className="text-center">
-                    <Camera className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">No photos available</p>
-                  </div>
-                </div>
-              )}
-              
-              {businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 && (
-                <button
-                  onClick={() => openImageModal(0)}
-                  className="w-full mt-3 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Eye className="w-4 h-4" />
-                  View All Photos
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Q&A Section */}
-      <div className="bg-white rounded-xl lg:rounded-2xl shadow-sm border border-gray-200">
-        <div className="p-4 lg:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <HelpCircle className="w-5 h-5" />
-              Questions & Answers ({questions.length})
-            </h3>
-            <button
-              onClick={() => setShowQAModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Ask Question
-            </button>
-          </div>
-
-          {loadingQuestions ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-            </div>
-          ) : questions.length > 0 ? (
-            <div className="space-y-4">
-              {questions.slice(0, 5).map((question, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <HelpCircle className="w-4 h-4 text-blue-600" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-gray-900 font-medium">{question.text}</p>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                        <span>By {question.author.displayName}</span>
-                        <span>{new Date(question.createTime).toLocaleDateString()}</span>
-                        <span className="flex items-center gap-1">
-                          <ThumbsUp className="w-3 h-3" />
-                          {question.upvoteCount}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {question.topAnswers && question.topAnswers.length > 0 && (
-                    <div className="ml-11 space-y-2">
-                      {question.topAnswers.map((answer, answerIndex) => (
-                        <div key={answerIndex} className="bg-gray-50 rounded-lg p-3">
-                          <p className="text-gray-800">{answer.text}</p>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                            <span>By {answer.author.displayName}</span>
-                            <span>{new Date(answer.createTime).toLocaleDateString()}</span>
-                            <span className="flex items-center gap-1">
-                              <ThumbsUp className="w-3 h-3" />
-                              {answer.upvoteCount}
+
+                    {/* Business Hours */}
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Business Hours
+                      </h3>
+                      <div className="space-y-1">
+                        {formatBusinessHours(selectedProfile).slice(0, 4).map((hour, index) => (
+                          <div key={index} className="flex justify-between items-center py-1 px-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                            <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                              {hour.split(': ')[0]}
+                            </span>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {hour.split(': ')[1]}
                             </span>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  )}
-                  
-                  <div className="ml-11 mt-3">
-                    <button
-                      onClick={() => {
-                        setSelectedQuestionForAnswer(question)
-                        setShowQAModal(true)
-                      }}
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                    >
-                      Answer this question
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <HelpCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">No questions yet. Be the first to ask!</p>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* Image Gallery Modal */}
-      <AnimatePresence>
-        {showImageModal && businessMedia?.allPhotos && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
-            onClick={() => setShowImageModal(false)}
-          >
-            <div className="relative w-full max-w-6xl max-h-full">
-              <button
-                onClick={() => setShowImageModal(false)}
-                className="absolute top-4 right-4 z-10 w-10 h-10 bg-black bg-opacity-50 rounded-full flex items-center justify-center text-white hover:bg-opacity-70"
-              >
-                <X className="w-6 h-6" />
-              </button>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-[80vh] overflow-y-auto p-4">
-                {businessMedia.allPhotos.map((photo, index) => {
-                  const imageUrl = GoogleBusinessAPI.getBestImageUrl(photo)
-                  return imageUrl ? (
-                    <div
-                      key={index}
-                      className="aspect-square relative rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSelectedImageIndex(index)
-                      }}
-                    >
-                      <Image
-                        src={imageUrl}
-                        alt={`Business photo ${index + 1}`}
-                        fill
-                        className="object-cover"
-                      />
-                      {index === selectedImageIndex && (
-                        <div className="absolute inset-0 border-4 border-blue-500 rounded-lg" />
+                    {/* Categories */}
+                    {getBusinessCategories(selectedProfile).length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="font-semibold text-gray-900 dark:text-white">Categories</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {getBusinessCategories(selectedProfile).map((category, index) => (
+                            <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                              {category}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Services */}
+                {getBusinessServices(selectedProfile).length > 0 && (
+                  <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Tag className="w-5 h-5" />
+                        Services
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        {getBusinessServices(selectedProfile).map((service, index) => (
+                          <Badge key={index} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
+                            {service}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Right Column - Content Management */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Business Photos */}
+                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Camera className="w-5 h-5" />
+                        Business Photos
+                      </div>
+                      {businessMedia && businessMedia.allPhotos.length > 0 && (
+                        <Badge variant="secondary">
+                          {businessMedia.allPhotos.length} photos
+                        </Badge>
                       )}
-                    </div>
-                  ) : null
-                })}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingMedia ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
+                          <p className="text-lg font-medium">Loading photos...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <ImageGrid 
+                        images={businessMedia?.allPhotos || []} 
+                        maxDisplay={6}
+                        className="w-full"
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Photo Categories */}
+                {businessMedia && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                      { title: 'Exterior Photos', photos: businessMedia.exteriorPhotos, icon: Building2 },
+                      { title: 'Interior Photos', photos: businessMedia.interiorPhotos, icon: Building2 },
+                      { title: 'Product Photos', photos: businessMedia.productPhotos, icon: Tag },
+                      { title: 'Team Photos', photos: businessMedia.teamPhotos, icon: Users }
+                    ].map(({ title, photos, icon: Icon }) => 
+                      photos.length > 0 && (
+                        <Card key={title} className="bg-white/40 dark:bg-black/20 backdrop-blur-xl border-white/30 dark:border-white/20">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                              <Icon className="w-4 h-4" />
+                              {title}
+                              <Badge variant="secondary" className="ml-auto">
+                                {photos.length}
+                              </Badge>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <ImageGrid 
+                              images={photos} 
+                              maxDisplay={4}
+                              className="w-full"
+                            />
+                          </CardContent>
+                        </Card>
+                      )
+                    )}
+                  </div>
+                )}
+
+                {/* Questions & Answers Section */}
+                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <HelpCircle className="w-5 h-5" />
+                        Questions & Answers
+                      </div>
+                      {questions.length > 0 && (
+                        <Badge variant="secondary">
+                          {questions.length} questions
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingQA ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
+                          <p className="text-lg font-medium">Loading Q&A...</p>
+                        </div>
+                      </div>
+                    ) : questions.length > 0 ? (
+                      <div className="space-y-6">
+                        {questions.map((question, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 lg:p-6 bg-white/50 dark:bg-black/20 backdrop-blur-sm"
+                          >
+                            {/* Question */}
+                            <div className="mb-4">
+                              <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-gray-900 dark:text-white font-medium leading-relaxed">
+                                    {question.text}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                    <span>{question.author.displayName}</span>
+                                    <span>•</span>
+                                    <span>{formatQuestionDate(question.createTime)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Answers */}
+                            {question.topAnswers && question.topAnswers.length > 0 && (
+                              <div className="space-y-3 ml-8 lg:ml-11">
+                                {question.topAnswers.map((answer, answerIndex) => (
+                                  <div key={answerIndex} className="border-l-2 border-green-200 dark:border-green-800 pl-4">
+                                    <div className="flex items-start gap-3">
+                                      <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                        answer.author.type === 'MERCHANT' 
+                                          ? 'bg-green-100 dark:bg-green-900/30' 
+                                          : 'bg-gray-100 dark:bg-gray-800'
+                                      }`}>
+                                        {answer.author.type === 'MERCHANT' ? (
+                                          <Building2 className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                        ) : (
+                                          <Users className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+                                        )}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-gray-800 dark:text-gray-200 leading-relaxed">
+                                          {answer.text}
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                          <span className={answer.author.type === 'MERCHANT' ? 'font-medium text-green-600 dark:text-green-400' : ''}>
+                                            {answer.author.displayName}
+                                          </span>
+                                          {answer.author.type === 'MERCHANT' && (
+                                            <>
+                                              <span>•</span>
+                                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                                                Business Owner
+                                              </Badge>
+                                            </>
+                                          )}
+                                          <span>•</span>
+                                          <span>{formatQuestionDate(answer.createTime)}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* No answers state */}
+                            {(!question.topAnswers || question.topAnswers.length === 0) && (
+                              <div className="ml-8 lg:ml-11 text-sm text-gray-500 dark:text-gray-400 italic">
+                                No answers yet
+                              </div>
+                            )}
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <HelpCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">No questions & answers available</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500">Customers can ask questions about your business on Google</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Q&A Modal */}
-      <AnimatePresence>
-        {showQAModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-            onClick={() => {
-              setShowQAModal(false)
-              setSelectedQuestionForAnswer(null)
-              setNewQuestion('')
-              setNewAnswer('')
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.95 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.95 }}
-              className="bg-white rounded-xl max-w-md w-full p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                {selectedQuestionForAnswer ? 'Answer Question' : 'Ask a Question'}
-              </h3>
-              
-              {selectedQuestionForAnswer ? (
-                <div className="space-y-4">
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-gray-800 font-medium">{selectedQuestionForAnswer.text}</p>
-                  </div>
-                  <textarea
-                    value={newAnswer}
-                    onChange={(e) => setNewAnswer(e.target.value)}
-                    placeholder="Write your answer..."
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    rows={4}
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={answerQuestion}
-                      disabled={!newAnswer.trim()}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      <Send className="w-4 h-4" />
-                      Submit Answer
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedQuestionForAnswer(null)
-                        setNewAnswer('')
-                      }}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <textarea
-                    value={newQuestion}
-                    onChange={(e) => setNewQuestion(e.target.value)}
-                    placeholder="What would you like to know about this business?"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    rows={4}
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={createQuestion}
-                      disabled={!newQuestion.trim()}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      <Send className="w-4 h-4" />
-                      Ask Question
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowQAModal(false)
-                        setNewQuestion('')
-                      }}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </motion.div>
+      </main>
     </div>
   )
 } 

@@ -163,12 +163,12 @@ export default function ProfilesPage() {
   }, [])
 
   const checkAuthStatus = () => {
-    const authStatus = CentralizedDataLoader.checkAuthStatus()
-    setIsConnected(authStatus.isConnected)
+    const authStatus = CentralizedDataLoader.getAuthStatus()
+    setIsConnected(authStatus.isAuthenticated)
     setUserInfo(authStatus.userInfo || null)
-    setSessionInfo(authStatus.sessionInfo || null)
+    setSessionInfo(null) // This method doesn't return sessionInfo, we can remove this
     
-    if (authStatus.isConnected) {
+    if (authStatus.isAuthenticated) {
       // Load saved profiles from storage using centralized loader
       const savedProfiles = CentralizedDataLoader.loadProfiles()
       const convertedProfiles = CentralizedDataLoader.convertProfilesToDisplayFormat(savedProfiles)

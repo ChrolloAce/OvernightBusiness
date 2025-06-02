@@ -242,7 +242,7 @@ export default function ReviewsPage() {
     try {
       console.log('Loading reviews for profile:', profile.name)
       
-      const result = await CentralizedDataLoader.loadReviews(profile)
+      const result = await CentralizedDataLoader.loadAllReviews(profile)
       
       if (result.success && result.reviews && result.summary) {
         setReviews(result.reviews)

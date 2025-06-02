@@ -1,6 +1,32 @@
 import { GoogleAuthService } from './google-auth'
-import { GoogleBusinessAPI, BusinessLocation, BusinessReview, PerformanceMetricsResponse, BusinessMedia, BusinessQuestion, QuestionsResponse } from './google-business-api'
+import { GoogleBusinessAPI, BusinessLocation, BusinessReview, PerformanceMetricsResponse, BusinessMedia, ReviewsResponse } from './google-business-api'
 import { BusinessProfilesStorage, SavedBusinessProfile } from './business-profiles-storage'
+
+// Q&A interfaces
+export interface BusinessQuestion {
+  name: string
+  author: {
+    displayName: string
+    profilePhotoUri?: string
+  }
+  text: string
+  createTime: string
+  updateTime: string
+  topAnswers: BusinessAnswer[]
+  totalAnswerCount: number
+}
+
+export interface BusinessAnswer {
+  name: string
+  author: {
+    displayName: string
+    profilePhotoUri?: string
+    type: 'MERCHANT' | 'USER'
+  }
+  text: string
+  createTime: string
+  updateTime: string
+}
 
 // Centralized data loader for all business data operations
 export class CentralizedDataLoader {
@@ -214,145 +240,66 @@ export class CentralizedDataLoader {
     }
   }
 
-  // Load reviews for a business profile
-  static async loadReviews(profile: SavedBusinessProfile): Promise<{
-    success: boolean
-    reviews?: BusinessReview[]
-    summary?: {
-      averageRating: number
-      totalReviews: number
-      ratingDistribution: { [key: number]: number }
-      repliedCount: number
-      unrepliedCount: number
-    }
-    error?: string
-  }> {
-    if (!profile.googleBusinessId) {
-      return { success: false, error: 'No Google Business ID found for this profile' }
-    }
-
+  // Load analytics data for a specific profile
+  static async loadAnalytics(profile: SavedBusinessProfile, options: {
+    startDate?: string
+    endDate?: string
+    enabledMetrics?: Record<string, boolean>
+  } = {}): Promise<{ success: boolean, data?: PerformanceMetricsResponse, error?: string }> {
+    console.log('[CentralizedDataLoader] Loading analytics for profile:', profile.name)
+    
     try {
-      console.log('[CentralizedDataLoader] Loading reviews for profile:', profile.name)
-      const reviewsData = await this.googleAPI.getAllReviews(profile.googleBusinessId)
-      
-      // Calculate rating distribution
-      const distribution: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-      let repliedCount = 0
-      let unrepliedCount = 0
-      
-      reviewsData.reviews.forEach(review => {
-        const rating = GoogleBusinessAPI.getStarRatingValue(review.starRating)
-        if (rating > 0) distribution[rating]++
-        
-        if (review.reviewReply) {
-          repliedCount++
-        } else {
-          unrepliedCount++
-        }
-      })
-
-      const summary = {
-        averageRating: reviewsData.averageRating,
-        totalReviews: reviewsData.totalReviewCount,
-        ratingDistribution: distribution,
-        repliedCount,
-        unrepliedCount
+      const authService = GoogleAuthService.getInstance()
+      if (!authService.isAuthenticated()) {
+        return { success: false, error: 'Not authenticated' }
       }
 
-      // Update profile with reviews data
-      const updatedProfile = {
-        ...profile,
-        googleData: {
-          ...profile.googleData,
-          reviews: reviewsData.reviews,
-          reviewsSummary: {
-            averageRating: reviewsData.averageRating,
-            totalReviews: reviewsData.totalReviewCount,
-            lastUpdated: new Date().toISOString()
-          }
-        }
-      }
-      BusinessProfilesStorage.updateProfile(profile.id, updatedProfile)
-      
-      console.log(`[CentralizedDataLoader] Loaded ${reviewsData.reviews.length} reviews for ${profile.name}`)
-      
-      return {
-        success: true,
-        reviews: reviewsData.reviews,
-        summary
-      }
-      
-    } catch (error) {
-      console.error('[CentralizedDataLoader] Failed to load reviews:', error)
-      return {
-        success: false,
-        error: `Failed to load reviews: ${error instanceof Error ? error.message : 'Unknown error'}`
-      }
-    }
-  }
+      const userInfo = authService.getUserInfo()
+      const sessionInfo = authService.getSessionInfo()
 
-  // Load analytics/performance data for a business profile
-  static async loadAnalytics(
-    profile: SavedBusinessProfile,
-    options: {
-      dateRange?: string
-      customStartDate?: string
-      customEndDate?: string
-      enabledMetrics?: Record<string, boolean>
-    } = {}
-  ): Promise<{
-    success: boolean
-    data?: PerformanceMetricsResponse
-    error?: string
-  }> {
-    if (!profile.googleBusinessId) {
-      return { success: false, error: 'No Google Business ID found for this profile' }
-    }
-
-    try {
-      console.log('[CentralizedDataLoader] Loading analytics for profile:', profile.name)
-      
-      // Extract location ID from the full name
-      const locationId = profile.googleBusinessId.split('/').pop()
-      if (!locationId) {
-        throw new Error('Invalid location ID')
+      if (!userInfo || !sessionInfo?.expires_at) {
+        return { success: false, error: 'Missing authentication data' }
       }
+
+      // Extract location ID from googleBusinessId
+      const locationMatch = profile.googleBusinessId.match(/locations\/([^\/]+)/)
+      if (!locationMatch) {
+        return { success: false, error: 'Invalid business ID format' }
+      }
+      
+      const locationId = locationMatch[1]
 
       // Calculate date range
       let start = new Date()
       let end = new Date()
       
-      if (options.customStartDate && options.customEndDate) {
-        start = new Date(options.customStartDate)
-        end = new Date(options.customEndDate)
-      } else if (options.dateRange) {
-        const days = parseInt(options.dateRange)
-        start.setDate(end.getDate() - days)
+      if (options.startDate && options.endDate) {
+        start = new Date(options.startDate)
+        end = new Date(options.endDate)
       } else {
         // Default to 30 days
         start.setDate(end.getDate() - 30)
       }
 
       // Default metrics if none provided
-      const defaultMetrics: Record<string, boolean> = {
-        'BUSINESS_IMPRESSIONS_DESKTOP_MAPS': true,
-        'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH': true,
-        'BUSINESS_IMPRESSIONS_MOBILE_MAPS': true,
-        'BUSINESS_IMPRESSIONS_MOBILE_SEARCH': true,
-        'CALL_CLICKS': true,
-        'WEBSITE_CLICKS': true,
-        'BUSINESS_DIRECTION_REQUESTS': true,
-        'BUSINESS_BOOKINGS': true,
-        'BUSINESS_CONVERSATIONS': true
-      }
+      const defaultMetrics: string[] = [
+        'BUSINESS_IMPRESSIONS_DESKTOP_MAPS',
+        'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH',
+        'BUSINESS_IMPRESSIONS_MOBILE_MAPS',
+        'BUSINESS_IMPRESSIONS_MOBILE_SEARCH',
+        'CALL_CLICKS',
+        'WEBSITE_CLICKS',
+        'BUSINESS_DIRECTION_REQUESTS'
+      ]
 
       // Get enabled metrics only
-      const enabledMetrics = options.enabledMetrics || defaultMetrics
+      const enabledMetrics = options.enabledMetrics || {}
       const enabledMetricKeys = Object.keys(enabledMetrics).filter(key => enabledMetrics[key])
-      
+      const metricsToUse = enabledMetricKeys.length > 0 ? enabledMetricKeys : defaultMetrics
+
       const data = await this.googleAPI.fetchMultiDailyMetricsTimeSeries(
         locationId,
-        enabledMetricKeys,
+        metricsToUse,
         {
           year: start.getFullYear(),
           month: start.getMonth() + 1,
@@ -364,321 +311,260 @@ export class CentralizedDataLoader {
           day: end.getDate()
         }
       )
-      
-      // Update profile with performance data
-      const updatedProfile = {
-        ...profile,
-        googleData: {
-          ...profile.googleData,
-          performanceData: data,
-          lastPerformanceUpdate: new Date().toISOString()
-        }
-      }
-      BusinessProfilesStorage.updateProfile(profile.id, updatedProfile)
-      
-      console.log(`[CentralizedDataLoader] Loaded analytics data for ${profile.name}`)
-      
-      return {
-        success: true,
-        data
-      }
-      
+
+      console.log('[CentralizedDataLoader] Analytics loaded successfully')
+      return { success: true, data }
     } catch (error) {
       console.error('[CentralizedDataLoader] Failed to load analytics:', error)
-      return {
-        success: false,
-        error: `Failed to load analytics: ${error instanceof Error ? error.message : 'Unknown error'}`
-      }
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
   }
 
-  // Load business media for a profile
-  static async loadBusinessMedia(profile: SavedBusinessProfile): Promise<{
-    success: boolean
-    media?: BusinessMedia
-    error?: string
+  // Load all reviews for a specific profile
+  static async loadAllReviews(profile: SavedBusinessProfile): Promise<{ 
+    success: boolean, 
+    reviews?: BusinessReview[], 
+    summary?: any,
+    error?: string 
   }> {
-    if (!profile.googleBusinessId) {
-      return { success: false, error: 'No Google Business ID found for this profile' }
-    }
-
+    console.log('[CentralizedDataLoader] Loading all reviews for profile:', profile.name)
+    
     try {
-      console.log('[CentralizedDataLoader] Loading business media for profile:', profile.name)
+      const authService = GoogleAuthService.getInstance()
+      if (!authService.isAuthenticated()) {
+        return { success: false, error: 'Not authenticated' }
+      }
+
+      const userInfo = authService.getUserInfo()
+      const sessionInfo = authService.getSessionInfo()
+
+      if (!userInfo || !sessionInfo?.expires_at) {
+        return { success: false, error: 'Missing authentication data' }
+      }
+
+      const reviewsResponse: ReviewsResponse = await this.googleAPI.getAllReviews(profile.googleBusinessId)
+
+      // Calculate summary
+      const summary = {
+        totalReviews: reviewsResponse.totalReviewCount,
+        averageRating: reviewsResponse.averageRating,
+        ratingDistribution: {
+          1: reviewsResponse.reviews.filter(r => GoogleBusinessAPI.getStarRatingValue(r.starRating) === 1).length,
+          2: reviewsResponse.reviews.filter(r => GoogleBusinessAPI.getStarRatingValue(r.starRating) === 2).length,
+          3: reviewsResponse.reviews.filter(r => GoogleBusinessAPI.getStarRatingValue(r.starRating) === 3).length,
+          4: reviewsResponse.reviews.filter(r => GoogleBusinessAPI.getStarRatingValue(r.starRating) === 4).length,
+          5: reviewsResponse.reviews.filter(r => GoogleBusinessAPI.getStarRatingValue(r.starRating) === 5).length,
+        },
+        repliedCount: reviewsResponse.reviews.filter(r => r.reviewReply).length,
+        unrepliedCount: reviewsResponse.reviews.filter(r => !r.reviewReply).length
+      }
+
+      console.log(`[CentralizedDataLoader] Loaded ${reviewsResponse.reviews.length} reviews successfully`)
+      return { success: true, reviews: reviewsResponse.reviews, summary }
+    } catch (error) {
+      console.error('[CentralizedDataLoader] Failed to load reviews:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  // Load business media for a specific profile
+  static async loadBusinessMedia(profile: SavedBusinessProfile): Promise<{ 
+    success: boolean, 
+    media?: BusinessMedia, 
+    error?: string 
+  }> {
+    console.log('[CentralizedDataLoader] Loading business media for profile:', profile.name)
+    
+    try {
+      const authService = GoogleAuthService.getInstance()
+      if (!authService.isAuthenticated()) {
+        return { success: false, error: 'Not authenticated' }
+      }
+
+      const userInfo = authService.getUserInfo()
+      const sessionInfo = authService.getSessionInfo()
+
+      if (!userInfo || !sessionInfo?.expires_at) {
+        return { success: false, error: 'Missing authentication data' }
+      }
+
       const media = await this.googleAPI.getBusinessMedia(profile.googleBusinessId)
-      
-      // Update profile with media data
-      const updatedProfile = {
-        ...profile,
-        googleData: {
-          ...profile.googleData,
-          media: media,
-          coverPhotoUrl: media.coverPhoto ? GoogleBusinessAPI.getBestImageUrl(media.coverPhoto) || undefined : undefined,
-          profilePhotoUrl: media.profilePhoto ? GoogleBusinessAPI.getBestImageUrl(media.profilePhoto) || undefined : undefined,
-          displayPhotos: await this.googleAPI.getDisplayPhotos(profile.googleBusinessId, 6),
-          lastMediaUpdate: new Date().toISOString()
-        }
-      }
-      BusinessProfilesStorage.updateProfile(profile.id, updatedProfile)
-      
-      console.log(`[CentralizedDataLoader] Loaded media for ${profile.name}`)
-      
-      return {
-        success: true,
-        media
-      }
-      
+
+      console.log('[CentralizedDataLoader] Business media loaded successfully')
+      return { success: true, media }
     } catch (error) {
       console.error('[CentralizedDataLoader] Failed to load business media:', error)
-      // Set empty media on error - this is expected for many locations
-      const emptyMedia: BusinessMedia = {
-        exteriorPhotos: [],
-        interiorPhotos: [],
-        productPhotos: [],
-        foodAndDrinkPhotos: [],
-        menuPhotos: [],
-        teamPhotos: [],
-        additionalPhotos: [],
-        allPhotos: []
-      }
-      
-      return {
-        success: true, // Return success with empty media as this is expected behavior
-        media: emptyMedia
-      }
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
   }
 
-  // Load Q&A for a specific business profile
-  static async loadQuestionsAndAnswers(profile: SavedBusinessProfile): Promise<{
-    success: boolean
-    questions: BusinessQuestion[]
-    totalQuestions: number
-    error?: string
+  // Load Q&A for a specific profile
+  static async loadQuestionsAndAnswers(profile: SavedBusinessProfile): Promise<{ 
+    success: boolean, 
+    questions?: BusinessQuestion[], 
+    error?: string 
   }> {
     console.log('[CentralizedDataLoader] Loading Q&A for profile:', profile.name)
     
     try {
       const authService = GoogleAuthService.getInstance()
-      const isConnected = authService.isAuthenticated()
-      if (!isConnected) {
-        return {
-          success: false,
-          questions: [],
-          totalQuestions: 0,
-          error: 'Google account not connected'
-        }
+      if (!authService.isAuthenticated()) {
+        return { success: false, error: 'Not authenticated' }
       }
 
-      const userInfo = authService.getUserInfo()
       const sessionInfo = authService.getSessionInfo()
-      
-      if (!userInfo || !sessionInfo) {
-        return {
-          success: false,
-          questions: [],
-          totalQuestions: 0,
-          error: 'User session not available'
-        }
+      if (!sessionInfo?.expires_at) {
+        return { success: false, error: 'Missing authentication data' }
       }
 
-      // Extract location ID from the profile's Google Business ID
-      const locationId = profile.googleBusinessId.replace('accounts/', '').replace('/locations/', '/locations/')
+      // Get valid access token
+      const accessToken = await authService.getValidAccessToken()
+
+      // Extract location ID from googleBusinessId
+      const locationMatch = profile.googleBusinessId.match(/locations\/([^\/]+)/)
+      if (!locationMatch) {
+        return { success: false, error: 'Invalid business ID format' }
+      }
       
-      const questionsResponse = await this.googleAPI.getQuestions(
-        '', // We'll need to get the account ID from profile
-        locationId,
-        50 // Load up to 50 questions
-      )
+      const locationId = locationMatch[1]
+      const endpoint = `https://mybusinessqanda.googleapis.com/v1/locations/${locationId}/questions`
+
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          console.log('[CentralizedDataLoader] Q&A API access not available for this location')
+          return { success: true, questions: [] }
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      const questions: BusinessQuestion[] = data.questions || []
 
       // Load answers for each question
-      const questionsWithAnswers = await Promise.all(
-        questionsResponse.questions.map(async (question) => {
-          try {
-            const answersResponse = await this.googleAPI.getQuestionAnswers(question.name, 10)
-            return {
-              ...question,
-              topAnswers: answersResponse.answers
+      for (const question of questions) {
+        try {
+          const answersEndpoint = `https://mybusinessqanda.googleapis.com/v1/${question.name}/answers`
+          const answersResponse = await fetch(answersEndpoint, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
             }
-          } catch (error) {
-            console.error(`Failed to load answers for question ${question.name}:`, error)
-            return question
+          })
+
+          if (answersResponse.ok) {
+            const answersData = await answersResponse.json()
+            question.topAnswers = answersData.answers || []
           }
-        })
-      )
-
-      console.log(`[CentralizedDataLoader] Loaded ${questionsWithAnswers.length} questions with answers`)
-      
-      return {
-        success: true,
-        questions: questionsWithAnswers,
-        totalQuestions: questionsResponse.totalSize
-      }
-    } catch (error) {
-      console.error('[CentralizedDataLoader] Error loading Q&A:', error)
-      return {
-        success: false,
-        questions: [],
-        totalQuestions: 0,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      }
-    }
-  }
-
-  // Create a new question for a business profile
-  static async createQuestion(profile: SavedBusinessProfile, questionText: string): Promise<{
-    success: boolean
-    question?: BusinessQuestion
-    error?: string
-  }> {
-    console.log('[CentralizedDataLoader] Creating question for profile:', profile.name)
-    
-    try {
-      const authService = GoogleAuthService.getInstance()
-      const isConnected = authService.isAuthenticated()
-      if (!isConnected) {
-        return {
-          success: false,
-          error: 'Google account not connected'
+        } catch (answerError) {
+          console.warn('[CentralizedDataLoader] Failed to load answers for question:', question.name, answerError)
+          question.topAnswers = []
         }
       }
 
-      // Extract location ID from the profile's Google Business ID
-      const locationId = profile.googleBusinessId.replace('accounts/', '').replace('/locations/', '/locations/')
-      
-      const question = await this.googleAPI.createQuestion(locationId, questionText)
-
-      console.log('[CentralizedDataLoader] Question created successfully')
-      
-      return {
-        success: true,
-        question
-      }
+      console.log(`[CentralizedDataLoader] Loaded ${questions.length} Q&A items successfully`)
+      return { success: true, questions }
     } catch (error) {
-      console.error('[CentralizedDataLoader] Error creating question:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      }
+      console.error('[CentralizedDataLoader] Failed to load Q&A:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
   }
 
-  // Answer a question
-  static async answerQuestion(questionName: string, answerText: string): Promise<{
-    success: boolean
-    answer?: any
-    error?: string
-  }> {
-    console.log('[CentralizedDataLoader] Answering question:', questionName)
-    
-    try {
-      const authService = GoogleAuthService.getInstance()
-      const isConnected = authService.isAuthenticated()
-      if (!isConnected) {
-        return {
-          success: false,
-          error: 'Google account not connected'
-        }
-      }
-
-      const answer = await this.googleAPI.answerQuestion(questionName, answerText)
-
-      console.log('[CentralizedDataLoader] Question answered successfully')
-      
-      return {
-        success: true,
-        answer
-      }
-    } catch (error) {
-      console.error('[CentralizedDataLoader] Error answering question:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      }
-    }
-  }
-
-  // Enhanced loadAllProfileData to include Q&A
+  // Load all profile data at once
   static async loadAllProfileData(profile: SavedBusinessProfile, options: {
-    includeReviews?: boolean
     includeAnalytics?: boolean
+    includeReviews?: boolean
     includeMedia?: boolean
     includeQA?: boolean
+    analyticsOptions?: any
   } = {}): Promise<{
     success: boolean
+    analytics?: PerformanceMetricsResponse
     reviews?: BusinessReview[]
     reviewsSummary?: any
-    analytics?: PerformanceMetricsResponse
     media?: BusinessMedia
     questions?: BusinessQuestion[]
-    totalQuestions?: number
-    error?: string
+    errors?: string[]
   }> {
-    console.log('[CentralizedDataLoader] Loading all profile data for:', profile.name)
+    console.log('[CentralizedDataLoader] Loading all data for profile:', profile.name)
+    
+    const results: any = { success: true, errors: [] }
     
     try {
-      const results: any = { success: true }
+      // Load data in parallel where possible
       const promises: Promise<any>[] = []
-
-      // Load reviews
-      if (options.includeReviews) {
-        promises.push(
-          this.loadReviews(profile).then(result => {
-            if (result.success) {
-              results.reviews = result.reviews
-              results.reviewsSummary = result.summary
-            }
-            return result
-          })
-        )
-      }
-
-      // Load analytics with proper parameters
+      
       if (options.includeAnalytics) {
         promises.push(
-          this.loadAnalytics(profile, { dateRange: '30' }).then(result => {
-            if (result.success) {
-              results.analytics = result.data
-            }
-            return result
-          })
+          this.loadAnalytics(profile, options.analyticsOptions || {})
+            .then(result => ({ type: 'analytics', result }))
         )
       }
-
-      // Load media
+      
+      if (options.includeReviews) {
+        promises.push(
+          this.loadAllReviews(profile)
+            .then(result => ({ type: 'reviews', result }))
+        )
+      }
+      
       if (options.includeMedia) {
         promises.push(
-          this.loadBusinessMedia(profile).then(result => {
-            if (result.success) {
-              results.media = result.media
-            }
-            return result
-          })
+          this.loadBusinessMedia(profile)
+            .then(result => ({ type: 'media', result }))
         )
       }
 
-      // Load Q&A
       if (options.includeQA) {
         promises.push(
-          this.loadQuestionsAndAnswers(profile).then(result => {
-            if (result.success) {
-              results.questions = result.questions
-              results.totalQuestions = result.totalQuestions
-            }
-            return result
-          })
+          this.loadQuestionsAndAnswers(profile)
+            .then(result => ({ type: 'qa', result }))
         )
       }
-
-      await Promise.all(promises)
-
-      console.log('[CentralizedDataLoader] All profile data loaded successfully')
+      
+      const responses = await Promise.allSettled(promises)
+      
+      responses.forEach((response, index) => {
+        if (response.status === 'fulfilled') {
+          const { type, result } = response.value
+          
+          if (result.success) {
+            switch (type) {
+              case 'analytics':
+                results.analytics = result.data
+                break
+              case 'reviews':
+                results.reviews = result.reviews
+                results.reviewsSummary = result.summary
+                break
+              case 'media':
+                results.media = result.media
+                break
+              case 'qa':
+                results.questions = result.questions
+                break
+            }
+          } else {
+            results.errors.push(`${type}: ${result.error}`)
+          }
+        } else {
+          results.errors.push(`Promise ${index} rejected: ${response.reason}`)
+        }
+      })
+      
+      console.log('[CentralizedDataLoader] All profile data loading completed')
       return results
-
     } catch (error) {
-      console.error('[CentralizedDataLoader] Error loading all profile data:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      console.error('[CentralizedDataLoader] Failed to load all profile data:', error)
+      return { 
+        success: false, 
+        errors: [error instanceof Error ? error.message : 'Unknown error'] 
       }
     }
   }
@@ -715,26 +601,13 @@ export class CentralizedDataLoader {
     }
   }
 
-  // Check authentication status
-  static checkAuthStatus(): {
-    isConnected: boolean
-    userInfo?: { email: string; name: string; picture?: string }
-    sessionInfo?: { created_at: number; last_refreshed: number; expires_at: number }
-  } {
+  // Get authentication status
+  static getAuthStatus(): { isAuthenticated: boolean, userInfo?: any } {
     const authService = GoogleAuthService.getInstance()
-    const isConnected = authService.isAuthenticated()
+    const isAuthenticated = authService.isAuthenticated()
+    const userInfo = isAuthenticated ? authService.getUserInfo() : null
     
-    if (isConnected) {
-      const userInfo = authService.getUserInfo()
-      const sessionInfo = authService.getSessionInfo()
-      return { 
-        isConnected, 
-        userInfo: userInfo || undefined, 
-        sessionInfo: sessionInfo || undefined 
-      }
-    }
-    
-    return { isConnected }
+    return { isAuthenticated, userInfo }
   }
 
   // Bulk operations for efficiency
@@ -745,7 +618,7 @@ export class CentralizedDataLoader {
     
     await Promise.all(
       profiles.map(async (profile) => {
-        const result = await this.loadReviews(profile)
+        const result = await this.loadAllReviews(profile)
         results[profile.id] = result
       })
     )
@@ -761,6 +634,122 @@ export class CentralizedDataLoader {
     await Promise.all(
       profiles.map(async (profile) => {
         const result = await this.loadAnalytics(profile, options)
+        results[profile.id] = result
+      })
+    )
+    
+    return results
+  }
+
+  // Add business locations from Google
+  static async addGoogleProfile(accessToken: string): Promise<{ success: boolean, profiles?: SavedBusinessProfile[], error?: string }> {
+    console.log('[CentralizedDataLoader] Adding Google profiles')
+    
+    try {
+      // First get accounts, then get locations for each account
+      const accounts = await this.googleAPI.getAccounts()
+      
+      if (accounts.length === 0) {
+        return { success: false, error: 'No Google Business accounts found.' }
+      }
+
+      const savedProfiles: SavedBusinessProfile[] = []
+      
+      // Get locations for each account
+      for (const account of accounts) {
+        try {
+          const locations = await this.googleAPI.getLocationsWithCompleteDetails(account.name)
+          
+          for (const location of locations) {
+            const profile: SavedBusinessProfile = {
+              id: location.name,
+              googleBusinessId: location.name,
+              name: location.title || location.displayName || location.locationName || 'Unknown Business',
+              address: GoogleBusinessAPI.getFormattedAddress(location),
+              phone: GoogleBusinessAPI.getPrimaryPhone(location),
+              website: location.websiteUri || '',
+              category: location.primaryCategory?.displayName || 'Business',
+              rating: 0,
+              reviewCount: 0,
+              status: 'active',
+              lastUpdated: new Date().toISOString(),
+              lastSynced: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              googleData: {
+                title: location.title,
+                storefrontAddress: location.storefrontAddress,
+                primaryCategory: location.primaryCategory,
+                additionalCategories: location.additionalCategories,
+                regularHours: location.regularHours,
+                moreHours: location.moreHours,
+                metadata: location.metadata,
+                latlng: location.latlng,
+                locationState: location.locationState,
+                attributes: location.attributes,
+                profile: location.profile,
+                relationshipData: location.relationshipData,
+                serviceItems: location.serviceItems,
+                openInfo: location.openInfo,
+                serviceArea: location.serviceArea,
+                labels: location.labels,
+                adWordsLocationExtensions: location.adWordsLocationExtensions,
+                language: GoogleBusinessAPI.getLanguage(location),
+                storeCode: GoogleBusinessAPI.getStoreCode(location),
+                businessDescription: GoogleBusinessAPI.getBusinessDescription(location),
+                openingDate: GoogleBusinessAPI.getOpeningDate(location),
+                businessHours: GoogleBusinessAPI.formatBusinessHours(location),
+                allCategories: GoogleBusinessAPI.getAllCategories(location),
+                serviceTypes: GoogleBusinessAPI.getServiceTypes(location),
+                moreHoursTypes: GoogleBusinessAPI.getMoreHoursTypes(location),
+                capabilities: GoogleBusinessAPI.getBusinessCapabilities(location),
+                isOpen: GoogleBusinessAPI.getBusinessStatus(location).isOpen,
+                businessType: GoogleBusinessAPI.getServiceArea(location).businessType,
+                phoneNumbers: {
+                  primaryPhone: GoogleBusinessAPI.getPrimaryPhone(location),
+                  additionalPhones: GoogleBusinessAPI.getAdditionalPhones(location)
+                },
+                categories: {
+                  primaryCategory: location.primaryCategory,
+                  additionalCategories: location.additionalCategories
+                },
+                serviceAreaInfo: GoogleBusinessAPI.getServiceArea(location),
+                specialHours: GoogleBusinessAPI.getSpecialHours(location),
+                moreHoursData: GoogleBusinessAPI.getMoreHours(location),
+                serviceItemsData: GoogleBusinessAPI.getServiceItems(location),
+                relationshipInfo: GoogleBusinessAPI.getRelationshipData(location),
+                businessStatusInfo: GoogleBusinessAPI.getBusinessStatus(location)
+              }
+            }
+
+            BusinessProfilesStorage.saveProfile(profile)
+            savedProfiles.push(profile)
+          }
+        } catch (locationError) {
+          console.warn(`[CentralizedDataLoader] Failed to load locations for account ${account.name}:`, locationError)
+        }
+      }
+
+      if (savedProfiles.length === 0) {
+        return { success: false, error: 'No business locations found in your Google Business Profile accounts.' }
+      }
+
+      console.log(`[CentralizedDataLoader] Added ${savedProfiles.length} Google profiles successfully`)
+      return { success: true, profiles: savedProfiles }
+    } catch (error) {
+      console.error('[CentralizedDataLoader] Failed to add Google profiles:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  // Load reviews in bulk for multiple profiles
+  static async loadAllReviewsForProfiles(profiles: SavedBusinessProfile[]): Promise<Record<string, { success: boolean, reviews?: BusinessReview[], summary?: any, error?: string }>> {
+    console.log('[CentralizedDataLoader] Loading reviews for multiple profiles')
+    
+    const results: Record<string, any> = {}
+    
+    await Promise.all(
+      profiles.map(async (profile) => {
+        const result = await this.loadAllReviews(profile)
         results[profile.id] = result
       })
     )

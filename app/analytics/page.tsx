@@ -241,26 +241,41 @@ export default function AnalyticsPage() {
     }
   }
 
-  const loadPerformanceData = async (profile: SavedBusinessProfile, customStartDate?: string, customEndDate?: string) => {
+  const loadPerformanceData = async (profile: SavedBusinessProfile) => {
     setLoading(true)
+    setPerformanceData(null)
+    
     try {
-      console.log('Loading performance data for profile:', profile.name)
+      console.log('[Analytics] Loading performance data for profile:', profile.name)
+      
+      // Calculate date range
+      let start = new Date()
+      let end = new Date()
+      
+      if (startDate && endDate) {
+        start = new Date(startDate)
+        end = new Date(endDate)
+      } else {
+        const days = parseInt(dateRange)
+        start.setDate(end.getDate() - days)
+      }
       
       const result = await CentralizedDataLoader.loadAnalytics(profile, {
-        dateRange: customStartDate && customEndDate ? undefined : dateRange,
-        customStartDate,
-        customEndDate,
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
         enabledMetrics
       })
       
       if (result.success && result.data) {
         setPerformanceData(result.data)
+        console.log('[Analytics] Performance data loaded successfully')
       } else {
-        console.error('Failed to load analytics:', result.error)
+        console.error('[Analytics] Failed to load performance data:', result.error)
+        setPerformanceData(null)
       }
-      
     } catch (error) {
-      console.error('Failed to load performance data:', error)
+      console.error('[Analytics] Error loading performance data:', error)
+      setPerformanceData(null)
     } finally {
       setLoading(false)
     }
@@ -282,14 +297,14 @@ export default function AnalyticsPage() {
 
   const handleDateRangeChange = (value: string) => {
     setDateRange(value)
-    if (value !== 'custom' && selectedProfile) {
-      loadPerformanceData(selectedProfile)
-    }
+    // Clear custom dates when selecting preset range
+    setStartDate('')
+    setEndDate('')
   }
 
   const handleCustomDateSubmit = () => {
     if (selectedProfile && startDate && endDate) {
-      loadPerformanceData(selectedProfile, startDate, endDate)
+      loadPerformanceData(selectedProfile)
     }
   }
 
