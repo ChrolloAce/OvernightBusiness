@@ -103,7 +103,7 @@ function BusinessLogo({ businessName, website, className = "w-16 h-16" }: Busine
   if (isLoading) {
     return (
       <div className={`${className} bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 rounded-2xl flex items-center justify-center`}>
-        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+        <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 md:w-6 md:h-6 text-gray-400 animate-spin" />
       </div>
     )
   }
@@ -111,7 +111,7 @@ function BusinessLogo({ businessName, website, className = "w-16 h-16" }: Busine
   if (hasError || !logoUrl) {
     return (
       <div className={`${className} bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg`}>
-        <Building2 className="w-8 h-8 text-white" />
+        <Building2 className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
       </div>
     )
   }
@@ -123,7 +123,7 @@ function BusinessLogo({ businessName, website, className = "w-16 h-16" }: Busine
         alt={`${businessName} logo`}
         width={64}
         height={64}
-        className="w-full h-full object-contain p-2"
+        className="w-full h-full object-contain p-1 sm:p-2"
         onError={() => {
           setHasError(true)
           setLogoUrl(null)
@@ -718,21 +718,21 @@ export default function ContentHubPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header Controls */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold">Profile Audit Simulator</h1>
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+            <h1 className="text-lg sm:text-xl font-bold">Profile Audit Simulator</h1>
             <Select value={selectedProfile?.id || ''} onValueChange={handleProfileSelect}>
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-full sm:w-64">
                 <SelectValue placeholder="Select business profile">
                   {selectedProfile && (
                     <div className="flex items-center gap-2">
                       <BusinessLogo 
                         businessName={selectedProfile.name} 
                         website={selectedProfile.website}
-                        className="w-6 h-6"
+                        className="w-5 h-5 sm:w-6 sm:h-6"
                       />
-                      <span className="truncate">{selectedProfile.name}</span>
+                      <span className="truncate text-sm sm:text-base">{selectedProfile.name}</span>
                     </div>
                   )}
                 </SelectValue>
@@ -744,9 +744,9 @@ export default function ContentHubPage() {
                       <BusinessLogo 
                         businessName={profile.name} 
                         website={profile.website}
-                        className="w-6 h-6"
+                        className="w-5 h-5 sm:w-6 sm:h-6"
                       />
-                      <span>{profile.name}</span>
+                      <span className="text-sm sm:text-base">{profile.name}</span>
                     </div>
                   </SelectItem>
                 ))}
@@ -754,17 +754,18 @@ export default function ContentHubPage() {
             </Select>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <Button
               variant={auditMode ? "default" : "outline"}
               size="sm"
               onClick={() => setAuditMode(!auditMode)}
+              className="flex-1 sm:flex-none text-xs sm:text-sm"
             >
-              <Target className="w-4 h-4 mr-2" />
+              <Target className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               {auditMode ? 'Hide Audit' : 'Show Audit'}
             </Button>
-            <Button onClick={refreshAudit} disabled={loading} size="sm">
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <Button onClick={refreshAudit} disabled={loading} size="sm" className="flex-1 sm:flex-none text-xs sm:text-sm">
+              <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
@@ -772,13 +773,13 @@ export default function ContentHubPage() {
       </div>
 
       {/* Google Business Profile Simulator */}
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-3 sm:p-6">
         {loading ? (
           <Card>
-            <CardContent className="flex items-center justify-center py-12">
+            <CardContent className="flex items-center justify-center py-8 sm:py-12">
               <div className="text-center">
-                <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
-                <p className="text-lg font-medium">Analyzing Profile...</p>
+                <RefreshCw className="w-6 h-6 sm:w-8 sm:h-8 animate-spin mx-auto mb-3 sm:mb-4" />
+                <p className="text-base sm:text-lg font-medium">Analyzing Profile...</p>
               </div>
             </CardContent>
           </Card>
@@ -787,7 +788,7 @@ export default function ContentHubPage() {
             {/* Profile Header */}
             <div className="relative">
               {/* Cover Photo Area */}
-              <div className="h-48 bg-gradient-to-r from-blue-500 to-purple-600 relative overflow-hidden">
+              <div className="h-32 sm:h-40 md:h-48 bg-gradient-to-r from-blue-500 to-purple-600 relative overflow-hidden">
                 {/* Display actual cover photo if available */}
                 {businessMedia?.coverPhoto ? (
                   <img
@@ -801,10 +802,10 @@ export default function ContentHubPage() {
                   />
                 ) : (
                   /* Show placeholder when no cover photo */
-                  <div className="absolute inset-4 bg-black/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                  <div className="absolute inset-2 sm:inset-4 bg-black/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
                     <div className="text-center text-white">
-                      <Camera className="w-8 h-8 mx-auto mb-2" />
-                      <p className="text-sm">No cover photo</p>
+                      <Camera className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2" />
+                      <p className="text-xs sm:text-sm">No cover photo</p>
                     </div>
                   </div>
                 )}
@@ -813,12 +814,12 @@ export default function ContentHubPage() {
                 {auditMode && getIssueForSection('photos') && (
                   <AuditHighlight 
                     issue={getIssueForSection('photos')!}
-                    className="absolute inset-4"
+                    className="absolute inset-2 sm:inset-4"
                   >
                     <div className="h-full bg-black/60 backdrop-blur-sm rounded-lg flex items-center justify-center">
                       <div className="text-center text-white">
-                        <Camera className="w-8 h-8 mx-auto mb-2" />
-                        <p className="text-sm font-medium">
+                        <Camera className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2" />
+                        <p className="text-xs sm:text-sm font-medium">
                           {businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 
                             ? `${businessMedia.allPhotos.length} photos (need ${Math.max(0, 10 - businessMedia.allPhotos.length)} more)`
                             : 'Add photos'
@@ -833,19 +834,19 @@ export default function ContentHubPage() {
                 {loadingMedia && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <div className="text-center text-white">
-                      <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
-                      <p className="text-sm">Loading photos...</p>
+                      <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 animate-spin" />
+                      <p className="text-xs sm:text-sm">Loading photos...</p>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Business Info */}
-              <div className="p-6">
-                <div className="flex items-start gap-4">
+              <div className="p-3 sm:p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
                   {/* Use profile photo if available, otherwise fallback to logo */}
                   {businessMedia?.profilePhoto ? (
-                    <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shadow-lg bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 mx-auto sm:mx-0">
                       <img
                         src={GoogleBusinessAPI.getBestImageUrl(businessMedia.profilePhoto) || ''}
                         alt={`${selectedProfile.name} profile`}
@@ -862,26 +863,26 @@ export default function ContentHubPage() {
                     <BusinessLogo 
                       businessName={selectedProfile.name} 
                       website={selectedProfile.website}
-                      className="w-20 h-20"
+                      className="w-16 h-16 sm:w-20 sm:h-20 mx-auto sm:mx-0"
                     />
                   )}
                   
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                  <div className="flex-1 text-center sm:text-left w-full">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3">
+                      <div className="w-full sm:flex-1">
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
                           {selectedProfile.name}
                         </h1>
                         
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
                           {renderStars(selectedProfile.rating || 0)}
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                             {selectedProfile.rating} • {selectedProfile.reviewCount} Google reviews
                           </span>
                         </div>
                         
                         {/* Business Categories */}
-                        <div className="flex flex-wrap gap-2 mb-3">
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-1 sm:gap-2 mb-3">
                           {getBusinessCategories(selectedProfile).map((category: any, index) => (
                             <Badge key={index} variant="secondary" className="text-xs">
                               {category.displayName || category.name || category}
@@ -889,81 +890,86 @@ export default function ContentHubPage() {
                           ))}
                         </div>
                         
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 px-2 sm:px-0">
                           {selectedProfile.googleData?.businessDescription?.substring(0, 100) || 
                            `Business in ${selectedProfile.address?.split(',')[1] || 'Miami-Dade County'}, Florida`}
                         </p>
                       </div>
                       
-                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs whitespace-nowrap">
                         You manage this Business Profile
                       </Badge>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-2 mb-4">
+                    <div className="flex flex-wrap justify-center sm:justify-start gap-1 sm:gap-2 mb-4">
                       {auditMode && getIssueForSection('contact') ? (
                         <AuditHighlight issue={getIssueForSection('contact')!}>
-                          <Button variant="outline" size="sm" className="opacity-50">
-                            <Globe className="w-4 h-4 mr-2" />
-                            Website
+                          <Button variant="outline" size="sm" className="opacity-50 text-xs flex-1 sm:flex-none min-w-0">
+                            <Globe className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                            <span className="hidden sm:inline">Website</span>
+                            <span className="sm:hidden">Web</span>
                           </Button>
                         </AuditHighlight>
                       ) : (
-                        <Button variant="outline" size="sm">
-                          <Globe className="w-4 h-4 mr-2" />
-                          Website
+                        <Button variant="outline" size="sm" className="text-xs flex-1 sm:flex-none min-w-0">
+                          <Globe className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                          <span className="hidden sm:inline">Website</span>
+                          <span className="sm:hidden">Web</span>
                         </Button>
                       )}
                       
-                      <Button variant="outline" size="sm">
-                        <Navigation className="w-4 h-4 mr-2" />
-                        Directions
+                      <Button variant="outline" size="sm" className="text-xs flex-1 sm:flex-none min-w-0">
+                        <Navigation className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Directions</span>
+                        <span className="sm:hidden">Dir</span>
                       </Button>
                       
-                      <Button variant="outline" size="sm">
-                        <Star className="w-4 h-4 mr-2" />
-                        Reviews
+                      <Button variant="outline" size="sm" className="text-xs flex-1 sm:flex-none min-w-0">
+                        <Star className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Reviews</span>
+                        <span className="sm:hidden">Rev</span>
                       </Button>
                       
-                      <Button variant="outline" size="sm">
-                        <Share className="w-4 h-4 mr-2" />
-                        Share
+                      <Button variant="outline" size="sm" className="text-xs flex-1 sm:flex-none min-w-0">
+                        <Share className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Share</span>
+                        <span className="sm:hidden">Shr</span>
                       </Button>
                     </div>
 
                     {/* Contact Info */}
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-gray-500" />
-                        <span>{selectedProfile.address}</span>
+                    <div className="space-y-2 text-xs sm:text-sm">
+                      <div className="flex items-center justify-center sm:justify-start gap-2">
+                        <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />
+                        <span className="text-center sm:text-left">{selectedProfile.address}</span>
                       </div>
                       
                       {auditMode && getIssueForSection('contact') ? (
                         <AuditHighlight issue={getIssueForSection('contact')!}>
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <Phone className="w-4 h-4" />
+                          <div className="flex items-center justify-center sm:justify-start gap-2 text-gray-400">
+                            <Phone className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                             <span>Phone number missing</span>
                           </div>
                         </AuditHighlight>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-gray-500" />
+                        <div className="flex items-center justify-center sm:justify-start gap-2">
+                          <Phone className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />
                           <span>{selectedProfile.phone || '(786) 257-8816'}</span>
                         </div>
                       )}
                       
                       {auditMode && getIssueForSection('hours') ? (
                         <AuditHighlight issue={getIssueForSection('hours')!}>
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <Clock className="w-4 h-4" />
+                          <div className="flex items-center justify-center sm:justify-start gap-2 text-gray-400">
+                            <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                             <span>Hours not specified</span>
                           </div>
                         </AuditHighlight>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-gray-500" />
-                          <span>{formatBusinessHours(selectedProfile.googleData?.businessHours)}</span>
+                        <div className="flex items-center justify-center sm:justify-start gap-2">
+                          <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />
+                          <span className="text-center sm:text-left">{formatBusinessHours(selectedProfile.googleData?.businessHours)}</span>
                         </div>
                       )}
                     </div>
@@ -973,16 +979,16 @@ export default function ContentHubPage() {
             </div>
 
             {/* Business Description */}
-            <div className="px-6 pb-4">
+            <div className="px-3 sm:px-4 md:px-6 pb-3 sm:pb-4">
               {auditMode && getIssueForSection('description') ? (
                 <AuditHighlight issue={getIssueForSection('description')!}>
-                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-                    <p className="text-gray-500 italic">Business description missing or too short</p>
+                  <div className="bg-gray-50 dark:bg-gray-700 p-3 sm:p-4 rounded-lg">
+                    <p className="text-gray-500 italic text-xs sm:text-sm">Business description missing or too short</p>
                   </div>
                 </AuditHighlight>
               ) : (
-                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 sm:p-4 rounded-lg">
+                  <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                     {selectedProfile.googleData?.businessDescription || 
                      "AG Construction redefines new construction, home building, and remodeling in Miami through cutting-edge design, premium craftsmanship, and exceptional service."}
                   </p>
@@ -992,22 +998,22 @@ export default function ContentHubPage() {
 
             {/* Image Gallery Section */}
             {businessMedia?.allPhotos && businessMedia.allPhotos.length > 0 && (
-              <div className="px-6 pb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold">Photos ({businessMedia.allPhotos.length})</h3>
-                  <Button variant="outline" size="sm">
-                    <Camera className="w-4 h-4 mr-2" />
+              <div className="px-3 sm:px-4 md:px-6 pb-4 sm:pb-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+                  <h3 className="font-semibold text-sm sm:text-base">Photos ({businessMedia.allPhotos.length})</h3>
+                  <Button variant="outline" size="sm" className="text-xs sm:text-sm w-full sm:w-auto">
+                    <Camera className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     View all
                   </Button>
                 </div>
                 
-                {/* Masonry Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {/* Responsive Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                   {businessMedia.allPhotos.slice(0, 8).map((photo, index) => (
                     <div 
                       key={index} 
                       className={`relative overflow-hidden rounded-lg cursor-pointer hover:opacity-90 transition-opacity ${
-                        index === 0 ? 'md:col-span-2 md:row-span-2' : ''
+                        index === 0 ? 'col-span-2 row-span-2' : ''
                       }`}
                       onClick={() => setSelectedImageModal(photo)}
                     >
@@ -1015,7 +1021,7 @@ export default function ContentHubPage() {
                         src={GoogleBusinessAPI.getBestImageUrl(photo) || ''}
                         alt={`Business photo ${index + 1}`}
                         className={`w-full object-cover ${
-                          index === 0 ? 'h-48 md:h-96' : 'h-24 md:h-32'
+                          index === 0 ? 'h-32 sm:h-48 md:h-64' : 'h-16 sm:h-24 md:h-32'
                         }`}
                         onError={(e) => {
                           e.currentTarget.style.display = 'none'
@@ -1024,7 +1030,7 @@ export default function ContentHubPage() {
                       {/* Overlay for first image if there are more */}
                       {index === 7 && businessMedia.allPhotos.length > 8 && (
                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                          <span className="text-white font-semibold">
+                          <span className="text-white font-semibold text-xs sm:text-sm">
                             +{businessMedia.allPhotos.length - 8} more
                           </span>
                         </div>
@@ -1036,11 +1042,11 @@ export default function ContentHubPage() {
             )}
 
             {/* Products/Services Section */}
-            <div className="px-6 pb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Services & Products</h3>
-                <Button variant="outline" size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
+            <div className="px-3 sm:px-4 md:px-6 pb-4 sm:pb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+                <h3 className="font-semibold text-sm sm:text-base">Services & Products</h3>
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm w-full sm:w-auto">
+                  <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   Add service
                 </Button>
               </div>
@@ -1050,20 +1056,20 @@ export default function ContentHubPage() {
                 
                 if (services.length > 0) {
                   return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                       {services.map((service: any, index) => (
-                        <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                              <Tag className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-600">
+                          <div className="flex items-start gap-2 sm:gap-3">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Tag className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <div className="flex-1">
-                              <h4 className="font-medium text-sm mb-1">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-xs sm:text-sm mb-1 truncate">
                                 {service.displayName || service.name || service.title || 'Service'}
                               </h4>
                               {service.description && (
-                                <p className="text-xs text-gray-600 dark:text-gray-400">
-                                  {service.description.substring(0, 80)}...
+                                <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                                  {service.description.substring(0, 60)}...
                                 </p>
                               )}
                               {service.price && (
@@ -1077,9 +1083,9 @@ export default function ContentHubPage() {
                       ))}
                       
                       {/* Add service card */}
-                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center flex items-center justify-center min-h-[80px] hover:border-gray-400 dark:hover:border-gray-500 transition-colors cursor-pointer">
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 sm:p-4 text-center flex items-center justify-center min-h-[60px] sm:min-h-[80px] hover:border-gray-400 dark:hover:border-gray-500 transition-colors cursor-pointer">
                         <div className="text-gray-500 dark:text-gray-400">
-                          <Plus className="w-6 h-6 mx-auto mb-1" />
+                          <Plus className="w-4 h-4 sm:w-6 sm:h-6 mx-auto mb-1" />
                           <p className="text-xs">Add service</p>
                         </div>
                       </div>
@@ -1087,22 +1093,22 @@ export default function ContentHubPage() {
                   )
                 } else {
                   return (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-center">
-                        <div className="w-full h-16 bg-gray-200 dark:bg-gray-600 rounded mb-2 flex items-center justify-center">
-                          <Tag className="w-6 h-6 text-gray-400" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 sm:p-4 text-center">
+                        <div className="w-full h-12 sm:h-16 bg-gray-200 dark:bg-gray-600 rounded mb-2 flex items-center justify-center">
+                          <Tag className="w-4 h-4 sm:w-6 sm:h-6 text-gray-400" />
                         </div>
-                        <p className="text-sm font-medium">REMODELING</p>
+                        <p className="text-xs sm:text-sm font-medium">REMODELING</p>
                       </div>
-                      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-center">
-                        <div className="w-full h-16 bg-gray-200 dark:bg-gray-600 rounded mb-2 flex items-center justify-center">
-                          <Building2 className="w-6 h-6 text-gray-400" />
+                      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 sm:p-4 text-center">
+                        <div className="w-full h-12 sm:h-16 bg-gray-200 dark:bg-gray-600 rounded mb-2 flex items-center justify-center">
+                          <Building2 className="w-4 h-4 sm:w-6 sm:h-6 text-gray-400" />
                         </div>
-                        <p className="text-sm font-medium">Construction</p>
+                        <p className="text-xs sm:text-sm font-medium">Construction</p>
                       </div>
-                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center flex items-center justify-center">
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 sm:p-4 text-center flex items-center justify-center col-span-1 sm:col-span-2 lg:col-span-1">
                         <div className="text-gray-400">
-                          <Plus className="w-6 h-6 mx-auto mb-1" />
+                          <Plus className="w-4 h-4 sm:w-6 sm:h-6 mx-auto mb-1" />
                           <p className="text-xs">Add service</p>
                         </div>
                       </div>
@@ -1113,11 +1119,11 @@ export default function ContentHubPage() {
             </div>
 
             {/* Business Hours Section */}
-            <div className="px-6 pb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Business Hours</h3>
-                <Button variant="outline" size="sm">
-                  <Clock className="w-4 h-4 mr-2" />
+            <div className="px-3 sm:px-4 md:px-6 pb-4 sm:pb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+                <h3 className="font-semibold text-sm sm:text-base">Business Hours</h3>
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm w-full sm:w-auto">
+                  <Clock className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   Edit hours
                 </Button>
               </div>
@@ -1131,25 +1137,25 @@ export default function ContentHubPage() {
                   const regularHours = (hours as any).regularHours
                   
                   return (
-                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                      <div className="space-y-3">
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-600">
+                      <div className="space-y-2 sm:space-y-3">
                         {dayNames.map((day, index) => {
                           const dayHours = regularHours.find((h: any) => h.day === day)
                           const today = new Date().getDay()
                           const isToday = (today === 0 ? 6 : today - 1) === index // Adjust for Sunday = 0
                           
                           return (
-                            <div key={day} className={`flex items-center justify-between py-2 px-3 rounded ${
+                            <div key={day} className={`flex items-center justify-between py-2 px-2 sm:px-3 rounded ${
                               isToday ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800' : ''
                             }`}>
-                              <span className={`text-sm font-medium ${
+                              <span className={`text-xs sm:text-sm font-medium ${
                                 isToday ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'
                               }`}>
                                 {dayDisplayNames[index]}
-                                {isToday && <span className="ml-2 text-xs">(Today)</span>}
+                                {isToday && <span className="ml-1 sm:ml-2 text-xs">(Today)</span>}
                               </span>
                               
-                              <span className={`text-sm ${
+                              <span className={`text-xs sm:text-sm ${
                                 isToday ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-600 dark:text-gray-400'
                               }`}>
                                 {dayHours && dayHours.openTime && dayHours.closeTime ? (
@@ -1165,15 +1171,15 @@ export default function ContentHubPage() {
                       
                       {/* Special Hours */}
                       {(hours as any).specialHours && Array.isArray((hours as any).specialHours) && (hours as any).specialHours.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Special Hours</h4>
+                        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-600">
+                          <h4 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Special Hours</h4>
                           <div className="space-y-2">
                             {(hours as any).specialHours.slice(0, 3).map((special: any, index: number) => (
-                              <div key={index} className="flex items-center justify-between text-sm">
-                                <span className="text-orange-600 dark:text-orange-400">
+                              <div key={index} className="flex items-center justify-between text-xs sm:text-sm">
+                                <span className="text-orange-600 dark:text-orange-400 truncate mr-2">
                                   {special.date || 'Special day'}
                                 </span>
-                                <span className="text-gray-600 dark:text-gray-400">
+                                <span className="text-gray-600 dark:text-gray-400 text-right">
                                   {special.isClosed ? 'Closed' : `${formatTime(special.openTime)} - ${formatTime(special.closeTime)}`}
                                 </span>
                               </div>
@@ -1185,11 +1191,11 @@ export default function ContentHubPage() {
                   )
                 } else {
                   return (
-                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                      <div className="text-center py-4">
-                        <Clock className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Business hours not specified</p>
-                        <Button variant="outline" size="sm" className="mt-2">
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-600">
+                      <div className="text-center py-4 sm:py-4">
+                        <Clock className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 text-gray-400" />
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-2">Business hours not specified</p>
+                        <Button variant="outline" size="sm" className="text-xs sm:text-sm">
                           Add business hours
                         </Button>
                       </div>
@@ -1200,38 +1206,38 @@ export default function ContentHubPage() {
             </div>
 
             {/* Q&A Section */}
-            <div className="px-6 pb-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold">Questions & answers</h3>
-                <Button variant="outline" size="sm">Ask a question</Button>
+            <div className="px-3 sm:px-4 md:px-6 pb-3 sm:pb-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 sm:mb-3 gap-2">
+                <h3 className="font-semibold text-sm sm:text-base">Questions & answers</h3>
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm w-full sm:w-auto">Ask a question</Button>
               </div>
               
               {auditMode && getIssueForSection('qa') ? (
                 <AuditHighlight issue={getIssueForSection('qa')!}>
-                  <div className="text-center py-8 text-gray-500">
-                    <HelpCircle className="w-8 h-8 mx-auto mb-2" />
-                    <p className="text-sm">No questions and answers yet</p>
+                  <div className="text-center py-6 sm:py-8 text-gray-500">
+                    <HelpCircle className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2" />
+                    <p className="text-xs sm:text-sm">No questions and answers yet</p>
                   </div>
                 </AuditHighlight>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <HelpCircle className="w-8 h-8 mx-auto mb-2" />
-                  <p className="text-sm">See all questions (1)</p>
+                <div className="text-center py-6 sm:py-8 text-gray-500">
+                  <HelpCircle className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2" />
+                  <p className="text-xs sm:text-sm">See all questions (1)</p>
                 </div>
               )}
             </div>
 
             {/* Reviews Section */}
-            <div className="px-6 pb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Reviews</h3>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Star className="w-4 h-4 mr-2" />
+            <div className="px-3 sm:px-4 md:px-6 pb-4 sm:pb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+                <h3 className="font-semibold text-sm sm:text-base">Reviews</h3>
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <Button variant="outline" size="sm" className="text-xs sm:text-sm">
+                    <Star className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     Get more reviews
                   </Button>
-                  <Button variant="outline" size="sm">
-                    <Camera className="w-4 h-4 mr-2" />
+                  <Button variant="outline" size="sm" className="text-xs sm:text-sm">
+                    <Camera className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     Add a photo
                   </Button>
                 </div>
@@ -1239,19 +1245,19 @@ export default function ContentHubPage() {
               
               {auditMode && getIssueForSection('reviews') ? (
                 <AuditHighlight issue={getIssueForSection('reviews')!}>
-                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 border border-gray-200 dark:border-gray-600">
-                    <div className="flex items-center gap-6 mb-4">
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-600">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-4">
                       <div className="text-center">
-                        <div className="text-4xl font-bold text-gray-900 dark:text-white">{selectedProfile.rating || '5.0'}</div>
+                        <div className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">{selectedProfile.rating || '5.0'}</div>
                         <div className="flex justify-center mb-1">
                           {renderStars(selectedProfile.rating || 5)}
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                           {selectedProfile.reviewCount || 7} reviews (Need more reviews)
                         </p>
                       </div>
                       
-                      <div className="flex-1">
+                      <div className="flex-1 w-full">
                         <div className="space-y-2">
                           {[5, 4, 3, 2, 1].map((stars) => {
                             const count = reviewsSummary?.ratingDistribution?.[stars] || 0
@@ -1260,7 +1266,7 @@ export default function ContentHubPage() {
                             
                             return (
                               <div key={stars} className="flex items-center gap-2">
-                                <span className="text-sm w-3">{stars}</span>
+                                <span className="text-xs sm:text-sm w-3">{stars}</span>
                                 <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                                 <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                                   <div 
@@ -1268,7 +1274,7 @@ export default function ContentHubPage() {
                                     style={{ width: `${percentage}%` }}
                                   ></div>
                                 </div>
-                                <span className="text-xs text-gray-500 w-12 text-right">
+                                <span className="text-xs text-gray-500 w-8 sm:w-12 text-right">
                                   {count} ({percentage}%)
                                 </span>
                               </div>
@@ -1280,9 +1286,10 @@ export default function ContentHubPage() {
                   </div>
                 </AuditHighlight>
               ) : (
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 border border-gray-200 dark:border-gray-600">
-                  <div className="flex items-center gap-6 mb-6">
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-600">
+                  <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-4 sm:mb-6">
                     <div className="text-center">
+                      <div className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">{selectedProfile.rating || '5.0'}</div>
                       <div className="text-4xl font-bold text-gray-900 dark:text-white">{selectedProfile.rating || '5.0'}</div>
                       <div className="flex justify-center mb-1">
                         {renderStars(selectedProfile.rating || 5)}
@@ -1572,42 +1579,42 @@ export default function ContentHubPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-6"
+            className="mt-4 sm:mt-6"
           >
             <Card className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 border-purple-200 dark:border-purple-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-200">
-                  <Target className="w-5 h-5" />
+              <CardHeader className="p-3 sm:p-4 md:p-6">
+                <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-200 text-sm sm:text-base">
+                  <Target className="w-4 h-4 sm:w-5 sm:h-5" />
                   Audit Summary
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
+                <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                    <div className="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400">
                       {profileAudit.overallScore}
                     </div>
-                    <p className="text-sm text-purple-700 dark:text-purple-300">Overall Score</p>
+                    <p className="text-xs sm:text-sm text-purple-700 dark:text-purple-300">Overall Score</p>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                    <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">
                       {profileAudit.completionPercentage}%
                     </div>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">Complete</p>
+                    <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">Complete</p>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                    <div className="text-2xl sm:text-3xl font-bold text-orange-600 dark:text-orange-400">
                       {profileAudit.issues.length}
                     </div>
-                    <p className="text-sm text-orange-700 dark:text-orange-300">Issues Found</p>
+                    <p className="text-xs sm:text-sm text-orange-700 dark:text-orange-300">Issues Found</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                   {/* Immediate Actions */}
                   <div>
-                    <h4 className="font-semibold text-red-700 dark:text-red-300 mb-2 flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4" />
+                    <h4 className="font-semibold text-red-700 dark:text-red-300 mb-2 flex items-center gap-2 text-xs sm:text-sm">
+                      <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
                       Immediate ({profileAudit.recommendations.immediate.length})
                     </h4>
                     <div className="space-y-2">
@@ -1621,8 +1628,8 @@ export default function ContentHubPage() {
 
                   {/* Short-term */}
                   <div>
-                    <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-2 flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
+                    <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-2 flex items-center gap-2 text-xs sm:text-sm">
+                      <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                       Short-term ({profileAudit.recommendations.shortTerm.length})
                     </h4>
                     <div className="space-y-2">
@@ -1636,8 +1643,8 @@ export default function ContentHubPage() {
 
                   {/* Long-term */}
                   <div>
-                    <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4" />
+                    <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-2 text-xs sm:text-sm">
+                      <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
                       Long-term ({profileAudit.recommendations.longTerm.length})
                     </h4>
                     <div className="space-y-2">
@@ -1658,21 +1665,21 @@ export default function ContentHubPage() {
       {/* Image Modal */}
       {selectedImageModal && (
         <div 
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-2 sm:p-4"
           onClick={() => setSelectedImageModal(null)}
         >
-          <div className="relative max-w-4xl max-h-full">
+          <div className="relative max-w-full max-h-full w-full h-full sm:w-auto sm:h-auto">
             <button
               onClick={() => setSelectedImageModal(null)}
-              className="absolute top-4 right-4 z-10 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+              className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors touch-manipulation"
             >
-              <XCircle className="w-6 h-6" />
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
             
             <img
               src={GoogleBusinessAPI.getBestImageUrl(selectedImageModal) || ''}
               alt="Business photo"
-              className="max-w-full max-h-full object-contain rounded-lg"
+              className="max-w-full max-h-full w-full h-full sm:w-auto sm:h-auto object-contain rounded-none sm:rounded-lg"
               onClick={(e) => e.stopPropagation()}
             />
             
@@ -1686,9 +1693,9 @@ export default function ContentHubPage() {
                     const prevIndex = currentIndex > 0 ? currentIndex - 1 : businessMedia.allPhotos.length - 1
                     setSelectedImageModal(businessMedia.allPhotos[prevIndex])
                   }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+                  className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-3 sm:p-2 hover:bg-black/70 transition-colors touch-manipulation"
                 >
-                  <ChevronLeft className="w-6 h-6" />
+                  <ChevronLeft className="w-6 h-6 sm:w-6 sm:h-6" />
                 </button>
                 
                 <button
@@ -1698,9 +1705,9 @@ export default function ContentHubPage() {
                     const nextIndex = currentIndex < businessMedia.allPhotos.length - 1 ? currentIndex + 1 : 0
                     setSelectedImageModal(businessMedia.allPhotos[nextIndex])
                   }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+                  className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-3 sm:p-2 hover:bg-black/70 transition-colors touch-manipulation"
                 >
-                  <ChevronRight className="w-6 h-6" />
+                  <ChevronRight className="w-6 h-6 sm:w-6 sm:h-6" />
                 </button>
               </>
             )}
