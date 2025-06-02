@@ -51,7 +51,7 @@ import {
 } from 'recharts'
 import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
 import { useProfile } from '@/contexts/profile-context'
-import { PDFReportGenerator, ReportData } from '@/lib/pdf-report-generator'
+import { EnhancedPDFReportGenerator, EnhancedReportData } from '@/lib/pdf-report-generator'
 import { ClientInfo, ClientManagementStorage } from '@/lib/client-management'
 import { ClientManagementModal } from '@/components/client-management-modal'
 
@@ -438,23 +438,35 @@ export default function AnalyticsPage() {
   const handleDeleteClient = (clientId: string) => {
     if (confirm('Are you sure you want to delete this client?')) {
       ClientManagementStorage.deleteClient(clientId)
-      setClients(prev => prev.filter(c => c.id !== clientId))
+      loadClients()
     }
   }
 
   const handleSaveClient = (client: ClientInfo) => {
-    setClients(prev => {
-      const existing = prev.find(c => c.id === client.id)
-      if (existing) {
-        return prev.map(c => c.id === client.id ? client : c)
-      } else {
-        return [...prev, client]
-      }
-    })
+    if (editingClient) {
+      ClientManagementStorage.updateClient(client.id, client)
+    } else {
+      ClientManagementStorage.addClient(client)
+    }
+    loadClients()
+    setEditingClient(undefined)
+    setIsClientModalOpen(false)
   }
 
+  // Load clients on component mount
+  const loadClients = () => {
+    const storedClients = ClientManagementStorage.getClientsByBusinessProfile(selectedProfile?.id || '')
+    setClients(storedClients)
+  }
+
+  useEffect(() => {
+    if (selectedProfile) {
+      loadClients()
+    }
+  }, [selectedProfile])
+
   // PDF Generation Functions
-  const generateReportData = (): ReportData | null => {
+  const generateReportData = (): EnhancedReportData | null => {
     if (!selectedProfile || !performanceData) return null
 
     // Calculate analytics from performance data
@@ -472,8 +484,13 @@ export default function AnalyticsPage() {
       period: `Last ${dateRange} days`
     }
 
-    // Use sample data for other sections (in production, you'd fetch real data)
-    return PDFReportGenerator.generateSampleReportData(selectedProfile)
+    // Use enhanced method to generate real report data
+    return EnhancedPDFReportGenerator.generateEnhancedReportData(
+      selectedProfile,
+      performanceData,
+      metricsSummary,
+      dateRange
+    )
   }
 
   const handleGeneratePDF = async () => {
@@ -486,7 +503,7 @@ export default function AnalyticsPage() {
         throw new Error('No data available for report generation')
       }
 
-      const generator = new PDFReportGenerator()
+      const generator = new EnhancedPDFReportGenerator()
       const sampleClient: ClientInfo = {
         id: 'sample',
         businessProfileId: selectedProfile.id,
@@ -505,7 +522,7 @@ export default function AnalyticsPage() {
         }
       }
 
-      const pdfBlob = await generator.generateReport(reportData, sampleClient, 'weekly')
+      const pdfBlob = await generator.generateEnhancedReport(reportData, sampleClient, 'weekly')
       
       // Download the PDF
       const url = URL.createObjectURL(pdfBlob)
@@ -529,40 +546,82 @@ export default function AnalyticsPage() {
     if (!selectedProfile || clients.length === 0) return
 
     setIsSendingEmail(true)
+    const results = []
+
     try {
       const reportData = generateReportData()
       if (!reportData) {
         throw new Error('No data available for report generation')
       }
 
-      // Send reports to all active clients
-      const activeClients = clients.filter(c => c.isActive)
-      let successCount = 0
+      const generator = new EnhancedPDFReportGenerator()
 
-      for (const client of activeClients) {
+      for (const client of clients.filter(c => c.isActive)) {
         try {
+          // Generate PDF for this client
+          const pdfBlob = await generator.generateEnhancedReport(reportData, client, client.reportFrequency)
+          
+          // Convert blob to base64 for email
+          const reader = new FileReader()
+          const pdfBase64 = await new Promise<string>((resolve) => {
+            reader.onloadend = () => {
+              const base64data = reader.result as string
+              resolve(base64data.split(',')[1])
+            }
+            reader.readAsDataURL(pdfBlob)
+          })
+
+          // Send email with PDF attachment
           const response = await fetch('/api/send-report', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              client,
-              reportData,
-              reportPeriod: client.reportFrequency
+              clientEmail: client.email,
+              clientName: client.name,
+              businessName: selectedProfile.name,
+              reportPeriod: client.reportFrequency,
+              pdfAttachment: pdfBase64,
+              reportData
             })
           })
 
-          if (response.ok) {
-            successCount++
+          const result = await response.json()
+          results.push({
+            client: client.name,
+            success: result.success,
+            message: result.message
+          })
+
+          // Update last sent date
+          if (result.success) {
             ClientManagementStorage.markReportSent(client.id)
           }
+
         } catch (error) {
-          console.error(`Failed to send report to ${client.email}:`, error)
+          console.error(`Error sending report to ${client.name}:`, error)
+          results.push({
+            client: client.name,
+            success: false,
+            message: 'Failed to send report'
+          })
         }
       }
 
-      alert(`Successfully sent ${successCount} of ${activeClients.length} reports.`)
+      // Show results
+      const successCount = results.filter(r => r.success).length
+      const totalCount = results.length
+      
+      if (successCount === totalCount) {
+        alert(`✅ Successfully sent reports to all ${totalCount} clients!`)
+      } else {
+        alert(`📧 Sent ${successCount}/${totalCount} reports successfully. Check console for details.`)
+        console.log('Email results:', results)
+      }
+
+      // Refresh clients to update last sent dates
+      loadClients()
 
     } catch (error) {
       console.error('Error sending reports:', error)

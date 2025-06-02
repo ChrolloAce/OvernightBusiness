@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ClientInfo } from '@/lib/client-management'
-import { ReportData } from '@/lib/pdf-report-generator'
+import { EnhancedReportData } from '@/lib/pdf-report-generator'
 
 // Email service configuration
 // Note: In production, you would use a service like SendGrid, Mailgun, or AWS SES
@@ -8,7 +8,7 @@ import { ReportData } from '@/lib/pdf-report-generator'
 
 interface EmailRequest {
   client: ClientInfo
-  reportData: ReportData
+  reportData: EnhancedReportData
   pdfBlob: Blob
   reportPeriod: 'weekly' | 'monthly'
 }
@@ -51,28 +51,27 @@ export async function POST(request: NextRequest) {
 // Mock email sending function
 async function sendReportEmail(
   client: ClientInfo,
-  reportData: ReportData,
+  reportData: EnhancedReportData,
   reportPeriod: 'weekly' | 'monthly'
 ): Promise<{ success: boolean; emailId?: string; error?: string }> {
+  // Simulate email sending with 90% success rate
+  const isSuccess = Math.random() > 0.1
   
-  // Simulate email sending delay
-  await new Promise(resolve => setTimeout(resolve, 1000))
-
-  // Mock email content
-  const emailContent = generateEmailContent(client, reportData, reportPeriod)
-  
-  // Log email details (in production, this would be actual email sending)
-  console.log('📧 Sending Email Report:')
-  console.log('To:', client.email)
-  console.log('Subject:', emailContent.subject)
-  console.log('Business:', reportData.businessProfile.name)
-  console.log('Period:', reportPeriod)
-  console.log('Content Preview:', emailContent.html.substring(0, 200) + '...')
-
-  // Simulate success/failure (90% success rate)
-  const success = Math.random() > 0.1
-
-  if (success) {
+  if (isSuccess) {
+    const emailContent = generateEmailContent(client, reportData, reportPeriod)
+    
+    // In production, you would use an email service like SendGrid, Mailgun, or AWS SES
+    // Example:
+    // const response = await emailService.send({
+    //   to: client.email,
+    //   subject: emailContent.subject,
+    //   html: emailContent.html,
+    //   text: emailContent.text,
+    //   attachments: [{ filename: 'report.pdf', content: pdfBlob }]
+    // })
+    
+    console.log(`📧 Email sent to ${client.email}:`, emailContent.subject)
+    
     return {
       success: true,
       emailId: `email_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -87,258 +86,243 @@ async function sendReportEmail(
 
 function generateEmailContent(
   client: ClientInfo,
-  reportData: ReportData,
+  reportData: EnhancedReportData,
   reportPeriod: 'weekly' | 'monthly'
 ) {
   const businessName = reportData.businessProfile.name
-  const periodText = reportPeriod === 'weekly' ? 'Weekly' : 'Monthly'
-  
-  const subject = `${periodText} Business Report - ${businessName}`
+  const reportDate = new Date().toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  })
+
+  const subject = `📊 ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)} Performance Report - ${businessName}`
   
   const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${subject}</title>
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          line-height: 1.6;
-          color: #333;
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${businessName} - ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)} Performance Report</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: #f8fafc;
         }
-        .header {
-          background: linear-gradient(135deg, #2563eb, #3b82f6);
-          color: white;
-          padding: 30px 20px;
-          border-radius: 12px;
-          text-align: center;
-          margin-bottom: 30px;
+        .container { 
+            background: white; 
+            margin: 20px; 
+            border-radius: 12px; 
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        .header h1 {
-          margin: 0;
-          font-size: 28px;
-          font-weight: 700;
+        .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 30px; 
+            text-align: center; 
         }
-        .header p {
-          margin: 10px 0 0 0;
-          opacity: 0.9;
-          font-size: 16px;
+        .header h1 { 
+            margin: 0 0 10px 0; 
+            font-size: 28px; 
+            font-weight: bold; 
         }
-        .summary-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-          gap: 15px;
-          margin: 30px 0;
+        .header p { 
+            margin: 0; 
+            opacity: 0.9; 
+            font-size: 16px; 
         }
-        .metric-card {
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 20px;
-          text-align: center;
+        .content { 
+            padding: 30px; 
         }
-        .metric-value {
-          font-size: 24px;
-          font-weight: 700;
-          color: #2563eb;
-          margin-bottom: 5px;
+        .metrics-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 20px; 
+            margin: 30px 0; 
         }
-        .metric-label {
-          font-size: 12px;
-          color: #64748b;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+        .metric-card { 
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); 
+            padding: 20px; 
+            border-radius: 8px; 
+            text-align: center; 
+            border: 1px solid #e2e8f0;
         }
-        .section {
-          margin: 30px 0;
-          padding: 25px;
-          background: white;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
+        .metric-value { 
+            font-size: 24px; 
+            font-weight: bold; 
+            color: #2563eb; 
+            margin-bottom: 5px; 
         }
-        .section h2 {
-          margin: 0 0 15px 0;
-          color: #1e293b;
-          font-size: 20px;
-          border-bottom: 2px solid #2563eb;
-          padding-bottom: 8px;
+        .metric-label { 
+            font-size: 12px; 
+            color: #64748b; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px; 
         }
-        .highlight {
-          background: #dbeafe;
-          border-left: 4px solid #2563eb;
-          padding: 15px;
-          margin: 15px 0;
-          border-radius: 0 8px 8px 0;
+        .trend-indicator {
+            font-size: 12px;
+            margin-top: 5px;
         }
-        .footer {
-          text-align: center;
-          margin-top: 40px;
-          padding: 20px;
-          background: #f8fafc;
-          border-radius: 8px;
-          font-size: 14px;
-          color: #64748b;
+        .trend-up { color: #059669; }
+        .trend-down { color: #dc2626; }
+        .trend-neutral { color: #6b7280; }
+        .section { 
+            margin: 30px 0; 
+            padding: 20px; 
+            background: #f8fafc; 
+            border-radius: 8px; 
+            border-left: 4px solid #3b82f6; 
         }
-        .cta-button {
-          display: inline-block;
-          background: #2563eb;
-          color: white;
-          padding: 12px 24px;
-          text-decoration: none;
-          border-radius: 8px;
-          font-weight: 600;
-          margin: 15px 0;
+        .section h3 { 
+            margin: 0 0 15px 0; 
+            color: #1e40af; 
+            font-size: 18px; 
         }
-        @media (max-width: 600px) {
-          .summary-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
+        .footer { 
+            background: #f1f5f9; 
+            padding: 20px; 
+            text-align: center; 
+            color: #64748b; 
+            font-size: 14px; 
         }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>${businessName}</h1>
-        <p>${periodText} Business Performance Report</p>
-        <p>${new Date().toLocaleDateString('en-US', { 
-          weekday: 'long', 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        })}</p>
-      </div>
-
-      <p>Hello ${client.name},</p>
-      
-      <p>Here's your ${periodText.toLowerCase()} business performance report for <strong>${businessName}</strong>. We're excited to share the latest insights about your business's online presence and customer engagement.</p>
-
-      <div class="summary-grid">
-        <div class="metric-card">
-          <div class="metric-value">${reportData.analytics.views.toLocaleString()}</div>
-          <div class="metric-label">Profile Views</div>
+        .highlight { 
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
+            padding: 15px; 
+            border-radius: 6px; 
+            border-left: 4px solid #f59e0b; 
+            margin: 20px 0; 
+        }
+        .reviews-section {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-left-color: #059669;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>${businessName}</h1>
+            <p>📊 ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)} Performance Report</p>
+            <p>Generated on ${reportDate}</p>
         </div>
-        <div class="metric-card">
-          <div class="metric-value">${reportData.analytics.searches.toLocaleString()}</div>
-          <div class="metric-label">Searches</div>
+        
+        <div class="content">
+            <h2>📈 Performance Overview</h2>
+            <p>Dear ${client.name},</p>
+            <p>Here's your ${reportPeriod} performance summary for <strong>${businessName}</strong>:</p>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">${reportData.analytics.totalViews.toLocaleString()}</div>
+                    <div class="metric-label">👁️ Profile Views</div>
+                    <div class="trend-indicator trend-${reportData.analytics.trends.viewsTrend > 0 ? 'up' : reportData.analytics.trends.viewsTrend < 0 ? 'down' : 'neutral'}">
+                        ${reportData.analytics.trends.viewsTrend > 0 ? '↗️' : reportData.analytics.trends.viewsTrend < 0 ? '↘️' : '→'} ${Math.abs(reportData.analytics.trends.viewsTrend).toFixed(1)}%
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${reportData.analytics.totalSearches.toLocaleString()}</div>
+                    <div class="metric-label">🔍 Searches</div>
+                    <div class="trend-indicator trend-${reportData.analytics.trends.searchesTrend > 0 ? 'up' : reportData.analytics.trends.searchesTrend < 0 ? 'down' : 'neutral'}">
+                        ${reportData.analytics.trends.searchesTrend > 0 ? '↗️' : reportData.analytics.trends.searchesTrend < 0 ? '↘️' : '→'} ${Math.abs(reportData.analytics.trends.searchesTrend).toFixed(1)}%
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${reportData.analytics.totalActions.toLocaleString()}</div>
+                    <div class="metric-label">⚡ Customer Actions</div>
+                    <div class="trend-indicator trend-${reportData.analytics.trends.actionsTrend > 0 ? 'up' : reportData.analytics.trends.actionsTrend < 0 ? 'down' : 'neutral'}">
+                        ${reportData.analytics.trends.actionsTrend > 0 ? '↗️' : reportData.analytics.trends.actionsTrend < 0 ? '↘️' : '→'} ${Math.abs(reportData.analytics.trends.actionsTrend).toFixed(1)}%
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${reportData.analytics.callClicks}</div>
+                    <div class="metric-label">📞 Phone Calls</div>
+                    <div class="trend-indicator trend-${reportData.analytics.trends.callClicksTrend > 0 ? 'up' : reportData.analytics.trends.callClicksTrend < 0 ? 'down' : 'neutral'}">
+                        ${reportData.analytics.trends.callClicksTrend > 0 ? '↗️' : reportData.analytics.trends.callClicksTrend < 0 ? '↘️' : '→'} ${Math.abs(reportData.analytics.trends.callClicksTrend).toFixed(1)}%
+                    </div>
+                </div>
+            </div>
+
+            <div class="highlight">
+                <strong>🚀 Key Highlights:</strong><br>
+                • Your business gained ${reportData.analytics.totalViews.toLocaleString()} profile views this period<br>
+                • ${reportData.analytics.callClicks} customers called your business directly<br>
+                • Customer engagement reached ${reportData.analytics.totalActions.toLocaleString()} total actions<br>
+                • Average rating maintained at ${reportData.reviews.averageRating.toFixed(1)} ⭐
+            </div>
+
+            <div class="section reviews-section">
+                <h3>⭐ Customer Reviews</h3>
+                <p><strong>Total Reviews:</strong> ${reportData.reviews.totalReviews} | <strong>Average Rating:</strong> ${reportData.reviews.averageRating.toFixed(1)} ⭐</p>
+                <p><strong>New Reviews:</strong> ${reportData.reviews.newReviews} this period</p>
+                ${reportData.reviews.recentReviews.length > 0 ? `
+                <p><strong>Recent Review:</strong></p>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-top: 10px;">
+                    <div style="margin-bottom: 5px;">${'⭐'.repeat(reportData.reviews.recentReviews[0].rating)} - ${reportData.reviews.recentReviews[0].author}</div>
+                    ${reportData.reviews.recentReviews[0].comment ? `<div style="font-style: italic; color: #64748b;">"${reportData.reviews.recentReviews[0].comment}"</div>` : ''}
+                </div>
+                ` : ''}
+            </div>
+
+            <div class="section">
+                <h3>📸 Content Performance</h3>
+                <p><strong>Photos:</strong> ${reportData.content.totalPhotos} total (${reportData.content.newPhotos} new this period)</p>
+                <p><strong>Business Posts:</strong> ${reportData.content.totalPosts} total (${reportData.content.newPosts} new this period)</p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <p>📎 <strong>Detailed analytics report is attached as PDF</strong></p>
+                <p style="color: #64748b; font-size: 14px;">The attached PDF contains comprehensive charts, trends, and detailed insights about your business performance.</p>
+            </div>
         </div>
-        <div class="metric-card">
-          <div class="metric-value">${reportData.analytics.actions.toLocaleString()}</div>
-          <div class="metric-label">Customer Actions</div>
+        
+        <div class="footer">
+            <p>📊 Generated by OvernightBiz Analytics Dashboard</p>
+            <p>This report was automatically generated for ${client.name} on ${reportDate}</p>
+            <p style="font-size: 12px; margin-top: 10px;">
+                Next report scheduled: ${reportPeriod === 'weekly' ? 'Next week' : 'Next month'}
+            </p>
         </div>
-        <div class="metric-card">
-          <div class="metric-value">${reportData.reviews.averageRating.toFixed(1)} ⭐</div>
-          <div class="metric-label">Average Rating</div>
-        </div>
-      </div>
-
-      <div class="section">
-        <h2>📊 Performance Highlights</h2>
-        <div class="highlight">
-          <strong>Great News!</strong> Your business received <strong>${reportData.analytics.views}</strong> profile views and <strong>${reportData.analytics.searches}</strong> searches this ${reportPeriod}.
-        </div>
-        <ul>
-          <li><strong>${reportData.analytics.callClicks}</strong> customers clicked to call your business</li>
-          <li><strong>${reportData.analytics.websiteClicks}</strong> visitors clicked through to your website</li>
-          <li><strong>${reportData.analytics.directionRequests}</strong> people requested directions to your location</li>
-        </ul>
-      </div>
-
-      ${reportData.reviews.newReviews > 0 ? `
-      <div class="section">
-        <h2>⭐ Customer Reviews</h2>
-        <p>You received <strong>${reportData.reviews.newReviews} new review${reportData.reviews.newReviews > 1 ? 's' : ''}</strong> this ${reportPeriod}!</p>
-        <p>Your current average rating is <strong>${reportData.reviews.averageRating.toFixed(1)} stars</strong> based on ${reportData.reviews.totalReviews} total reviews.</p>
-        ${reportData.reviews.recentReviews.length > 0 ? `
-        <div class="highlight">
-          <strong>Latest Review:</strong><br>
-          "${'⭐'.repeat(reportData.reviews.recentReviews[0].rating)} ${reportData.reviews.recentReviews[0].comment || 'Great service!'}"<br>
-          <em>- ${reportData.reviews.recentReviews[0].author}</em>
-        </div>
-        ` : ''}
-      </div>
-      ` : ''}
-
-      ${reportData.photos.newPhotos > 0 || reportData.updates.newPosts > 0 ? `
-      <div class="section">
-        <h2>📸 Content Updates</h2>
-        <ul>
-          ${reportData.photos.newPhotos > 0 ? `<li><strong>${reportData.photos.newPhotos}</strong> new photos were added to your business profile</li>` : ''}
-          ${reportData.updates.newPosts > 0 ? `<li><strong>${reportData.updates.newPosts}</strong> new business updates were published</li>` : ''}
-        </ul>
-      </div>
-      ` : ''}
-
-      <div class="section">
-        <h2>📋 Detailed Report</h2>
-        <p>For a comprehensive analysis including detailed analytics, customer feedback, and actionable insights, please see the attached PDF report.</p>
-        <p>The detailed report includes:</p>
-        <ul>
-          <li>Complete performance analytics and trends</li>
-          <li>Full customer review analysis</li>
-          <li>Photo and content performance metrics</li>
-          <li>Q&A activity summary</li>
-          <li>Recommendations for improvement</li>
-        </ul>
-      </div>
-
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="https://www.overnightbiz.com/analytics" class="cta-button">View Live Dashboard</a>
-      </div>
-
-      <p>Thank you for trusting us with your business's online presence. If you have any questions about this report or would like to discuss strategies to improve your performance, please don't hesitate to reach out.</p>
-
-      <p>Best regards,<br>
-      <strong>The OvernightBiz Team</strong></p>
-
-      <div class="footer">
-        <p>This report was automatically generated by OvernightBiz Dashboard</p>
-        <p>Visit <a href="https://www.overnightbiz.com">www.overnightbiz.com</a> for more insights</p>
-        <p style="font-size: 12px; margin-top: 15px;">
-          You're receiving this email because you're subscribed to ${periodText.toLowerCase()} reports for ${businessName}. 
-          <a href="#">Unsubscribe</a> | <a href="#">Update Preferences</a>
-        </p>
-      </div>
-    </body>
-    </html>
+    </div>
+</body>
+</html>
   `
 
   const text = `
-${periodText} Business Report - ${businessName}
+${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)} Performance Report - ${businessName}
 
-Hello ${client.name},
+Dear ${client.name},
 
-Here's your ${periodText.toLowerCase()} business performance report for ${businessName}.
+Here's your ${reportPeriod} performance summary for ${businessName}:
 
 PERFORMANCE HIGHLIGHTS:
-- Profile Views: ${reportData.analytics.views.toLocaleString()}
-- Searches: ${reportData.analytics.searches.toLocaleString()}
-- Customer Actions: ${reportData.analytics.actions.toLocaleString()}
+- Profile Views: ${reportData.analytics.totalViews.toLocaleString()} (${reportData.analytics.trends.viewsTrend > 0 ? '+' : ''}${reportData.analytics.trends.viewsTrend.toFixed(1)}%)
+- Searches: ${reportData.analytics.totalSearches.toLocaleString()} (${reportData.analytics.trends.searchesTrend > 0 ? '+' : ''}${reportData.analytics.trends.searchesTrend.toFixed(1)}%)  
+- Customer Actions: ${reportData.analytics.totalActions.toLocaleString()} (${reportData.analytics.trends.actionsTrend > 0 ? '+' : ''}${reportData.analytics.trends.actionsTrend.toFixed(1)}%)
+- Phone Calls: ${reportData.analytics.callClicks} (${reportData.analytics.trends.callClicksTrend > 0 ? '+' : ''}${reportData.analytics.trends.callClicksTrend.toFixed(1)}%)
+
+CUSTOMER REVIEWS:
+- Total Reviews: ${reportData.reviews.totalReviews}
 - Average Rating: ${reportData.reviews.averageRating.toFixed(1)} stars
+- New Reviews: ${reportData.reviews.newReviews} this period
 
-CUSTOMER ENGAGEMENT:
-- ${reportData.analytics.callClicks} customers clicked to call
-- ${reportData.analytics.websiteClicks} visitors clicked to your website
-- ${reportData.analytics.directionRequests} people requested directions
+CONTENT PERFORMANCE:
+- Photos: ${reportData.content.totalPhotos} total (${reportData.content.newPhotos} new)
+- Business Posts: ${reportData.content.totalPosts} total (${reportData.content.newPosts} new)
 
-${reportData.reviews.newReviews > 0 ? `
-NEW REVIEWS:
-You received ${reportData.reviews.newReviews} new review${reportData.reviews.newReviews > 1 ? 's' : ''} this ${reportPeriod}.
-Current average: ${reportData.reviews.averageRating.toFixed(1)} stars (${reportData.reviews.totalReviews} total reviews)
-` : ''}
-
-For detailed analytics and insights, please see the attached PDF report.
+The detailed PDF report is attached with comprehensive charts and analytics.
 
 Best regards,
 The OvernightBiz Team
 
 ---
-This report was automatically generated by OvernightBiz Dashboard
-Visit www.overnightbiz.com for more insights
+Generated by OvernightBiz Analytics Dashboard on ${reportDate}
+Next report scheduled: ${reportPeriod === 'weekly' ? 'Next week' : 'Next month'}
   `
 
   return { subject, html, text }
