@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     console.log('[Media API] Fetching media for location:', locationName)
 
     // Get access token from Authorization header
-    const authHeader = request.headers.get('Authorization')
+    const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
         { error: 'Authorization header with Bearer token is required' },
