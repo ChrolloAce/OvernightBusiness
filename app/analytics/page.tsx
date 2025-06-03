@@ -51,7 +51,8 @@ import {
 } from 'recharts'
 import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
 import { useProfile } from '@/contexts/profile-context'
-import { EnhancedPDFReportGenerator, EnhancedReportData } from '@/lib/pdf-report-generator'
+import { EnhancedReportData } from '@/lib/pdf-report-generator'
+import { ClientReportDataGenerator } from '@/lib/client-report-data'
 import { ClientInfo, ClientManagementStorage } from '@/lib/client-management'
 import { ClientManagementModal } from '@/components/client-management-modal'
 
@@ -469,23 +470,8 @@ export default function AnalyticsPage() {
   const generateReportData = (): EnhancedReportData | null => {
     if (!selectedProfile || !performanceData) return null
 
-    // Calculate analytics from performance data
-    const analytics = {
-      views: metricsSummary?.TOTAL_IMPRESSIONS?.total || 0,
-      searches: (metricsSummary?.BUSINESS_IMPRESSIONS_DESKTOP_SEARCH?.total || 0) + 
-                (metricsSummary?.BUSINESS_IMPRESSIONS_MOBILE_SEARCH?.total || 0),
-      actions: (metricsSummary?.CALL_CLICKS?.total || 0) + 
-               (metricsSummary?.WEBSITE_CLICKS?.total || 0) + 
-               (metricsSummary?.BUSINESS_DIRECTION_REQUESTS?.total || 0),
-      callClicks: metricsSummary?.CALL_CLICKS?.total || 0,
-      websiteClicks: metricsSummary?.WEBSITE_CLICKS?.total || 0,
-      directionRequests: metricsSummary?.BUSINESS_DIRECTION_REQUESTS?.total || 0,
-      photoViews: 0, // Would need to be fetched from photos API
-      period: `Last ${dateRange} days`
-    }
-
-    // Use enhanced method to generate real report data
-    return EnhancedPDFReportGenerator.generateEnhancedReportData(
+    // Use client-side safe method to generate real report data
+    return ClientReportDataGenerator.generateEnhancedReportData(
       selectedProfile,
       performanceData,
       metricsSummary,
@@ -503,7 +489,6 @@ export default function AnalyticsPage() {
         throw new Error('No data available for report generation')
       }
 
-      const generator = new EnhancedPDFReportGenerator()
       const sampleClient: ClientInfo = {
         id: 'sample',
         businessProfileId: selectedProfile.id,
@@ -522,9 +507,25 @@ export default function AnalyticsPage() {
         }
       }
 
-      const pdfBlob = await generator.generateEnhancedReport(reportData, sampleClient, 'weekly')
-      
+      // Use server-side PDF generation
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reportData,
+          client: sampleClient,
+          reportPeriod: 'weekly'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF on server')
+      }
+
       // Download the PDF
+      const pdfBlob = await response.blob()
       const url = URL.createObjectURL(pdfBlob)
       const a = document.createElement('a')
       a.href = url
@@ -554,12 +555,26 @@ export default function AnalyticsPage() {
         throw new Error('No data available for report generation')
       }
 
-      const generator = new EnhancedPDFReportGenerator()
-
       for (const client of clients.filter(c => c.isActive)) {
         try {
-          // Generate PDF for this client
-          const pdfBlob = await generator.generateEnhancedReport(reportData, client, client.reportFrequency)
+          // Generate PDF on server-side for this client
+          const pdfResponse = await fetch('/api/generate-pdf', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              reportData,
+              client,
+              reportPeriod: client.reportFrequency
+            })
+          })
+
+          if (!pdfResponse.ok) {
+            throw new Error('Failed to generate PDF on server')
+          }
+
+          const pdfBlob = await pdfResponse.blob()
           
           // Convert blob to base64 for email
           const reader = new FileReader()
