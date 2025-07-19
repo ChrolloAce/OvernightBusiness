@@ -1,0 +1,51 @@
+🚀 Overnight Biz Playbook
+🧩 Core Functionality Overview
+Connect to Google Business Profiles (GMB API)
+
+Generate Blogs & Content (AI: GPT-4, Gemini, Claude)
+
+Schedule & Post Updates (GMB API Integration)
+
+Manage Business Data (Locations, Hours, Reviews)
+
+Track Performance Metrics (Insights API)
+
+Optional Add-ons:
+
+Local SEO Optimizations (Schema Markup, Backlinks)
+
+Content Syndication (Webflow, WordPress API)
+
+CRM Integrations (HubSpot, Salesforce)
+
+🔗 APIs & Connections Needed
+1️⃣ Google Business Profile API
+Purpose: Read/write business information, posts, hours, media.
+
+Key Features:
+
+Create & publish posts (offers, updates, events).
+
+Manage photos & videos.
+
+Update business info (hours, location, contact).
+
+Fetch insights (views, clicks, actions).
+
+✅ Docs: Google My Business API
+
+2️⃣ Google OAuth 2.0 (Authentication)
+Purpose: Securely connect to users’ Google accounts.
+
+Scopes Required:
+
+https://www.googleapis.com/auth/business.manage
+
+https://www.googleapis.com/auth/business.posts
+
+✅ Docs: Google OAuth
+
+3️⃣ AI Content Generation APIs
+Choose an AI model for blog writing:
+
+OpenAI GPT-4 API – Flexible text generation.
