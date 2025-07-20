@@ -61,6 +61,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { GoogleBusinessAPI, MediaItem, BusinessMedia, BusinessReview } from '@/lib/google-business-api'
 import { CentralizedDataLoader, BusinessQuestion, LocalPost } from '@/lib/centralized-data-loader'
+import { GoogleAuthService } from '@/lib/google-auth'
+import { schedulingService } from '@/lib/scheduling-service'
 import { useProfile } from '@/contexts/profile-context'
 
 // Business Logo Component
@@ -932,10 +934,17 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
 
     setIsPosting(true)
     try {
+      // Get the access token for authentication
+      const googleAuth = GoogleAuthService.getInstance()
+      const accessToken = await googleAuth.getValidAccessToken()
+
       // Post immediately to Google Business Profile
       const response = await fetch('/api/google-business/local-posts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
         body: JSON.stringify({
           businessProfileId: selectedProfile.googleBusinessId,
           content: generatedContent,
@@ -952,11 +961,19 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
         onContentCreated()
         handleClose()
       } else {
-        throw new Error('Failed to publish post')
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.error || 'Failed to publish post'
+        throw new Error(errorMessage)
       }
     } catch (error) {
       console.error('Error posting content:', error)
-      alert('Failed to publish post. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to publish post. Please try again.'
+      
+      if (errorMessage.includes('authenticate')) {
+        alert('Authentication required. Please connect your Google Business Profile first.')
+      } else {
+        alert(errorMessage)
+      }
     } finally {
       setIsPosting(false)
     }
@@ -970,36 +987,38 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
 
     setIsPosting(true)
     try {
+      // Validate authentication before scheduling
+      const googleAuth = GoogleAuthService.getInstance()
+      await googleAuth.getValidAccessToken() // This will throw if not authenticated
+
       const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`)
       
-      // Save scheduled post locally (you might want to implement a scheduler service)
-      const scheduledPost = {
-        id: Date.now().toString(),
-        businessProfileId: selectedProfile.id,
+      // Use the scheduling service to schedule the post
+      schedulingService.schedulePost({
+        businessProfileId: selectedProfile.googleBusinessId, // Use googleBusinessId for API calls
         businessName: selectedProfile.name,
         content: generatedContent,
         postType,
-        status: 'scheduled' as const,
+        status: 'scheduled',
         scheduledDate: scheduledDateTime.toISOString(),
         callToAction: callToActionText && callToActionUrl ? {
           text: callToActionText,
           url: callToActionUrl
-        } : undefined,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-
-      // Store in localStorage for now (in a real app, you'd store this on your server)
-      const existingScheduledPosts = JSON.parse(localStorage.getItem('scheduled_posts') || '[]')
-      existingScheduledPosts.push(scheduledPost)
-      localStorage.setItem('scheduled_posts', JSON.stringify(existingScheduledPosts))
+        } : undefined
+      })
 
       alert(`Post scheduled for ${scheduledDateTime.toLocaleString()}!`)
       onContentCreated()
       handleClose()
     } catch (error) {
       console.error('Error scheduling post:', error)
-      alert('Failed to schedule post. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to schedule post. Please try again.'
+      
+      if (errorMessage.includes('authenticate')) {
+        alert('Authentication required. Please connect your Google Business Profile first.')
+      } else {
+        alert(errorMessage)
+      }
     } finally {
       setIsPosting(false)
     }
