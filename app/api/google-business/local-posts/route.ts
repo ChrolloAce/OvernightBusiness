@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { businessProfileId, content, postType, callToAction } = await request.json()
+    const { businessProfileId, content, postType, callToAction, mediaUrl } = await request.json()
 
     if (!businessProfileId || !content || !postType) {
       return NextResponse.json(
@@ -189,6 +189,12 @@ export async function POST(request: NextRequest) {
       topicType: topicTypeMap[postType as keyof typeof topicTypeMap] || 'STANDARD',
       summary: content,
       languageCode: 'en',
+      ...(mediaUrl && {
+        media: [{
+          mediaFormat: 'PHOTO',
+          sourceUrl: mediaUrl
+        }]
+      }),
       ...(callToAction && {
         callToAction: {
           actionType: callToAction.text.toLowerCase().includes('call') ? 'CALL' : 

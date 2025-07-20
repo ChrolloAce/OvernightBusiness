@@ -881,6 +881,8 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
   const [callToActionText, setCallToActionText] = useState('')
   const [callToActionUrl, setCallToActionUrl] = useState('')
   const [activeTab, setActiveTab] = useState('create')
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   const resetForm = () => {
     setContentPrompt('')
@@ -889,6 +891,8 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
     setScheduledTime('')
     setCallToActionText('')
     setCallToActionUrl('')
+    setSelectedImage(null)
+    setImagePreview(null)
     setActiveTab('create')
   }
 
@@ -938,6 +942,31 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
       const googleAuth = GoogleAuthService.getInstance()
       const accessToken = await googleAuth.getValidAccessToken()
 
+      let mediaUrl: string | undefined = undefined
+
+      // Upload image if selected
+      if (selectedImage) {
+        const formData = new FormData()
+        formData.append('image', selectedImage)
+        formData.append('locationName', selectedProfile.googleBusinessId)
+
+        const uploadResponse = await fetch('/api/google-business/upload-media', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: formData
+        })
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json()
+          mediaUrl = uploadData.mediaUrl || uploadData.googleUrl
+        } else {
+          // Continue without image if upload fails
+          console.warn('Image upload failed, continuing without image')
+        }
+      }
+
       // Post immediately to Google Business Profile
       const response = await fetch('/api/google-business/local-posts', {
         method: 'POST',
@@ -949,6 +978,7 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
           businessProfileId: selectedProfile.googleBusinessId,
           content: generatedContent,
           postType,
+          mediaUrl,
           callToAction: callToActionText && callToActionUrl ? {
             text: callToActionText,
             url: callToActionUrl
@@ -1022,6 +1052,37 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
     } finally {
       setIsPosting(false)
     }
+  }
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file')
+        return
+      }
+      
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Image size should be less than 10MB')
+        return
+      }
+      
+      setSelectedImage(file)
+      
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const removeImage = () => {
+    setSelectedImage(null)
+    setImagePreview(null)
   }
 
   const getMinDateTime = () => {
@@ -1111,6 +1172,48 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
                     </p>
                   </div>
 
+                  <div>
+                    <Label htmlFor="image">Add Image (Optional)</Label>
+                    <div className="mt-2">
+                      {!imagePreview ? (
+                        <label htmlFor="image" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <ImageIcon className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
+                            <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                              <span className="font-semibold">Click to upload</span> an image
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG up to 10MB</p>
+                          </div>
+                          <input 
+                            id="image" 
+                            type="file" 
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                          />
+                        </label>
+                      ) : (
+                        <div className="relative">
+                          <img 
+                            src={imagePreview} 
+                            alt="Preview" 
+                            className="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                          />
+                          <button
+                            type="button"
+                            onClick={removeImage}
+                            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-lg transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                            {selectedImage?.name}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <Button 
                     onClick={generateContent}
                     disabled={!contentPrompt || isGenerating}
@@ -1137,6 +1240,15 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
                   <div>
                     <Label>Generated Content</Label>
                     <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 min-h-32">
+                      {imagePreview && (
+                        <div className="mb-4">
+                          <img 
+                            src={imagePreview} 
+                            alt="Post preview" 
+                            className="w-full max-w-md h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                          />
+                        </div>
+                      )}
                       <p className="whitespace-pre-wrap text-gray-900 dark:text-white">
                         {generatedContent}
                       </p>
@@ -1200,7 +1312,16 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
                 <div className="space-y-6">
                   <div>
                     <Label>Content to Schedule</Label>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-h-32 overflow-y-auto">
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-h-48 overflow-y-auto">
+                      {imagePreview && (
+                        <div className="mb-3">
+                          <img 
+                            src={imagePreview} 
+                            alt="Post preview" 
+                            className="w-full max-w-xs h-32 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                          />
+                        </div>
+                      )}
                       <p className="whitespace-pre-wrap text-gray-900 dark:text-white text-sm">
                         {generatedContent}
                       </p>
