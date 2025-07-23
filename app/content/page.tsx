@@ -72,82 +72,34 @@ interface BusinessLogoProps {
   className?: string
 }
 
-function BusinessLogo({ businessName, website, className = "w-16 h-16" }: BusinessLogoProps) {
+const BusinessLogo = ({ businessName, website, className = "" }: BusinessLogoProps) => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [hasError, setHasError] = useState(false)
 
   useEffect(() => {
-    const loadLogo = async () => {
-      if (!website && !businessName) {
-        setIsLoading(false)
-        setHasError(true)
-        return
-      }
-
-      try {
-        let domain = ''
-        if (website) {
-          try {
-            domain = new URL(website).hostname.replace('www.', '')
-          } catch {
-            domain = website.replace(/^https?:\/\//, '').replace('www.', '').split('/')[0]
-          }
-        }
-
-        // Use a simple approach without CORS issues
-        if (domain) {
-          // Use Google's favicon service directly without testing
-          setLogoUrl(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`)
-          setIsLoading(false)
-        } else {
-          setHasError(true)
-          setIsLoading(false)
-        }
-      } catch (error) {
-        setHasError(true)
-        setIsLoading(false)
-      }
+    if (website) {
+      const domain = website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+      const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
+      setLogoUrl(googleFaviconUrl)
     }
+  }, [website])
 
-    loadLogo()
-  }, [businessName, website])
-
-  if (isLoading) {
+  if (!logoUrl) {
     return (
-      <div className={`${className} bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 rounded-2xl flex items-center justify-center`}>
-        <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 md:w-6 md:h-6 text-gray-400 animate-spin" />
-      </div>
-    )
-  }
-
-  if (hasError || !logoUrl) {
-    // Clean professional fallback with business initial
-    const businessInitial = businessName ? businessName.charAt(0).toUpperCase() : 'B'
-    return (
-      <div className={`${className} bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl flex flex-col items-center justify-center shadow-lg border border-blue-500/20`}>
-        <div className="text-white font-bold text-lg sm:text-xl md:text-2xl">
-          {businessInitial}
-        </div>
-        <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-blue-200 mt-1 opacity-60" />
+      <div className={`w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg ${className}`}>
+        <span className="text-white text-lg font-bold">
+          {businessName.charAt(0).toUpperCase()}
+        </span>
       </div>
     )
   }
 
   return (
-    <div className={`${className} rounded-2xl overflow-hidden shadow-lg bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50`}>
-      <Image
+    <div className={`w-12 h-12 rounded-xl overflow-hidden shadow-lg bg-white ${className}`}>
+      <img
         src={logoUrl}
         alt={`${businessName} logo`}
-        width={64}
-        height={64}
-        className="w-full h-full object-contain p-1 sm:p-2"
-        onError={() => {
-          setHasError(true)
-          setLogoUrl(null)
-        }}
-        onLoad={() => setHasError(false)}
-        unoptimized
+        className="w-full h-full object-cover"
+        onError={() => setLogoUrl(null)}
       />
     </div>
   )
@@ -203,7 +155,7 @@ function ImageGalleryModal({ images, isOpen, onClose, selectedImageIndex = 0 }: 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
-          className="relative w-full max-w-6xl h-full max-h-[90vh] bg-white/95 dark:bg-black/95 backdrop-blur-xl rounded-3xl border border-white/30 dark:border-white/20 shadow-2xl overflow-hidden"
+          className="relative w-full max-w-6xl h-full max-h-[90vh] bg-white/95 backdrop-blur-xl rounded-3xl border border-white/30 shadow-2xl overflow-hidden"
         >
           {/* Header */}
           <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/50 to-transparent p-6">
@@ -319,10 +271,10 @@ function ImageGrid({ images, maxDisplay = 6, className = "" }: ImageGridProps) {
 
   if (!images || images.length === 0) {
     return (
-      <div className={`${className} bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-600 p-8 text-center`}>
+      <div className={`${className} bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300 p-8 text-center`}>
         <Camera className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-        <p className="text-gray-500 dark:text-gray-400 font-medium">No photos available</p>
-        <p className="text-sm text-gray-400 dark:text-gray-500">Add photos to showcase your business</p>
+        <p className="text-gray-500 font-medium">No photos available</p>
+        <p className="text-sm text-gray-400">Add photos to showcase your business</p>
       </div>
     )
   }
@@ -347,7 +299,7 @@ function ImageGrid({ images, maxDisplay = 6, className = "" }: ImageGridProps) {
             className="relative group cursor-pointer"
             onClick={() => openModal(index)}
           >
-            <div className="aspect-square relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+            <div className="aspect-square relative rounded-2xl overflow-hidden bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-105">
               <Image
                 src={GoogleBusinessAPI.getBestImageUrl(image) || ''}
                 alt={`Business photo ${index + 1}`}
@@ -370,10 +322,10 @@ function ImageGrid({ images, maxDisplay = 6, className = "" }: ImageGridProps) {
             className="relative group cursor-pointer"
             onClick={() => openModal(maxDisplay)}
           >
-            <div className="aspect-square relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 border-dashed border-blue-300 dark:border-blue-600 shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-105 flex items-center justify-center">
+            <div className="aspect-square relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 border-dashed border-blue-300 shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-105 flex items-center justify-center">
               <div className="text-center">
-                <Plus className="w-8 h-8 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
-                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                <Plus className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+                <p className="text-sm font-medium text-blue-600">
                   +{remainingCount} more
                 </p>
               </div>
@@ -428,9 +380,9 @@ function BusinessUpdatesSlider({
     return (
       <div className="text-center py-12">
         <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-        <p className="text-gray-500 dark:text-gray-400 font-medium">No business updates available</p>
-        <p className="text-sm text-gray-400 dark:text-gray-500">Create posts to engage with your customers</p>
-        <Button className="mt-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
+        <p className="text-gray-500 font-medium">No business updates available</p>
+        <p className="text-sm text-gray-400">Create posts to engage with your customers</p>
+        <Button className="mt-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
           <Plus className="w-4 h-4 mr-2" />
           Create Update
         </Button>
@@ -496,13 +448,13 @@ function BusinessUpdatesSlider({
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 lg:p-6 bg-white/50 dark:bg-black/20 backdrop-blur-sm"
+                  className="border border-gray-200 rounded-xl p-4 lg:p-6 bg-white/50 backdrop-blur-sm"
                 >
                   {/* Post Header */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                        <PostIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <PostIcon className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -513,7 +465,7 @@ function BusinessUpdatesSlider({
                             {post.state.replace('_', ' ').toLowerCase()}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-sm text-gray-500 mt-1">
                           {formatPostDate(post.createTime)}
                         </p>
                       </div>
@@ -536,21 +488,21 @@ function BusinessUpdatesSlider({
                   <div className="space-y-4">
                     {/* Event Title */}
                     {post.event?.title && (
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-semibold text-gray-900">
                         {post.event.title}
                       </h3>
                     )}
 
                     {/* Post Summary */}
-                    <p className="text-gray-800 dark:text-gray-200 leading-relaxed">
+                    <p className="text-gray-800 leading-relaxed">
                       {post.summary}
                     </p>
 
                     {/* Event Schedule */}
                     {post.event?.schedule && (
-                      <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        <span className="text-sm text-blue-700 dark:text-blue-300">
+                      <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+                        <Calendar className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm text-blue-700">
                           {new Date(post.event.schedule.startDate.year, post.event.schedule.startDate.month - 1, post.event.schedule.startDate.day).toLocaleDateString('en-US', {
                             weekday: 'long',
                             year: 'numeric',
@@ -566,17 +518,17 @@ function BusinessUpdatesSlider({
 
                     {/* Offer Details */}
                     {post.offer && (
-                      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                         {post.offer.couponCode && (
                           <div className="flex items-center gap-2 mb-2">
-                            <Tag className="w-4 h-4 text-green-600 dark:text-green-400" />
-                            <span className="font-mono text-sm font-bold text-green-700 dark:text-green-300">
+                            <Tag className="w-4 h-4 text-green-600" />
+                            <span className="font-mono text-sm font-bold text-green-700">
                               {post.offer.couponCode}
                             </span>
                           </div>
                         )}
                         {post.offer.termsConditions && (
-                          <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                          <p className="text-xs text-green-600 mt-2">
                             {post.offer.termsConditions}
                           </p>
                         )}
@@ -596,7 +548,7 @@ function BusinessUpdatesSlider({
 
                     {/* Call to Action */}
                     {post.callToAction && (
-                      <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
                         {post.callToAction.actionType === 'CALL' ? (
                           <Button
                             variant="default"
@@ -695,11 +647,11 @@ function ProductsSlider({ products, onAddProduct, onEditProduct }: ProductsSlide
     return (
       <div className="text-center py-12">
         <Tag className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-        <p className="text-gray-500 dark:text-gray-400 font-medium">No products added yet</p>
-        <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">Showcase your products and services to customers</p>
+        <p className="text-gray-500 font-medium">No products added yet</p>
+        <p className="text-sm text-gray-400 mb-4">Showcase your products and services to customers</p>
         <Button 
           onClick={onAddProduct}
-          className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white"
+          className="bg-gradient-to-r from-green-600 to-blue-600 text-white"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Product
@@ -714,7 +666,7 @@ function ProductsSlider({ products, onAddProduct, onEditProduct }: ProductsSlide
       {products.length > itemsPerView && (
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
+            <span className="text-sm text-gray-500">
               {currentIndex + 1} - {Math.min(currentIndex + itemsPerView, products.length)} of {products.length}
             </span>
           </div>
@@ -741,7 +693,7 @@ function ProductsSlider({ products, onAddProduct, onEditProduct }: ProductsSlide
               variant="default"
               size="sm"
               onClick={onAddProduct}
-              className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white"
+              className="bg-gradient-to-r from-green-600 to-blue-600 text-white"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add
@@ -766,11 +718,11 @@ function ProductsSlider({ products, onAddProduct, onEditProduct }: ProductsSlide
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/20 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group"
+                className="bg-white/60 backdrop-blur-xl border border-white/30 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group"
                 onClick={() => onEditProduct?.(product)}
               >
                 {/* Product Image */}
-                <div className="aspect-square bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 relative overflow-hidden">
+                <div className="aspect-square bg-gradient-to-br from-gray-200 to-gray-300 relative overflow-hidden">
                   {product.image ? (
                     <Image
                       src={product.image}
@@ -806,18 +758,18 @@ function ProductsSlider({ products, onAddProduct, onEditProduct }: ProductsSlide
                 {/* Product Info */}
                 <div className="p-4">
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900 dark:text-white text-sm line-clamp-2">
+                    <h3 className="font-semibold text-gray-900 text-sm line-clamp-2">
                       {product.name}
                     </h3>
                     {product.price && (
-                      <span className="text-sm font-bold text-green-600 dark:text-green-400 ml-2">
+                      <span className="text-sm font-bold text-green-600 ml-2">
                         {product.price}
                       </span>
                     )}
                   </div>
                   
                   {product.description && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
+                    <p className="text-xs text-gray-600 line-clamp-2 mb-2">
                       {product.description}
                     </p>
                   )}
@@ -1088,18 +1040,18 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white/95 dark:bg-black/95 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-white/20 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+          className="bg-white/95 backdrop-blur-xl rounded-2xl border border-white/30 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
         >
           {/* Header */}
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
                   <PenTool className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create Content</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <h2 className="text-xl font-bold text-gray-900">Create Content</h2>
+                  <p className="text-sm text-gray-600">
                     {selectedProfile?.name}
                   </p>
                 </div>
@@ -1113,7 +1065,7 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
           {/* Content */}
           <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="w-full p-1 m-6 mb-0 bg-gray-100 dark:bg-gray-800">
+              <TabsList className="w-full p-1 m-6 mb-0 bg-gray-100">
                 <TabsTrigger value="create" className="flex-1">
                   <Wand2 className="w-4 h-4 mr-2" />
                   Create
@@ -1153,27 +1105,27 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
                       value={contentPrompt}
                       onChange={(e) => setContentPrompt(e.target.value)}
                       placeholder="Describe what you want to post about..."
-                      className="w-full h-32 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full h-32 p-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                    <p className="text-sm text-gray-500 mt-2">
                       Example: "Announce our new summer menu with fresh local ingredients" or "Promote our weekend special discount"
                     </p>
                   </div>
 
                   <div>
                     <Label htmlFor="image">Add Image (Optional)</Label>
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 mb-2">
+                    <p className="text-xs text-blue-600 mt-1 mb-2">
                       💡 Images will be referenced in your post text. Direct image embedding is coming soon!
                     </p>
                     <div className="mt-2">
                       {!imagePreview ? (
-                        <label htmlFor="image" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                        <label htmlFor="image" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
                           <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                            <ImageIcon className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
-                            <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                            <ImageIcon className="w-8 h-8 mb-4 text-gray-500" />
+                            <p className="mb-2 text-sm text-gray-500">
                               <span className="font-semibold">Click to upload</span> an image
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG up to 10MB</p>
+                            <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
                           </div>
                           <input 
                             id="image" 
@@ -1188,7 +1140,7 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
                           <img 
                             src={imagePreview} 
                             alt="Preview" 
-                            className="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                            className="w-full h-48 object-cover rounded-lg border border-gray-300"
                           />
                           <button
                             type="button"
@@ -1208,7 +1160,7 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
                   <Button 
                     onClick={generateContent}
                     disabled={!contentPrompt || isGenerating}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                   >
                     {isGenerating ? (
                       <>
@@ -1230,17 +1182,17 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
                 <div className="space-y-6">
                   <div>
                     <Label>Generated Content</Label>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 min-h-32">
+                    <div className="bg-gray-50 rounded-lg p-4 min-h-32">
                       {imagePreview && (
                         <div className="mb-4">
                           <img 
                             src={imagePreview} 
                             alt="Post preview" 
-                            className="w-full max-w-md h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                            className="w-full max-w-md h-48 object-cover rounded-lg border border-gray-300"
                           />
                         </div>
                       )}
-                      <p className="whitespace-pre-wrap text-gray-900 dark:text-white">
+                      <p className="whitespace-pre-wrap text-gray-900">
                         {generatedContent}
                       </p>
                     </div>
@@ -1272,7 +1224,7 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
                     <Button 
                       onClick={postNow}
                       disabled={isPosting}
-                      className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white"
+                      className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 text-white"
                     >
                       {isPosting ? (
                         <>
@@ -1303,17 +1255,17 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
                 <div className="space-y-6">
                   <div>
                     <Label>Content to Schedule</Label>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-h-48 overflow-y-auto">
+                    <div className="bg-gray-50 rounded-lg p-4 max-h-48 overflow-y-auto">
                       {imagePreview && (
                         <div className="mb-3">
                           <img 
                             src={imagePreview} 
                             alt="Post preview" 
-                            className="w-full max-w-xs h-32 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                            className="w-full max-w-xs h-32 object-cover rounded-lg border border-gray-300"
                           />
                         </div>
                       )}
-                      <p className="whitespace-pre-wrap text-gray-900 dark:text-white text-sm">
+                      <p className="whitespace-pre-wrap text-gray-900 text-sm">
                         {generatedContent}
                       </p>
                     </div>
@@ -1341,12 +1293,12 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                  <div className="bg-blue-50 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Scheduling Info</span>
+                      <Info className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-700">Scheduling Info</span>
                     </div>
-                    <p className="text-sm text-blue-600 dark:text-blue-400">
+                    <p className="text-sm text-blue-600">
                       Posts can be scheduled at least 30 minutes in advance. Scheduled posts will be automatically published to your Google Business Profile at the specified time.
                     </p>
                   </div>
@@ -1354,7 +1306,7 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
                   <Button 
                     onClick={schedulePost}
                     disabled={!scheduledDate || !scheduledTime || isPosting}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white"
                   >
                     {isPosting ? (
                       <>
@@ -1719,7 +1671,7 @@ export default function ContentHubPage() {
           {/* Page Header */}
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-red-500/10 rounded-xl lg:rounded-2xl blur-xl lg:blur-2xl" />
-            <div className="relative bg-white/40 dark:bg-black/20 backdrop-blur-xl rounded-xl lg:rounded-2xl border border-white/20 dark:border-white/10 p-4 lg:p-6">
+            <div className="relative bg-white/40 backdrop-blur-xl rounded-xl lg:rounded-2xl border border-white/20 dark:border-white/10 p-4 lg:p-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
                 <div className="space-y-1">
                   <div className="flex items-center space-x-3">
@@ -1727,10 +1679,10 @@ export default function ContentHubPage() {
                       <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
                     </div>
                     <div>
-                      <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 via-purple-800 to-pink-800 dark:from-white dark:via-purple-200 dark:to-pink-200 bg-clip-text text-transparent">
+                      <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 via-purple-800 to-pink-800 bg-clip-text text-transparent">
                         Content Hub
                       </h1>
-                      <p className="text-sm lg:text-base text-gray-600 dark:text-gray-300 font-medium">
+                      <p className="text-sm lg:text-base text-gray-600 font-medium">
                         Manage your business profile content and media
                       </p>
                     </div>
@@ -1740,7 +1692,7 @@ export default function ContentHubPage() {
                   <Button 
                     onClick={() => setShowCreateModal(true)}
                     disabled={!selectedProfile}
-                    className="w-full sm:w-auto bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
+                    className="w-full sm:w-auto bg-gradient-to-r from-green-600 to-blue-600 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <Plus className="w-4 h-4 mr-2 relative z-10" />
@@ -1749,7 +1701,7 @@ export default function ContentHubPage() {
                   <Button 
                     onClick={refreshData} 
                     disabled={loading || !selectedProfile}
-                    className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
+                    className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-pink-600 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <RefreshCw className={`w-4 h-4 mr-2 relative z-10 ${loading ? 'animate-spin' : ''}`} />
@@ -1765,7 +1717,7 @@ export default function ContentHubPage() {
               {/* Left Column - Business Overview */}
               <div className="lg:col-span-1 space-y-6">
                 {/* Business Info Card */}
-                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                <Card className="bg-white backdrop-blur-xl border border-white/30">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-4">
                       <BusinessLogo 
@@ -1774,15 +1726,15 @@ export default function ContentHubPage() {
                         className="w-16 h-16 lg:w-20 lg:h-20"
                       />
                       <div className="flex-1 min-w-0">
-                        <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                        <h2 className="text-xl lg:text-2xl font-bold truncate">
                           {selectedProfile.name}
                         </h2>
-                        <p className="text-sm lg:text-base text-gray-600 dark:text-gray-400 truncate">
+                        <p className="text-sm lg:text-base text-gray-600 truncate">
                           {selectedProfile.category}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
                           {renderStars(reviewsSummary?.averageRating || selectedProfile.rating)}
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                          <span className="text-sm text-gray-600">
                             {(reviewsSummary?.averageRating || selectedProfile.rating).toFixed(1)} • {reviewsSummary?.totalReviews || selectedProfile.reviewCount || 0} Google reviews
                           </span>
                         </div>
@@ -1797,7 +1749,7 @@ export default function ContentHubPage() {
                           variant="outline" 
                           size="sm" 
                           onClick={handleWebsiteClick}
-                          className="flex items-center justify-center gap-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                          className="flex items-center justify-center gap-2 bg-white/50 backdrop-blur-sm border border-white/30 hover:bg-white/70 hover:bg-black/30 transition-all duration-300"
                         >
                           <Globe className="w-4 h-4" />
                           <span className="hidden sm:inline">Website</span>
@@ -1808,7 +1760,7 @@ export default function ContentHubPage() {
                           variant="outline" 
                           size="sm" 
                           onClick={handleDirectionsClick}
-                          className="flex items-center justify-center gap-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                          className="flex items-center justify-center gap-2 bg-white/50 backdrop-blur-sm border border-white/30 hover:bg-white/70 hover:bg-black/30 transition-all duration-300"
                         >
                           <Navigation className="w-4 h-4" />
                           <span className="hidden sm:inline">Directions</span>
@@ -1818,7 +1770,7 @@ export default function ContentHubPage() {
                         variant="outline" 
                         size="sm" 
                         onClick={handleReviewsClick}
-                        className="flex items-center justify-center gap-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                        className="flex items-center justify-center gap-2 bg-white/50 backdrop-blur-sm border border-white/30 hover:bg-white/70 hover:bg-black/30 transition-all duration-300"
                       >
                         <MessageSquare className="w-4 h-4" />
                         <span className="hidden sm:inline">Reviews</span>
@@ -1827,7 +1779,7 @@ export default function ContentHubPage() {
                         variant="outline" 
                         size="sm" 
                         onClick={handleShareClick}
-                        className="flex items-center justify-center gap-2 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20 hover:bg-white/70 dark:hover:bg-black/30 transition-all duration-300"
+                        className="flex items-center justify-center gap-2 bg-white/50 backdrop-blur-sm border border-white/30 hover:bg-white/70 hover:bg-black/30 transition-all duration-300"
                       >
                         <Share className="w-4 h-4" />
                         <span className="hidden sm:inline">Share</span>
@@ -1836,19 +1788,19 @@ export default function ContentHubPage() {
 
                     {/* Contact Information */}
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">Contact Information</h3>
+                      <h3 className="font-semibold text-gray-900">Contact Information</h3>
                       
                       <div className="space-y-2">
                         <div className="flex items-start gap-3">
                           <MapPin className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
-                          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                          <p className="text-sm text-gray-700 leading-relaxed">
                             {selectedProfile.address}
                           </p>
                         </div>
                         
                         <div className="flex items-center gap-3">
                           <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                          <p className="text-sm text-gray-700">
                             {selectedProfile.phone}
                           </p>
                         </div>
@@ -1871,17 +1823,17 @@ export default function ContentHubPage() {
 
                     {/* Business Hours */}
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                      <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                         <Clock className="w-4 h-4" />
                         Business Hours
                       </h3>
                       <div className="space-y-1">
                         {formatBusinessHours(selectedProfile).slice(0, 4).map((hour, index) => (
-                          <div key={index} className="flex justify-between items-center py-1 px-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                            <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                          <div key={index} className="flex justify-between items-center py-1 px-3 bg-gray-50 rounded-lg">
+                            <span className="text-sm text-gray-700 font-medium">
                               {hour.split(': ')[0]}
                             </span>
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                            <span className="text-sm text-gray-600">
                               {hour.split(': ')[1]}
                             </span>
                           </div>
@@ -1892,10 +1844,10 @@ export default function ContentHubPage() {
                     {/* Categories */}
                     {getBusinessCategories(selectedProfile).length > 0 && (
                       <div className="space-y-3">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">Categories</h3>
+                        <h3 className="font-semibold text-gray-900">Categories</h3>
                         <div className="flex flex-wrap gap-2">
                           {getBusinessCategories(selectedProfile).map((category, index) => (
-                            <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                            <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-800">
                               {category}
                             </Badge>
                           ))}
@@ -1907,7 +1859,7 @@ export default function ContentHubPage() {
 
                 {/* Services */}
                 {getBusinessServices(selectedProfile).length > 0 && (
-                  <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                  <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Tag className="w-5 h-5" />
@@ -1917,7 +1869,7 @@ export default function ContentHubPage() {
                     <CardContent>
                       <div className="flex flex-wrap gap-2">
                         {getBusinessServices(selectedProfile).map((service, index) => (
-                          <Badge key={index} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
+                          <Badge key={index} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
                             {service}
                           </Badge>
                         ))}
@@ -1930,7 +1882,7 @@ export default function ContentHubPage() {
               {/* Right Column - Content Management */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Business Photos */}
-                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                <Card className="bg-white backdrop-blur-xl border border-white/30">
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -1972,7 +1924,7 @@ export default function ContentHubPage() {
                       { title: 'Team Photos', photos: businessMedia.teamPhotos, icon: Users }
                     ].map(({ title, photos, icon: Icon }) => 
                       photos.length > 0 && (
-                        <Card key={title} className="bg-white/40 dark:bg-black/20 backdrop-blur-xl border-white/30 dark:border-white/20">
+                        <Card key={title} className="bg-white backdrop-blur-xl border border-white/30">
                           <CardHeader className="pb-3">
                             <CardTitle className="flex items-center gap-2 text-lg">
                               <Icon className="w-4 h-4" />
@@ -1996,7 +1948,7 @@ export default function ContentHubPage() {
                 )}
 
                 {/* Questions & Answers Section */}
-                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                <Card className="bg-white backdrop-blur-xl border border-white/30">
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -2023,9 +1975,9 @@ export default function ContentHubPage() {
                     ) : qaError ? (
                       <div className="text-center py-12">
                         <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-orange-500" />
-                        <p className="text-orange-600 dark:text-orange-400 font-medium mb-2">Q&A Loading Error</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{qaError}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                        <p className="text-orange-600 mb-2">Q&A Loading Error</p>
+                        <p className="text-sm text-gray-500 mb-4">{qaError}</p>
+                        <p className="text-xs text-gray-500">
                           This could be due to API permissions or the business not having Q&A enabled.
                           <br />
                           Profile ID: {selectedProfile?.googleBusinessId}
@@ -2044,9 +1996,9 @@ export default function ContentHubPage() {
                       <div className="space-y-6">
                         {/* Debug Info */}
                         {qaDebugInfo && (
-                          <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                          <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-medium text-gray-900 dark:text-white">Q&A API Debug Information</h4>
+                              <h4 className="font-medium text-gray-900">Q&A API Debug Information</h4>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -2066,16 +2018,16 @@ export default function ContentHubPage() {
                               
                               {qaDebugInfo.details && (
                                 <div className="mt-3">
-                                  <pre className="text-xs bg-white dark:bg-gray-900 p-3 rounded border overflow-x-auto">
+                                  <pre className="text-xs bg-white p-3 rounded border overflow-x-auto">
                                     {JSON.stringify(qaDebugInfo.details, null, 2)}
                                   </pre>
                                 </div>
                               )}
                               
                               {qaDebugInfo.error && (
-                                <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
-                                  <p className="text-red-700 dark:text-red-400 font-medium">Error:</p>
-                                  <p className="text-red-600 dark:text-red-300">{qaDebugInfo.error}</p>
+                                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                                  <p className="text-red-700 font-medium">Error:</p>
+                                  <p className="text-red-600">{qaDebugInfo.error}</p>
                                 </div>
                               )}
                             </div>
@@ -2088,19 +2040,19 @@ export default function ContentHubPage() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
-                            className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 lg:p-6 bg-white/50 dark:bg-black/20 backdrop-blur-sm"
+                            className="border border-gray-200 rounded-xl p-4 lg:p-6 bg-white/50 backdrop-blur-sm"
                           >
                             {/* Question */}
                             <div className="mb-4">
                               <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <HelpCircle className="w-4 h-4 text-blue-600" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-gray-900 dark:text-white font-medium leading-relaxed">
+                                  <p className="text-gray-900 font-medium leading-relaxed">
                                     {question.text}
                                   </p>
-                                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
                                     <span>{question.author.displayName}</span>
                                     <span>•</span>
                                     <span>{formatQuestionDate(question.createTime)}</span>
@@ -2125,31 +2077,31 @@ export default function ContentHubPage() {
                             {question.topAnswers && question.topAnswers.length > 0 && (
                               <div className="space-y-3 ml-8 lg:ml-11">
                                 {question.topAnswers.map((answer, answerIndex) => (
-                                  <div key={answerIndex} className="border-l-2 border-green-200 dark:border-green-800 pl-4">
+                                  <div key={answerIndex} className="border-l-2 border-green-200 pl-4">
                                     <div className="flex items-start gap-3">
                                       <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
                                         answer.author.type === 'MERCHANT' 
-                                          ? 'bg-green-100 dark:bg-green-900/30' 
-                                          : 'bg-gray-100 dark:bg-gray-800'
+                                          ? 'bg-green-100' 
+                                          : 'bg-gray-100'
                                       }`}>
                                         {answer.author.type === 'MERCHANT' ? (
-                                          <Building2 className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                          <Building2 className="w-3 h-3 text-green-600" />
                                         ) : (
-                                          <Users className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+                                          <Users className="w-3 h-3 text-gray-600" />
                                         )}
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="text-gray-800 dark:text-gray-200 leading-relaxed">
+                                        <p className="text-gray-800 leading-relaxed">
                                           {answer.text}
                                         </p>
-                                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
-                                          <span className={answer.author.type === 'MERCHANT' ? 'font-medium text-green-600 dark:text-green-400' : ''}>
+                                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                                          <span className={answer.author.type === 'MERCHANT' ? 'font-medium text-green-600' : ''}>
                                             {answer.author.displayName}
                                           </span>
                                           {answer.author.type === 'MERCHANT' && (
                                             <>
                                               <span>•</span>
-                                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                                                 Business Owner
                                               </Badge>
                                             </>
@@ -2157,7 +2109,7 @@ export default function ContentHubPage() {
                                           {answer.author.type === 'LOCAL_GUIDE' && (
                                             <>
                                               <span>•</span>
-                                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
                                                 Local Guide
                                               </Badge>
                                             </>
@@ -2180,7 +2132,7 @@ export default function ContentHubPage() {
 
                             {/* No answers state */}
                             {(!question.topAnswers || question.topAnswers.length === 0) && (
-                              <div className="ml-8 lg:ml-11 text-sm text-gray-500 dark:text-gray-400 italic">
+                              <div className="ml-8 lg:ml-11 text-sm text-gray-500 italic">
                                 No answers yet
                               </div>
                             )}
@@ -2190,15 +2142,15 @@ export default function ContentHubPage() {
                     ) : (
                       <div className="text-center py-12">
                         <HelpCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                        <p className="text-gray-500 dark:text-gray-400 font-medium">No questions & answers available</p>
-                        <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">Customers can ask questions about your business on Google</p>
+                        <p className="text-gray-500 font-medium">No questions & answers available</p>
+                        <p className="text-sm text-gray-400 mb-4">Customers can ask questions about your business on Google</p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
                 {/* Local Posts Section */}
-                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                <Card className="bg-white backdrop-blur-xl border border-white/30">
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -2235,15 +2187,15 @@ export default function ContentHubPage() {
                     ) : (
                       <div className="text-center py-12">
                         <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                        <p className="text-gray-500 dark:text-gray-400 font-medium">No business updates available</p>
-                        <p className="text-sm text-gray-400 dark:text-gray-500">Create posts to engage with your customers</p>
+                        <p className="text-gray-500 font-medium">No business updates available</p>
+                        <p className="text-sm text-gray-400">Create posts to engage with your customers</p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
                 {/* Products Section */}
-                <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                <Card className="bg-white backdrop-blur-xl border border-white/30">
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -2276,8 +2228,8 @@ export default function ContentHubPage() {
                     ) : (
                       <div className="text-center py-12">
                         <Tag className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                        <p className="text-gray-500 dark:text-gray-400 font-medium">No products added yet</p>
-                        <p className="text-sm text-gray-400 dark:text-gray-500">Showcase your products and services to customers</p>
+                        <p className="text-gray-500 font-medium">No products added yet</p>
+                        <p className="text-sm text-gray-400">Showcase your products and services to customers</p>
                       </div>
                     )}
                   </CardContent>
