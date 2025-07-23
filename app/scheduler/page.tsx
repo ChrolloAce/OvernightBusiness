@@ -31,7 +31,8 @@ import {
   MessageCircle,
   Repeat2,
   Share,
-  Eye
+  Eye,
+  Info
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AutomationDashboard } from '@/components/automation-dashboard'
@@ -159,16 +160,29 @@ export default function SchedulerPage() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-semibold text-gray-900">Posts</h1>
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Plus className="h-4 w-4 mr-2" />
-                New draft
-              </Button>
-              <Button size="sm" variant="outline" className="text-orange-600 border-orange-300 hover:bg-orange-50">
-                Add to Queue
-              </Button>
-              <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white">
-                Post
-              </Button>
+                             <Button 
+                 size="sm" 
+                 className="bg-blue-600 hover:bg-blue-700 text-white"
+                 onClick={() => window.location.href = '/content'}
+               >
+                 <Plus className="h-4 w-4 mr-2" />
+                 New draft
+               </Button>
+               <Button 
+                 size="sm" 
+                 variant="outline" 
+                 className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                 onClick={() => window.location.href = '/content'}
+               >
+                 Add to Queue
+               </Button>
+               <Button 
+                 size="sm" 
+                 className="bg-orange-600 hover:bg-orange-700 text-white"
+                 onClick={() => window.location.href = '/content'}
+               >
+                 Post
+               </Button>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -235,10 +249,13 @@ export default function SchedulerPage() {
                       : `No ${selectedTab} posts found.`
                     }
                   </p>
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create your first post
-                  </Button>
+                                     <Button 
+                     className="bg-blue-600 hover:bg-blue-700 text-white"
+                     onClick={() => window.location.href = '/content'}
+                   >
+                     <Plus className="h-4 w-4 mr-2" />
+                     Create your first post
+                   </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -397,19 +414,78 @@ export default function SchedulerPage() {
                   <p className="text-sm text-gray-600">
                     Create and schedule posts manually with AI assistance.
                   </p>
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Post
-                  </Button>
+                                     <Button 
+                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                     onClick={() => window.location.href = '/content'}
+                   >
+                     <Plus className="h-4 w-4 mr-2" />
+                     Create Post
+                   </Button>
                 </TabsContent>
                 
-                                 <TabsContent value="automation" className="space-y-4">
-                   <AutomationDashboard 
-                     selectedProfile={selectedProfile}
-                     profiles={profiles}
-                   />
-                 </TabsContent>
+                <TabsContent value="automation" className="space-y-4">
+                  <AutomationDashboard 
+                    selectedProfile={selectedProfile}
+                    profiles={profiles}
+                  />
+                </TabsContent>
               </Tabs>
+            </div>
+
+            {/* Scheduling Help Guide */}
+            <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+              <div className="flex items-center space-x-2 mb-4">
+                <Info className="h-5 w-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-blue-900">Scheduling Guide</h3>
+              </div>
+              
+              <div className="space-y-4 text-sm">
+                <div>
+                  <h4 className="font-medium text-blue-900 mb-2">📋 Quick Checklist:</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-blue-800">Go to Content Hub</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-blue-800">Click "Create Content"</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-blue-800">Generate content with AI</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-blue-800">Choose "Schedule for Later"</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-blue-800">Posts appear here automatically</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-blue-200 pt-4">
+                  <h4 className="font-medium text-blue-900 mb-2">🔧 Troubleshooting:</h4>
+                  <div className="space-y-1 text-blue-700">
+                    <p>• Posts not appearing? Check your Google authentication</p>
+                    <p>• Posts not publishing? Verify your business profile access</p>
+                    <p>• Time zone issues? Use your local time when scheduling</p>
+                    <p>• Still having issues? Check the browser console for errors</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-blue-200 pt-4">
+                  <h4 className="font-medium text-blue-900 mb-2">💡 Pro Tips:</h4>
+                  <div className="space-y-1 text-blue-700">
+                    <p>• Schedule posts at least 30 minutes in advance</p>
+                    <p>• Posts auto-publish every 60 seconds when due</p>
+                    <p>• Keep this tab open for best performance</p>
+                    <p>• Check "Ready to post" count above for pending posts</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
