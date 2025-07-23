@@ -171,26 +171,13 @@ export class SchedulingService {
     }
   }
 
-  // Get access token (you'll need to implement this based on your auth system)
+  // Get access token using GoogleAuthService
   private async getAccessToken(): Promise<string | null> {
-    // This is a placeholder - you'll need to implement this based on your auth system
-    // For example, you might get it from localStorage, sessionStorage, or make an API call
     try {
-      // Check if there's a stored session
-      const sessionData = localStorage.getItem('google_auth_session')
-      if (sessionData) {
-        const session = JSON.parse(sessionData)
-        
-        // Check if token is still valid
-        if (session.tokens && session.tokens.expires_at > Date.now()) {
-          return session.tokens.access_token
-        }
-        
-        // If token is expired, you might want to refresh it here
-        // For now, we'll return null
-      }
-      
-      return null
+      // Use the GoogleAuthService to get a valid access token
+      const { GoogleAuthService } = await import('./google-auth')
+      const googleAuth = GoogleAuthService.getInstance()
+      return await googleAuth.getValidAccessToken()
     } catch (error) {
       console.error('Error getting access token:', error)
       return null

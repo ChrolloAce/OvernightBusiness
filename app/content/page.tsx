@@ -95,40 +95,15 @@ function BusinessLogo({ businessName, website, className = "w-16 h-16" }: Busine
           }
         }
 
-        const logoSources = [
-          domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : null,
-          domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null,
-        ].filter(Boolean)
-
-        if (logoSources.length > 0) {
-          // Test if the first logo source is accessible
-          try {
-            const response = await fetch(logoSources[0] as string, { method: 'HEAD' })
-            if (response.ok) {
-              setLogoUrl(logoSources[0] as string)
-              setIsLoading(false)
-              return
-            }
-          } catch {
-            // First source failed, try second if available
-            if (logoSources.length > 1) {
-              try {
-                const response = await fetch(logoSources[1] as string, { method: 'HEAD' })
-                if (response.ok) {
-                  setLogoUrl(logoSources[1] as string)
-                  setIsLoading(false)
-                  return
-                }
-              } catch {
-                // Both sources failed
-              }
-            }
-          }
+        // Use a simple approach without CORS issues
+        if (domain) {
+          // Use Google's favicon service directly without testing
+          setLogoUrl(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`)
+          setIsLoading(false)
+        } else {
+          setHasError(true)
+          setIsLoading(false)
         }
-        
-        // All sources failed or no sources available
-        setHasError(true)
-        setIsLoading(false)
       } catch (error) {
         setHasError(true)
         setIsLoading(false)
@@ -943,27 +918,34 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
       const accessToken = await googleAuth.getValidAccessToken()
 
       let mediaUrl: string | undefined = undefined
+      let enhancedContent = generatedContent
 
-      // Upload image if selected
+      // Handle image if selected
       if (selectedImage) {
-        const formData = new FormData()
-        formData.append('image', selectedImage)
-        formData.append('locationName', selectedProfile.googleBusinessId)
+        // For now, add a note about the image since direct media upload is complex
+        enhancedContent = `${generatedContent}\n\n📸 [Image attached: ${selectedImage.name}]`
+        
+        // Try to upload image for future use
+        try {
+          const formData = new FormData()
+          formData.append('image', selectedImage)
+          formData.append('locationName', selectedProfile.googleBusinessId)
 
-        const uploadResponse = await fetch('/api/google-business/upload-media', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          },
-          body: formData
-        })
+          const uploadResponse = await fetch('/api/google-business/upload-media', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            },
+            body: formData
+          })
 
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json()
-          mediaUrl = uploadData.mediaUrl || uploadData.googleUrl
-        } else {
-          // Continue without image if upload fails
-          console.warn('Image upload failed, continuing without image')
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json()
+            mediaUrl = uploadData.mediaUrl || uploadData.googleUrl
+            console.log('Image upload successful, but not included in post due to API limitations')
+          }
+        } catch (error) {
+          console.warn('Image upload failed:', error)
         }
       }
 
@@ -976,7 +958,7 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
         },
         body: JSON.stringify({
           businessProfileId: selectedProfile.googleBusinessId,
-          content: generatedContent,
+          content: enhancedContent,
           postType,
           mediaUrl,
           callToAction: callToActionText && callToActionUrl ? {
@@ -1023,11 +1005,17 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
 
       const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`)
       
+      // Prepare content with image reference if needed
+      let contentForScheduling = generatedContent
+      if (selectedImage) {
+        contentForScheduling = `${generatedContent}\n\n📸 [Image attached: ${selectedImage.name}]`
+      }
+      
       // Use the scheduling service to schedule the post
       schedulingService.schedulePost({
         businessProfileId: selectedProfile.googleBusinessId, // Use googleBusinessId for API calls
         businessName: selectedProfile.name,
-        content: generatedContent,
+        content: contentForScheduling,
         postType,
         status: 'scheduled',
         scheduledDate: scheduledDateTime.toISOString(),
@@ -1174,6 +1162,9 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
 
                   <div>
                     <Label htmlFor="image">Add Image (Optional)</Label>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 mb-2">
+                      💡 Images will be referenced in your post text. Direct image embedding is coming soon!
+                    </p>
                     <div className="mt-2">
                       {!imagePreview ? (
                         <label htmlFor="image" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">

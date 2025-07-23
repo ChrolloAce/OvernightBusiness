@@ -15,8 +15,13 @@ import {
   Pause,
   CheckCircle,
   AlertCircle,
-  BarChart3
+  BarChart3,
+  Bot,
+  Zap
 } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AutomationDashboard } from '@/components/automation-dashboard'
+import { useProfile } from '@/contexts/profile-context'
 
 interface ScheduledPost {
   id: string
@@ -31,6 +36,7 @@ interface ScheduledPost {
 export default function SchedulerPage() {
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([])
   const [mounted, setMounted] = useState(false)
+  const { selectedProfile, profiles } = useProfile()
 
   useEffect(() => {
     setMounted(true)
@@ -115,10 +121,10 @@ export default function SchedulerPage() {
                     </div>
                     <div>
                       <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
-                        Content Scheduler
+                        Smart Scheduler
                       </h1>
                       <p className="text-sm lg:text-base text-gray-600 dark:text-gray-300 font-medium">
-                        Schedule and manage your Google Business Profile posts
+                        Manual scheduling & AI-powered automated posting
                       </p>
                     </div>
                   </div>
@@ -201,17 +207,31 @@ export default function SchedulerPage() {
             </Card>
           </div>
 
-          {/* Scheduled Posts */}
-          <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
-            <CardHeader className="pb-3 lg:pb-6">
-              <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
-                <Calendar className="w-4 h-4 lg:w-5 lg:h-5" />
-                Scheduled Posts
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 lg:space-y-4">
-                {scheduledPosts.map((post, index) => (
+          {/* Tabs for Manual Scheduling and Automation */}
+          <Tabs defaultValue="manual" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="manual" className="flex items-center space-x-2">
+                <Calendar className="w-4 h-4" />
+                <span>Manual Scheduling</span>
+              </TabsTrigger>
+              <TabsTrigger value="automation" className="flex items-center space-x-2">
+                <Bot className="w-4 h-4" />
+                <span>AI Automation</span>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Manual Scheduling Tab */}
+            <TabsContent value="manual">
+              <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+                <CardHeader className="pb-3 lg:pb-6">
+                  <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
+                    <Calendar className="w-4 h-4 lg:w-5 lg:h-5" />
+                    Scheduled Posts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 lg:space-y-4">
+                    {scheduledPosts.map((post, index) => (
                   <motion.div
                     key={post.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -260,9 +280,19 @@ export default function SchedulerPage() {
                     </div>
                   </motion.div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Automation Tab */}
+            <TabsContent value="automation">
+              <AutomationDashboard 
+                selectedProfile={selectedProfile}
+                profiles={profiles}
+              />
+            </TabsContent>
+          </Tabs>
         </motion.div>
       </main>
     </div>

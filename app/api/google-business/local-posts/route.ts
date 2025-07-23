@@ -189,12 +189,14 @@ export async function POST(request: NextRequest) {
       topicType: topicTypeMap[postType as keyof typeof topicTypeMap] || 'STANDARD',
       summary: content,
       languageCode: 'en',
-      ...(mediaUrl && {
-        media: [{
-          mediaFormat: 'PHOTO',
-          sourceUrl: mediaUrl
-        }]
-      }),
+      // Note: Media upload is complex with Google Business Profile API v4
+      // For now, we'll post without media and add it separately if needed
+      // ...(mediaUrl && mediaUrl.startsWith('http') && {
+      //   media: [{
+      //     mediaFormat: 'PHOTO',
+      //     sourceUrl: mediaUrl
+      //   }]
+      // }),
       ...(callToAction && {
         callToAction: {
           actionType: callToAction.text.toLowerCase().includes('call') ? 'CALL' : 
@@ -205,7 +207,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    console.log('[Local Posts API] Sending post data to Google API:', JSON.stringify(postData, null, 2))
+    console.log('[Local Posts API] Creating post for:', fullLocationName)
+    console.log('[Local Posts API] Post data:', JSON.stringify(postData, null, 2))
 
     // Make the API call to create the post
     const response = await fetch(apiUrl, {
