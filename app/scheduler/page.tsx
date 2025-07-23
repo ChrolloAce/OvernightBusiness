@@ -37,7 +37,10 @@ import {
   MessageSquare,
   Heart,
   Repeat2,
-  Share
+  Share,
+  Wifi,
+  WifiOff,
+  Zap
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useProfile } from '@/contexts/profile-context'
@@ -260,12 +263,252 @@ function CreatePostModal({ isOpen, onClose, onPostCreated, selectedProfile }: Cr
   )
 }
 
+// Bulk Schedule Modal Component
+interface BulkScheduleModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onPostsCreated: () => void
+  selectedProfile: any
+}
+
+function BulkScheduleModal({ isOpen, onClose, onPostsCreated, selectedProfile }: BulkScheduleModalProps) {
+  const [postCount, setPostCount] = useState(5)
+  const [startDate, setStartDate] = useState('')
+  const [timeSpacing, setTimeSpacing] = useState('daily') // daily, every2days, weekly
+  const [postType, setPostType] = useState<'update' | 'offer' | 'event' | 'product'>('update')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [seoTopics, setSeoTopics] = useState('')
+
+  useEffect(() => {
+    if (isOpen) {
+      // Set default start date to tomorrow
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      setStartDate(tomorrow.toISOString().split('T')[0])
+    }
+  }, [isOpen])
+
+  const generateBulkPosts = async () => {
+    if (!selectedProfile || !startDate) return
+
+    setIsGenerating(true)
+    try {
+      const posts = []
+      const businessName = selectedProfile.name
+      
+      // SEO-focused post topics
+      const seoPostTopics = seoTopics ? seoTopics.split(',').map(t => t.trim()) : [
+        `Special offers at ${businessName}`,
+        `Why choose ${businessName} for your needs`,
+        `Behind the scenes at ${businessName}`,
+        `Customer success stories from ${businessName}`,
+        `Tips and advice from ${businessName} experts`,
+        `What's new at ${businessName} this month`,
+        `The ${businessName} difference explained`,
+        `Local community involvement by ${businessName}`,
+        `Seasonal services at ${businessName}`,
+        `Professional expertise at ${businessName}`
+      ]
+
+      for (let i = 0; i < postCount; i++) {
+        // Calculate schedule date
+        const scheduleDate = new Date(startDate)
+        
+        switch (timeSpacing) {
+          case 'daily':
+            scheduleDate.setDate(scheduleDate.getDate() + i)
+            break
+          case 'every2days':
+            scheduleDate.setDate(scheduleDate.getDate() + (i * 2))
+            break
+          case 'weekly':
+            scheduleDate.setDate(scheduleDate.getDate() + (i * 7))
+            break
+        }
+
+        // Random time between 9 AM and 5 PM for better engagement
+        const hour = 9 + Math.floor(Math.random() * 8)
+        const minute = Math.floor(Math.random() * 60)
+        scheduleDate.setHours(hour, minute, 0, 0)
+
+        // Generate SEO-focused content
+        const topic = seoPostTopics[i % seoPostTopics.length]
+        const seoContent = await generateSEOContent(businessName, topic)
+
+        posts.push({
+          content: seoContent,
+          scheduledDate: scheduleDate.toISOString(),
+          postType
+        })
+      }
+
+      // Schedule all posts
+      for (const post of posts) {
+        await schedulingService.schedulePost({
+          id: `bulk-${Date.now()}-${Math.random()}`,
+          businessProfileId: selectedProfile.googleBusinessId,
+          businessName: selectedProfile.name,
+          content: post.content,
+          postType: post.postType,
+          status: 'scheduled',
+          scheduledDate: post.scheduledDate
+        })
+      }
+
+      onPostsCreated()
+      onClose()
+      
+      // Reset form
+      setPostCount(5)
+      setSeoTopics('')
+      
+    } catch (error) {
+      console.error('Error generating bulk posts:', error)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const generateSEOContent = async (businessName: string, topic: string): Promise<string> => {
+    // Simple SEO-optimized content generation
+    const seoTemplates = [
+      `🌟 ${topic}! At ${businessName}, we're committed to excellence. Contact us today to learn more about our services. #${businessName.replace(/\s+/g, '')} #LocalBusiness #Quality`,
+      `✨ Discover what makes ${businessName} special! ${topic}. We're here to serve our community with dedication and expertise. #CommunityFirst #${businessName.replace(/\s+/g, '')}`,
+      `💼 ${topic}. ${businessName} has been proudly serving our customers with professional service and competitive prices. Get in touch! #Professional #${businessName.replace(/\s+/g, '')}`,
+      `🎯 ${topic}. Trust ${businessName} for reliable, high-quality service. We're locally owned and operated. Call us today! #LocallyOwned #Trusted #${businessName.replace(/\s+/g, '')}`,
+      `🏆 ${topic}. At ${businessName}, customer satisfaction is our top priority. Experience the difference quality makes! #CustomerFirst #Excellence #${businessName.replace(/\s+/g, '')}`
+    ]
+    
+    return seoTemplates[Math.floor(Math.random() * seoTemplates.length)]
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-lg shadow-lg w-full max-w-md"
+      >
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Bulk Schedule SEO Posts</h3>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            {/* Number of Posts */}
+            <div>
+              <Label htmlFor="postCount">Number of Posts</Label>
+              <Input
+                id="postCount"
+                type="number"
+                min="1"
+                max="30"
+                value={postCount}
+                onChange={(e) => setPostCount(parseInt(e.target.value))}
+                className="mt-1"
+              />
+              <p className="text-xs text-gray-500 mt-1">Generate 1-30 posts at once</p>
+            </div>
+
+            {/* Start Date */}
+            <div>
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+
+            {/* Time Spacing */}
+            <div>
+              <Label>Posting Frequency</Label>
+              <Select value={timeSpacing} onValueChange={setTimeSpacing}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="every2days">Every 2 Days</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Custom Topics (Optional) */}
+            <div>
+              <Label htmlFor="seoTopics">Custom Topics (Optional)</Label>
+              <textarea
+                id="seoTopics"
+                placeholder="Enter topics separated by commas, e.g. 'Holiday specials, New services, Customer testimonials'"
+                value={seoTopics}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setSeoTopics(e.target.value)}
+                className="mt-1 h-20 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+              <p className="text-xs text-gray-500 mt-1">Leave blank for auto-generated SEO topics</p>
+            </div>
+
+            {/* Post Type */}
+            <div>
+              <Label>Post Type</Label>
+              <Select value={postType} onValueChange={setPostType}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="update">Standard Post</SelectItem>
+                  <SelectItem value="event">Event</SelectItem>
+                  <SelectItem value="offer">Offer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={generateBulkPosts} 
+              disabled={!selectedProfile || !startDate || isGenerating}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isGenerating ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4 mr-2" />
+              )}
+              Generate {postCount} Posts
+            </Button>
+          </div>
+
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-xs text-blue-700">
+              💡 Posts will be automatically generated with SEO-optimized content and scheduled at random times during business hours for maximum engagement.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 export default function SchedulerPage() {
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([])
   const [mounted, setMounted] = useState(false)
   const [selectedTab, setSelectedTab] = useState('scheduled')
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showBulkModal, setShowBulkModal] = useState(false)
   const [editingPost, setEditingPost] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
   const [editDate, setEditDate] = useState('')
@@ -474,6 +717,10 @@ export default function SchedulerPage() {
               <Button onClick={() => setShowCreateModal(true)} disabled={!selectedProfile}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Post
+              </Button>
+              <Button onClick={() => setShowBulkModal(true)} disabled={!selectedProfile} variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                <Zap className="h-4 w-4 mr-2" />
+                Bulk Schedule
               </Button>
               <Button variant="outline" onClick={loadScheduledPosts}>
                 <RefreshCw className="h-4 w-4" />
@@ -743,6 +990,13 @@ export default function SchedulerPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onPostCreated={loadScheduledPosts}
+        selectedProfile={selectedProfile}
+      />
+
+      <BulkScheduleModal
+        isOpen={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        onPostsCreated={loadScheduledPosts}
         selectedProfile={selectedProfile}
       />
     </div>
