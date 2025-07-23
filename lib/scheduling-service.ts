@@ -1,5 +1,7 @@
 // Scheduling Service for Business Profile Posts
 
+import { ServerSchedulingService } from './server-scheduling-service'
+
 export interface ScheduledPost {
   id: string
   businessProfileId: string
@@ -22,10 +24,13 @@ export class SchedulingService {
   private static instance: SchedulingService
   private static readonly STORAGE_KEY = 'overnight_biz_scheduled_posts'
   private static readonly EXECUTION_INTERVAL = 60000 // Check every minute
+  private static readonly SERVER_SYNC_INTERVAL = 300000 // Sync to server every 5 minutes
 
   private constructor() {
     // Auto-start the scheduler when the service is created
     this.startScheduler()
+    // Set up server synchronization
+    this.setupServerSync()
   }
 
   public static getInstance(): SchedulingService {
@@ -54,9 +59,44 @@ export class SchedulingService {
     
     try {
       localStorage.setItem(SchedulingService.STORAGE_KEY, JSON.stringify(posts))
+      // Sync to server when posts are updated
+      this.syncToServer()
     } catch (error) {
       console.error('Error saving scheduled posts:', error)
     }
+  }
+
+  // Sync posts to server
+  private async syncToServer(): Promise<void> {
+    const posts = this.getScheduledPosts()
+    await ServerSchedulingService.syncPostsToServer(posts)
+  }
+
+  // Set up periodic server sync
+  private setupServerSync(): void {
+    if (typeof window === 'undefined') return
+
+    console.log('[SchedulingService] Setting up server synchronization')
+    
+    // Set up periodic sync to server
+    ServerSchedulingService.setupPeriodicSync(() => this.getScheduledPosts())
+    
+    // Also trigger server check periodically to handle posts that might be due
+    setInterval(async () => {
+      await ServerSchedulingService.triggerServerCheck()
+      // Refresh local posts after server check (in case status changed)
+      this.refreshFromServer()
+    }, SchedulingService.SERVER_SYNC_INTERVAL)
+  }
+
+  // Refresh local posts from server (placeholder - in a full implementation, 
+  // you'd fetch updated posts from server)
+  private refreshFromServer(): void {
+    // In a full implementation, you would:
+    // 1. Fetch updated posts from server
+    // 2. Update local storage with any status changes
+    // For now, we'll just log that this would happen
+    console.log('[SchedulingService] Would refresh posts from server')
   }
 
   // Schedule a new post
@@ -73,6 +113,10 @@ export class SchedulingService {
     this.saveScheduledPosts(posts)
 
     console.log('[SchedulingService] Post scheduled:', newPost.id, 'for', new Date(newPost.scheduledDate))
+    
+    // Immediate sync to server for new posts
+    this.syncToServer()
+    
     return newPost
   }
 
@@ -115,7 +159,7 @@ export class SchedulingService {
     )
   }
 
-  // Execute a scheduled post
+  // Execute a scheduled post (now also triggers server execution)
   public async executeScheduledPost(post: ScheduledPost): Promise<boolean> {
     console.log('[SchedulingService] Executing scheduled post:', post.id)
     
@@ -123,7 +167,39 @@ export class SchedulingService {
     this.updateScheduledPost(post.id, { status: 'publishing' })
 
     try {
-      // Get the current access token (you'll need to implement this)
+      // Try to execute locally first (for immediate feedback)
+      const success = await this.executePostDirectly(post)
+      
+      if (success) {
+        this.updateScheduledPost(post.id, {
+          status: 'published',
+          publishedDate: new Date().toISOString()
+        })
+        console.log('[SchedulingService] Post published successfully:', post.id)
+        return true
+      } else {
+        // If local execution fails, let server handle it
+        console.log('[SchedulingService] Local execution failed, server will retry')
+        await ServerSchedulingService.triggerServerCheck()
+        return false
+      }
+    } catch (error) {
+      console.error('[SchedulingService] Error executing post:', error)
+      
+      // Update status to failed
+      this.updateScheduledPost(post.id, {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+      
+      return false
+    }
+  }
+
+  // Direct post execution (extracted from original executeScheduledPost)
+  private async executePostDirectly(post: ScheduledPost): Promise<boolean> {
+    try {
+      // Get the current access token
       const accessToken = await this.getAccessToken()
       
       if (!accessToken) {
@@ -145,33 +221,14 @@ export class SchedulingService {
         })
       })
 
-      if (response.ok) {
-        // Update status to published
-        this.updateScheduledPost(post.id, {
-          status: 'published',
-          publishedDate: new Date().toISOString()
-        })
-        
-        console.log('[SchedulingService] Post published successfully:', post.id)
-        return true
-      } else {
-        const error = await response.text()
-        throw new Error(`API Error: ${response.status} - ${error}`)
-      }
+      return response.ok
     } catch (error) {
-      console.error('[SchedulingService] Error executing post:', error)
-      
-      // Update status to failed
-      this.updateScheduledPost(post.id, {
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      })
-      
+      console.error('[SchedulingService] Direct execution error:', error)
       return false
     }
   }
 
-  // Get access token using GoogleAuthService
+  // Get access token (existing method)
   private async getAccessToken(): Promise<string | null> {
     try {
       // Use the GoogleAuthService to get a valid access token
@@ -189,7 +246,7 @@ export class SchedulingService {
     // Only run in browser environment
     if (typeof window === 'undefined') return
 
-    console.log('[SchedulingService] Starting scheduler')
+    console.log('[SchedulingService] Starting client-side scheduler (with server backup)')
     
     setInterval(() => {
       this.checkAndExecutePosts()
@@ -238,6 +295,16 @@ export class SchedulingService {
   // Clear all scheduled posts (useful for testing)
   public clearAllScheduledPosts(): void {
     this.saveScheduledPosts([])
+  }
+
+  // Force sync to server (public method)
+  public async forceSyncToServer(): Promise<boolean> {
+    return await ServerSchedulingService.syncPostsToServer(this.getScheduledPosts())
+  }
+
+  // Trigger server check manually (public method)
+  public async triggerServerCheck(): Promise<any> {
+    return await ServerSchedulingService.triggerServerCheck()
   }
 }
 

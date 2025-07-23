@@ -248,6 +248,12 @@ function CreatePostModal({ isOpen, onClose, onPostCreated, selectedProfile }: Cr
               Schedule
             </Button>
           </div>
+
+          <div className="text-center">
+            <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+              💡 Scheduled posts will be sent automatically by our server, even when your browser is closed!
+            </p>
+          </div>
         </div>
       </motion.div>
     </div>
@@ -265,6 +271,11 @@ export default function SchedulerPage() {
   const [editDate, setEditDate] = useState('')
   const [editTime, setEditTime] = useState('')
   const { selectedProfile, profiles } = useProfile()
+
+  // Server sync state
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<'success' | 'error' | 'pending' | null>(null)
 
   const loadScheduledPosts = () => {
     try {
@@ -323,6 +334,48 @@ export default function SchedulerPage() {
     setEditContent('')
     setEditDate('')
     setEditTime('')
+  }
+
+  // Manual server sync functions
+  const handleManualSync = async () => {
+    setIsSyncing(true)
+    setSyncStatus('pending')
+    
+    try {
+      const success = await schedulingService.forceSyncToServer()
+      if (success) {
+        setSyncStatus('success')
+        setLastSyncTime(new Date().toLocaleTimeString())
+      } else {
+        setSyncStatus('error')
+      }
+    } catch (error) {
+      setSyncStatus('error')
+      console.error('Manual sync failed:', error)
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
+  const handleTriggerServerCheck = async () => {
+    setIsSyncing(true)
+    
+    try {
+      const result = await schedulingService.triggerServerCheck()
+      if (result && result.success) {
+        setSyncStatus('success')
+        setLastSyncTime(new Date().toLocaleTimeString())
+        // Refresh posts to see any status changes
+        loadScheduledPosts()
+      } else {
+        setSyncStatus('error')
+      }
+    } catch (error) {
+      setSyncStatus('error')
+      console.error('Server check failed:', error)
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
   const formatDate = (dateString: string) => {
@@ -454,6 +507,65 @@ export default function SchedulerPage() {
                 </button>
               ))}
             </nav>
+          </div>
+        </div>
+      </div>
+
+      {/* Server Sync Status */}
+      <div className="bg-blue-50 border-b border-blue-200">
+        <div className="max-w-6xl mx-auto px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  syncStatus === 'success' ? 'bg-green-500' : 
+                  syncStatus === 'error' ? 'bg-red-500' : 
+                  syncStatus === 'pending' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'
+                }`} />
+                <span className="text-sm font-medium text-blue-900">
+                  Server Sync Status
+                </span>
+              </div>
+              {lastSyncTime && (
+                <span className="text-xs text-blue-600">
+                  Last synced: {lastSyncTime}
+                </span>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button 
+                onClick={handleManualSync}
+                disabled={isSyncing}
+                size="sm"
+                variant="outline"
+                className="text-blue-700 border-blue-300 hover:bg-blue-100"
+              >
+                {isSyncing ? (
+                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                )}
+                Sync to Server
+              </Button>
+              <Button 
+                onClick={handleTriggerServerCheck}
+                disabled={isSyncing}
+                size="sm"
+                variant="outline"
+                className="text-blue-700 border-blue-300 hover:bg-blue-100"
+              >
+                {isSyncing ? (
+                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Send className="h-3 w-3 mr-1" />
+                )}
+                Check Server
+              </Button>
+              <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                🤖 Auto-sync every 5min
+              </div>
+            </div>
           </div>
         </div>
       </div>
