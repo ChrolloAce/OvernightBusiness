@@ -345,7 +345,6 @@ function BulkScheduleModal({ isOpen, onClose, onPostsCreated, selectedProfile }:
       // Schedule all posts
       for (const post of posts) {
         await schedulingService.schedulePost({
-          id: `bulk-${Date.now()}-${Math.random()}`,
           businessProfileId: selectedProfile.googleBusinessId,
           businessName: selectedProfile.name,
           content: post.content,
@@ -459,7 +458,7 @@ function BulkScheduleModal({ isOpen, onClose, onPostsCreated, selectedProfile }:
             {/* Post Type */}
             <div>
               <Label>Post Type</Label>
-              <Select value={postType} onValueChange={setPostType}>
+              <Select value={postType} onValueChange={(value) => setPostType(value as 'update' | 'offer' | 'event' | 'product')}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
