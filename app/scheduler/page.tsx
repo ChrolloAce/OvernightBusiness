@@ -1,69 +1,275 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Calendar, 
   Clock, 
   Plus, 
-  Edit, 
+  Edit3, 
   Trash2, 
   Play, 
   Pause,
   CheckCircle,
   AlertCircle,
-  BarChart3,
-  Bot,
-  Zap,
   RefreshCw,
-  Bug,
   Search,
   Filter,
   MoreHorizontal,
   ChevronDown,
-  Users,
+  Save,
+  X,
+  Wand2,
+  Send,
+  CalendarDays,
+  Timer,
+  Archive,
   TrendingUp,
-  Heart,
-  MessageCircle,
-  Repeat2,
-  Share,
+  Users,
   Eye,
-  Info
+  MessageSquare,
+  Heart,
+  Repeat2,
+  Share
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AutomationDashboard } from '@/components/automation-dashboard'
 import { useProfile } from '@/contexts/profile-context'
 import { schedulingService, ScheduledPost } from '@/lib/scheduling-service'
+import { GoogleAuthService } from '@/lib/google-auth'
+
+interface CreatePostModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onPostCreated: () => void
+  selectedProfile: any
+}
+
+function CreatePostModal({ isOpen, onClose, onPostCreated, selectedProfile }: CreatePostModalProps) {
+  const [content, setContent] = useState('')
+  const [postType, setPostType] = useState<'update' | 'offer' | 'event' | 'product'>('update')
+  const [scheduledDate, setScheduledDate] = useState('')
+  const [scheduledTime, setScheduledTime] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [isScheduling, setIsScheduling] = useState(false)
+
+  const generateContent = async () => {
+    if (!selectedProfile) return
+    
+    setIsGenerating(true)
+    try {
+      const response = await fetch('/api/generate-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `Create a ${postType} post for ${selectedProfile.name}`,
+          businessName: selectedProfile.name,
+          businessType: selectedProfile.category,
+          postType
+        })
+      })
+
+      const data = await response.json()
+      if (data.content) {
+        setContent(data.content)
+      }
+    } catch (error) {
+      console.error('Error generating content:', error)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const schedulePost = async () => {
+    if (!content || !scheduledDate || !scheduledTime || !selectedProfile) return
+
+    setIsScheduling(true)
+    try {
+      const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`)
+      
+      schedulingService.schedulePost({
+        businessProfileId: selectedProfile.googleBusinessId,
+        businessName: selectedProfile.name,
+        content,
+        postType,
+        status: 'scheduled',
+        scheduledDate: scheduledDateTime.toISOString()
+      })
+
+      onPostCreated()
+      onClose()
+      setContent('')
+      setScheduledDate('')
+      setScheduledTime('')
+    } catch (error) {
+      console.error('Error scheduling post:', error)
+    } finally {
+      setIsScheduling(false)
+    }
+  }
+
+  const postNow = async () => {
+    if (!content || !selectedProfile) return
+
+    setIsScheduling(true)
+    try {
+      const googleAuth = GoogleAuthService.getInstance()
+      const accessToken = await googleAuth.getValidAccessToken()
+
+      const response = await fetch('/api/google-business/local-posts', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          businessProfileId: selectedProfile.googleBusinessId,
+          content,
+          postType
+        })
+      })
+
+      if (response.ok) {
+        onPostCreated()
+        onClose()
+        setContent('')
+      }
+    } catch (error) {
+      console.error('Error posting:', error)
+    } finally {
+      setIsScheduling(false)
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
+      >
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900">Create Post</h2>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Post Type</Label>
+              <Select value={postType} onValueChange={(value: any) => setPostType(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="update">Update</SelectItem>
+                  <SelectItem value="offer">Offer</SelectItem>
+                  <SelectItem value="event">Event</SelectItem>
+                  <SelectItem value="product">Product</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>&nbsp;</Label>
+              <Button onClick={generateContent} disabled={isGenerating} className="w-full">
+                {isGenerating ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4 mr-2" />
+                )}
+                Generate with AI
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <Label>Content</Label>
+            <textarea 
+              value={content}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
+              placeholder="Write your post content or generate with AI..."
+              className="w-full min-h-32 p-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Date</Label>
+              <Input
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div>
+              <Label>Time</Label>
+              <Input
+                type="time"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Button onClick={postNow} disabled={!content || isScheduling} className="flex-1">
+              {isScheduling ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Post Now
+            </Button>
+            <Button 
+              onClick={schedulePost} 
+              disabled={!content || !scheduledDate || !scheduledTime || isScheduling}
+              variant="outline"
+              className="flex-1"
+            >
+              {isScheduling ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Calendar className="h-4 w-4 mr-2" />
+              )}
+              Schedule
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
 
 export default function SchedulerPage() {
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([])
   const [mounted, setMounted] = useState(false)
-  const [debugInfo, setDebugInfo] = useState<any>({})
   const [selectedTab, setSelectedTab] = useState('scheduled')
   const [searchQuery, setSearchQuery] = useState('')
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingPost, setEditingPost] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
+  const [editDate, setEditDate] = useState('')
+  const [editTime, setEditTime] = useState('')
   const { selectedProfile, profiles } = useProfile()
 
-  // Load real scheduled posts from the scheduling service
   const loadScheduledPosts = () => {
     try {
       const posts = schedulingService.getScheduledPosts()
-      const readyPosts = schedulingService.getPostsReadyForExecution()
-      const upcomingPosts = schedulingService.getUpcomingPosts()
-      
       setScheduledPosts(posts)
-      setDebugInfo({
-        totalPosts: posts.length,
-        scheduledPosts: posts.filter(p => p.status === 'scheduled').length,
-        publishedPosts: posts.filter(p => p.status === 'published').length,
-        failedPosts: posts.filter(p => p.status === 'failed').length,
-        readyToExecute: readyPosts.length,
-        upcoming: upcomingPosts.length,
-        lastUpdate: new Date().toLocaleTimeString()
-      })
     } catch (error) {
       console.error('[Scheduler] Error loading posts:', error)
     }
@@ -87,39 +293,61 @@ export default function SchedulerPage() {
   }
 
   const deletePost = (postId: string) => {
-    const success = schedulingService.deleteScheduledPost(postId)
-    if (success) {
-      loadScheduledPosts()
-    }
+    schedulingService.deleteScheduledPost(postId)
+    loadScheduledPosts()
+  }
+
+  const startEditing = (post: ScheduledPost) => {
+    setEditingPost(post.id)
+    setEditContent(post.content)
+    const date = new Date(post.scheduledDate)
+    setEditDate(date.toISOString().split('T')[0])
+    setEditTime(date.toTimeString().slice(0, 5))
+  }
+
+  const saveEdit = () => {
+    if (!editingPost || !editDate || !editTime) return
+    
+    const newDateTime = new Date(`${editDate}T${editTime}`)
+    schedulingService.updateScheduledPost(editingPost, {
+      content: editContent,
+      scheduledDate: newDateTime.toISOString()
+    })
+    
+    setEditingPost(null)
+    loadScheduledPosts()
+  }
+
+  const cancelEdit = () => {
+    setEditingPost(null)
+    setEditContent('')
+    setEditDate('')
+    setEditTime('')
   }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    const now = new Date()
-    const diffInHours = (date.getTime() - now.getTime()) / (1000 * 60 * 60)
+    const today = new Date()
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
     
-    if (diffInHours < 24 && diffInHours > -24) {
-      if (diffInHours > 0) {
-        return `Tomorrow ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-      } else if (diffInHours > -1) {
-        return `${Math.abs(Math.floor(diffInHours * 60))} min ago`
-      } else {
-        return `${Math.abs(Math.floor(diffInHours))}h ago`
-      }
+    if (date.toDateString() === today.toDateString()) {
+      return `Today ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return `Tomorrow ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    } else {
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
     }
-    
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
   }
 
   const getFilteredPosts = () => {
     let filtered = scheduledPosts
 
-    // Filter by status based on selected tab
     switch (selectedTab) {
       case 'scheduled':
         filtered = filtered.filter(p => p.status === 'scheduled')
@@ -130,12 +358,8 @@ export default function SchedulerPage() {
       case 'failed':
         filtered = filtered.filter(p => p.status === 'failed')
         break
-      case 'drafts':
-        filtered = filtered.filter(p => p.status === 'publishing')
-        break
     }
 
-    // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(post => 
         post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -143,49 +367,48 @@ export default function SchedulerPage() {
       )
     }
 
-    return filtered
+    return filtered.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
+  }
+
+  const groupPostsByDate = (posts: ScheduledPost[]) => {
+    const groups: { [key: string]: ScheduledPost[] } = {}
+    
+    posts.forEach(post => {
+      const date = new Date(post.scheduledDate)
+      const dateKey = date.toDateString()
+      
+      if (!groups[dateKey]) {
+        groups[dateKey] = []
+      }
+      groups[dateKey].push(post)
+    })
+    
+    return groups
   }
 
   if (!mounted) {
     return <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
     </div>
   }
+
+  const filteredPosts = getFilteredPosts()
+  const groupedPosts = groupPostsByDate(filteredPosts)
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-semibold text-gray-900">Posts</h1>
-                             <Button 
-                 size="sm" 
-                 className="bg-blue-600 hover:bg-blue-700 text-white"
-                 onClick={() => window.location.href = '/content'}
-               >
-                 <Plus className="h-4 w-4 mr-2" />
-                 New draft
-               </Button>
-               <Button 
-                 size="sm" 
-                 variant="outline" 
-                 className="text-orange-600 border-orange-300 hover:bg-orange-50"
-                 onClick={() => window.location.href = '/content'}
-               >
-                 Add to Queue
-               </Button>
-               <Button 
-                 size="sm" 
-                 className="bg-orange-600 hover:bg-orange-700 text-white"
-                 onClick={() => window.location.href = '/content'}
-               >
-                 Post
-               </Button>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                {filteredPosts.length} {selectedTab}
+              </Badge>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <div className="relative">
                 <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <Input
@@ -195,71 +418,83 @@ export default function SchedulerPage() {
                   className="pl-10 w-64"
                 />
               </div>
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Manage queue
+              <Button onClick={() => setShowCreateModal(true)} disabled={!selectedProfile}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Post
+              </Button>
+              <Button variant="outline" onClick={loadScheduledPosts}>
+                <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="mt-4">
+            <nav className="flex space-x-8">
+              {[
+                { id: 'scheduled', label: 'Scheduled', count: scheduledPosts.filter(p => p.status === 'scheduled').length },
+                { id: 'published', label: 'Published', count: scheduledPosts.filter(p => p.status === 'published').length },
+                { id: 'failed', label: 'Failed', count: scheduledPosts.filter(p => p.status === 'failed').length }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedTab(tab.id)}
+                  className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    selectedTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  {tab.count > 0 && (
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs">
+                      {tab.count}
+                    </Badge>
+                  )}
+                </button>
+              ))}
+            </nav>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex space-x-8">
-          {/* Main Content */}
-          <div className="flex-1">
-            {/* Tabs */}
-            <div className="mb-6">
-              <nav className="flex space-x-8">
-                {[
-                  { id: 'scheduled', label: 'Scheduled', count: debugInfo.scheduledPosts },
-                  { id: 'drafts', label: 'Drafts', count: 0 },
-                  { id: 'published', label: 'Posted', count: debugInfo.publishedPosts },
-                  { id: 'failed', label: 'Failed', count: debugInfo.failedPosts }
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setSelectedTab(tab.id)}
-                    className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                      selectedTab === tab.id
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <span>{tab.label}</span>
-                    {tab.count > 0 && (
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs">
-                        {tab.count}
-                      </Badge>
-                    )}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            {/* Posts List */}
-            <div className="space-y-4">
-              {getFilteredPosts().length === 0 ? (
-                <div className="text-center py-12">
-                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No posts found</h3>
-                  <p className="text-gray-500 mb-4">
-                    {selectedTab === 'scheduled' 
-                      ? "You haven't scheduled any posts yet."
-                      : `No ${selectedTab} posts found.`
-                    }
-                  </p>
-                                     <Button 
-                     className="bg-blue-600 hover:bg-blue-700 text-white"
-                     onClick={() => window.location.href = '/content'}
-                   >
-                     <Plus className="h-4 w-4 mr-2" />
-                     Create your first post
-                   </Button>
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-6 py-6">
+        {Object.keys(groupedPosts).length === 0 ? (
+          <div className="text-center py-16">
+            <CalendarDays className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-medium text-gray-900 mb-2">No posts found</h3>
+            <p className="text-gray-500 mb-6">
+              {selectedTab === 'scheduled' 
+                ? "Schedule your first post to get started"
+                : `No ${selectedTab} posts found`
+              }
+            </p>
+            <Button onClick={() => setShowCreateModal(true)} disabled={!selectedProfile}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Post
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {Object.entries(groupedPosts).map(([dateKey, posts]) => (
+              <div key={dateKey}>
+                <div className="flex items-center space-x-3 mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {new Date(dateKey).toLocaleDateString('en-US', { 
+                      weekday: 'long',
+                      month: 'long', 
+                      day: 'numeric'
+                    })}
+                  </h2>
+                  <div className="h-px bg-gray-200 flex-1" />
+                  <Badge variant="secondary" className="text-xs">
+                    {posts.length} post{posts.length !== 1 ? 's' : ''}
+                  </Badge>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {getFilteredPosts().map((post, index) => (
+
+                <div className="grid gap-4">
+                  {posts.map((post, index) => (
                     <motion.div
                       key={post.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -268,228 +503,136 @@ export default function SchedulerPage() {
                       className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
                     >
                       <div className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-3 mb-3">
-                              <div className="flex-shrink-0">
+                                                 {editingPost === post.id ? (
+                           <div className="space-y-4">
+                             <textarea
+                               value={editContent}
+                               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditContent(e.target.value)}
+                               className="w-full min-h-24 p-3 border border-gray-300 rounded-lg bg-white text-gray-900 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                             />
+                            <div className="grid grid-cols-2 gap-3">
+                              <Input
+                                type="date"
+                                value={editDate}
+                                onChange={(e) => setEditDate(e.target.value)}
+                              />
+                              <Input
+                                type="time"
+                                value={editTime}
+                                onChange={(e) => setEditTime(e.target.value)}
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button onClick={saveEdit} size="sm">
+                                <Save className="h-4 w-4 mr-2" />
+                                Save
+                              </Button>
+                              <Button onClick={cancelEdit} variant="outline" size="sm">
+                                <X className="h-4 w-4 mr-2" />
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-3 mb-3">
                                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                                   <span className="text-white text-sm font-medium">
                                     {post.businessName.charAt(0)}
                                   </span>
                                 </div>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
-                                  {post.businessName}
-                                </p>
-                                <div className="flex items-center space-x-2 mt-1">
-                                  <Badge className={`${getStatusColor(post.status)} text-xs`}>
-                                    {post.status === 'scheduled' && <Clock className="h-3 w-3 mr-1" />}
-                                    {post.status === 'published' && <CheckCircle className="h-3 w-3 mr-1" />}
-                                    {post.status === 'failed' && <AlertCircle className="h-3 w-3 mr-1" />}
-                                    {post.status === 'publishing' && <RefreshCw className="h-3 w-3 mr-1 animate-spin" />}
-                                    {post.status}
-                                  </Badge>
-                                  <span className="text-xs text-gray-500">
-                                    {formatDate(post.scheduledDate)}
-                                  </span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center space-x-2">
+                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                      {post.businessName}
+                                    </p>
+                                    <Badge className={`${getStatusColor(post.status)} text-xs`}>
+                                      {post.status === 'scheduled' && <Clock className="h-3 w-3 mr-1" />}
+                                      {post.status === 'published' && <CheckCircle className="h-3 w-3 mr-1" />}
+                                      {post.status === 'failed' && <AlertCircle className="h-3 w-3 mr-1" />}
+                                      {post.status === 'publishing' && <RefreshCw className="h-3 w-3 mr-1 animate-spin" />}
+                                      {post.status}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center space-x-2 mt-1">
+                                    <Timer className="h-3 w-3 text-gray-400" />
+                                    <span className="text-xs text-gray-500">
+                                      {formatDate(post.scheduledDate)}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {post.postType}
+                                    </Badge>
+                                  </div>
                                 </div>
                               </div>
+                              
+                              <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                                <p className="text-sm text-gray-700 leading-relaxed">
+                                  {post.content}
+                                </p>
+                              </div>
+
+                              {post.status === 'published' && (
+                                <div className="flex items-center space-x-6 text-xs text-gray-500">
+                                  <div className="flex items-center space-x-1">
+                                    <Heart className="h-3 w-3" />
+                                    <span>0</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <MessageSquare className="h-3 w-3" />
+                                    <span>0</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Share className="h-3 w-3" />
+                                    <span>0</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Eye className="h-3 w-3" />
+                                    <span>0</span>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                             
-                            <div className="bg-gray-50 rounded-lg p-3 mb-3">
-                              <p className="text-sm text-gray-700 line-clamp-3">
-                                {post.content}
-                              </p>
+                            <div className="flex items-center space-x-2 ml-4">
+                              {post.status === 'scheduled' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => startEditing(post)}
+                                  className="text-gray-400 hover:text-blue-500"
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deletePost(post.id)}
+                                className="text-gray-400 hover:text-red-500"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
-
-                            {post.status === 'published' && (
-                              <div className="flex items-center space-x-6 text-xs text-gray-500">
-                                <div className="flex items-center space-x-1">
-                                  <Heart className="h-3 w-3" />
-                                  <span>0</span>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <MessageCircle className="h-3 w-3" />
-                                  <span>0</span>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <Repeat2 className="h-3 w-3" />
-                                  <span>0</span>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <Eye className="h-3 w-3" />
-                                  <span>0</span>
-                                </div>
-                              </div>
-                            )}
                           </div>
-                          
-                          <div className="flex items-center space-x-2 ml-4">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deletePost(post.id)}
-                              className="text-gray-400 hover:text-red-500"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </motion.div>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            ))}
           </div>
-
-          {/* Sidebar */}
-          <div className="w-80 space-y-6">
-            {/* Quick Stats */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Queue Status</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Scheduled</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{debugInfo.scheduledPosts || 0}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Published</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{debugInfo.publishedPosts || 0}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Failed</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{debugInfo.failedPosts || 0}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Ready to post</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{debugInfo.readyToExecute || 0}</span>
-                </div>
-              </div>
-              
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <div className="text-xs text-gray-500 mb-2">Last updated: {debugInfo.lastUpdate}</div>
-                <Button
-                  onClick={loadScheduledPosts}
-                  size="sm"
-                  variant="outline"
-                  className="w-full"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </Button>
-              </div>
-            </div>
-
-            {/* AI Automation Panel */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <Bot className="h-5 w-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-900">AI Automation</h3>
-              </div>
-              
-              <Tabs defaultValue="manual" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="manual" className="text-sm">Manual</TabsTrigger>
-                  <TabsTrigger value="automation" className="text-sm">AI Auto</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="manual" className="space-y-4">
-                  <p className="text-sm text-gray-600">
-                    Create and schedule posts manually with AI assistance.
-                  </p>
-                                     <Button 
-                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                     onClick={() => window.location.href = '/content'}
-                   >
-                     <Plus className="h-4 w-4 mr-2" />
-                     Create Post
-                   </Button>
-                </TabsContent>
-                
-                <TabsContent value="automation" className="space-y-4">
-                  <AutomationDashboard 
-                    selectedProfile={selectedProfile}
-                    profiles={profiles}
-                  />
-                </TabsContent>
-              </Tabs>
-            </div>
-
-            {/* Scheduling Help Guide */}
-            <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <Info className="h-5 w-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-blue-900">Scheduling Guide</h3>
-              </div>
-              
-              <div className="space-y-4 text-sm">
-                <div>
-                  <h4 className="font-medium text-blue-900 mb-2">📋 Quick Checklist:</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-blue-800">Go to Content Hub</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-blue-800">Click "Create Content"</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-blue-800">Generate content with AI</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-blue-800">Choose "Schedule for Later"</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-blue-800">Posts appear here automatically</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t border-blue-200 pt-4">
-                  <h4 className="font-medium text-blue-900 mb-2">🔧 Troubleshooting:</h4>
-                  <div className="space-y-1 text-blue-700">
-                    <p>• Posts not appearing? Check your Google authentication</p>
-                    <p>• Posts not publishing? Verify your business profile access</p>
-                    <p>• Time zone issues? Use your local time when scheduling</p>
-                    <p>• Still having issues? Check the browser console for errors</p>
-                  </div>
-                </div>
-
-                <div className="border-t border-blue-200 pt-4">
-                  <h4 className="font-medium text-blue-900 mb-2">💡 Pro Tips:</h4>
-                  <div className="space-y-1 text-blue-700">
-                    <p>• Schedule posts at least 30 minutes in advance</p>
-                    <p>• Posts auto-publish every 60 seconds when due</p>
-                    <p>• Keep this tab open for best performance</p>
-                    <p>• Check "Ready to post" count above for pending posts</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
+
+      <CreatePostModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onPostCreated={loadScheduledPosts}
+        selectedProfile={selectedProfile}
+      />
     </div>
   )
 } 
