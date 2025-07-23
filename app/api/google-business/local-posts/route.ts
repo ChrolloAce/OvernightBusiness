@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    console.log('[Local Posts API] Creating post for:', fullLocationName)
+    console.log('[Local Posts API] Creating post for:', businessProfileId)
     console.log('[Local Posts API] Post data:', JSON.stringify(postData, null, 2))
 
     // Make the API call to create the post

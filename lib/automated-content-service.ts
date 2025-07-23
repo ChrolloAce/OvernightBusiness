@@ -306,9 +306,9 @@ export class AutomatedContentService {
   }
 
   private selectContentType(config: AutoPostConfig): 'update' | 'offer' | 'event' | 'product' {
-    const availableTypes = config.contentTypes.length > 0 ? config.contentTypes : ['update']
+    const availableTypes = config.contentTypes.length > 0 ? config.contentTypes : ['update' as const]
     const randomIndex = Math.floor(Math.random() * availableTypes.length)
-    return availableTypes[randomIndex]
+    return availableTypes[randomIndex] as 'update' | 'offer' | 'event' | 'product'
   }
 
   private generatePrompt(
