@@ -462,7 +462,7 @@ export default function SchedulerPage() {
             </div>
             
             <div className="flex items-center space-x-3">
-              <div className="relative">
+          <div className="relative">
                 <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <Input
                   placeholder="Search posts..."
@@ -479,7 +479,7 @@ export default function SchedulerPage() {
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
-          </div>
+                    </div>
 
           {/* Tabs */}
           <div className="mt-4">
@@ -507,9 +507,9 @@ export default function SchedulerPage() {
                 </button>
               ))}
             </nav>
-          </div>
-        </div>
-      </div>
+                    </div>
+                  </div>
+                </div>
 
       {/* Server Sync Status */}
       <div className="bg-blue-50 border-b border-blue-200">
@@ -548,7 +548,7 @@ export default function SchedulerPage() {
                 )}
                 Sync to Server
               </Button>
-              <Button 
+                <Button 
                 onClick={handleTriggerServerCheck}
                 disabled={isSyncing}
                 size="sm"
@@ -561,14 +561,14 @@ export default function SchedulerPage() {
                   <Send className="h-3 w-3 mr-1" />
                 )}
                 Check Server
-              </Button>
+                </Button>
               <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
                 🤖 Auto-sync every 5min
               </div>
             </div>
           </div>
-        </div>
-      </div>
+                  </div>
+                </div>
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-6">
@@ -586,7 +586,7 @@ export default function SchedulerPage() {
               <Plus className="h-4 w-4 mr-2" />
               Create Post
             </Button>
-          </div>
+                  </div>
         ) : (
           <div className="space-y-8">
             {Object.entries(groupedPosts).map(([dateKey, posts]) => (
@@ -607,10 +607,10 @@ export default function SchedulerPage() {
 
                 <div className="grid gap-4">
                   {posts.map((post, index) => (
-                    <motion.div
-                      key={post.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
+                  <motion.div
+                    key={post.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
                       className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
                     >
@@ -654,7 +654,7 @@ export default function SchedulerPage() {
                                     {post.businessName.charAt(0)}
                                   </span>
                                 </div>
-                                <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0">
                                   <div className="flex items-center space-x-2">
                                     <p className="text-sm font-medium text-gray-900 truncate">
                                       {post.businessName}
@@ -664,14 +664,14 @@ export default function SchedulerPage() {
                                       {post.status === 'published' && <CheckCircle className="h-3 w-3 mr-1" />}
                                       {post.status === 'failed' && <AlertCircle className="h-3 w-3 mr-1" />}
                                       {post.status === 'publishing' && <RefreshCw className="h-3 w-3 mr-1 animate-spin" />}
-                                      {post.status}
-                                    </Badge>
-                                  </div>
+                              {post.status}
+                            </Badge>
+                          </div>
                                   <div className="flex items-center space-x-2 mt-1">
                                     <Timer className="h-3 w-3 text-gray-400" />
                                     <span className="text-xs text-gray-500">
-                                      {formatDate(post.scheduledDate)}
-                                    </span>
+                              {formatDate(post.scheduledDate)}
+                            </span>
                                     <Badge variant="outline" className="text-xs">
                                       {post.postType}
                                     </Badge>
@@ -698,12 +698,12 @@ export default function SchedulerPage() {
                                   <div className="flex items-center space-x-1">
                                     <Share className="h-3 w-3" />
                                     <span>0</span>
-                                  </div>
+                          </div>
                                   <div className="flex items-center space-x-1">
                                     <Eye className="h-3 w-3" />
                                     <span>0</span>
-                                  </div>
-                                </div>
+                          </div>
+                        </div>
                               )}
                             </div>
                             
@@ -716,7 +716,7 @@ export default function SchedulerPage() {
                                   className="text-gray-400 hover:text-blue-500"
                                 >
                                   <Edit3 className="h-4 w-4" />
-                                </Button>
+                          </Button>
                               )}
                               <Button
                                 variant="ghost"
@@ -725,13 +725,13 @@ export default function SchedulerPage() {
                                 className="text-gray-400 hover:text-red-500"
                               >
                                 <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                          </Button>
+                        </div>
                           </div>
                         )}
-                      </div>
-                    </motion.div>
-                  ))}
+                    </div>
+                  </motion.div>
+                ))}
                 </div>
               </div>
             ))}

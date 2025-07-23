@@ -75,7 +75,7 @@ function MetricCard({ title, value, change, icon: Icon, trend }: MetricCardProps
               {change > 0 ? '+' : ''}{change}%
             </span>
           </div>
-        </div>
+    </div>
       </CardContent>
     </Card>
   )
@@ -112,7 +112,7 @@ export default function AnalyticsPage() {
   if (!mounted) {
     return <div className="flex items-center justify-center min-h-screen">
       <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-    </div>
+        </div>
   }
 
   return (
@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
               )}
             </div>
             
-            <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-3">
               <Select value={timeRange} onValueChange={setTimeRange}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
@@ -151,10 +151,10 @@ export default function AnalyticsPage() {
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+                    </div>
+                    </div>
+                  </div>
+                </div>
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-6">
@@ -208,8 +208,8 @@ export default function AnalyticsPage() {
                   change={analyticsData.reviews.change}
                   icon={Star}
                 />
-              </div>
             </div>
+          </div>
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -249,19 +249,19 @@ export default function AnalyticsPage() {
                         <span className="text-sm text-gray-700">Direction Requests</span>
                       </div>
                       <span className="text-sm font-medium text-gray-900">{analyticsData.directions.total}</span>
-                    </div>
+                            </div>
                     <div className="flex items-center justify-between py-2">
                       <div className="flex items-center space-x-3">
                         <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
                         <span className="text-sm text-gray-700">Phone Calls</span>
-                      </div>
+                          </div>
                       <span className="text-sm font-medium text-gray-900">{analyticsData.calls.total}</span>
-                    </div>
+                          </div>
                     <div className="flex items-center justify-between py-2">
                       <div className="flex items-center space-x-3">
                         <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                         <span className="text-sm text-gray-700">Photo Views</span>
-                      </div>
+                        </div>
                       <span className="text-sm font-medium text-gray-900">{analyticsData.photos.total}</span>
                     </div>
                   </div>
@@ -304,17 +304,17 @@ export default function AnalyticsPage() {
                   <div className="text-center">
                     <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-2">
                       <Star className="h-6 w-6 text-blue-600" />
-                    </div>
+                            </div>
                     <p className="text-2xl font-bold text-gray-900">{analyticsData.reviews.rating}</p>
                     <p className="text-sm text-gray-600">Average Rating</p>
-                  </div>
+                            </div>
                   <div className="text-center">
                     <div className="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center mx-auto mb-2">
                       <MessageSquare className="h-6 w-6 text-green-600" />
-                    </div>
+                          </div>
                     <p className="text-2xl font-bold text-gray-900">{analyticsData.reviews.total}</p>
                     <p className="text-sm text-gray-600">Total Reviews</p>
-                  </div>
+                        </div>
                   <div className="text-center">
                     <div className="w-12 h-12 bg-yellow-50 rounded-lg flex items-center justify-center mx-auto mb-2">
                       <Eye className="h-6 w-6 text-yellow-600" />
@@ -328,11 +328,11 @@ export default function AnalyticsPage() {
                     </div>
                     <p className="text-2xl font-bold text-gray-900">{analyticsData.views.total}</p>
                     <p className="text-sm text-gray-600">Profile Views</p>
-                  </div>
+            </div>
                 </div>
               </CardContent>
             </Card>
-          </div>
+                </div>
         )}
       </div>
     </div>
