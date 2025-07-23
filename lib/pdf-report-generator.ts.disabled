@@ -1,7 +1,8 @@
 // Enhanced PDF Report Generator with Charts and Real Data
+// TEMPORARILY DISABLED for Vercel deployment - chartjs-node-canvas build issues
 
 import jsPDF from 'jspdf'
-import { ChartJSNodeCanvas } from 'chartjs-node-canvas'
+// import { ChartJSNodeCanvas } from 'chartjs-node-canvas'
 import { format, subDays, subWeeks, subMonths } from 'date-fns'
 import { SavedBusinessProfile } from './business-profiles-storage'
 import { ClientInfo } from './client-management'

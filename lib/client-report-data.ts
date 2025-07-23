@@ -2,7 +2,67 @@
 
 import { format, subDays } from 'date-fns'
 import { SavedBusinessProfile } from './business-profiles-storage'
-import { EnhancedReportData } from './pdf-report-generator'
+
+// Local definition of EnhancedReportData (copied from removed pdf-report-generator)
+export interface EnhancedReportData {
+  businessProfile: SavedBusinessProfile
+  period: {
+    start: string
+    end: string
+    label: string
+  }
+  analytics: {
+    totalViews: number
+    totalSearches: number
+    totalActions: number
+    callClicks: number
+    websiteClicks: number
+    directionRequests: number
+    bookings: number
+    conversations: number
+    // Trend data (comparison with previous period)
+    trends: {
+      viewsTrend: number
+      searchesTrend: number
+      actionsTrend: number
+      callClicksTrend: number
+      websiteClicksTrend: number
+      directionRequestsTrend: number
+    }
+    // Daily breakdown for charts
+    dailyData: Array<{
+      date: string
+      views: number
+      searches: number
+      actions: number
+      calls: number
+      website: number
+      directions: number
+    }>
+  }
+  reviews: {
+    totalReviews: number
+    averageRating: number
+    newReviews: number
+    ratingDistribution: { [key: number]: number }
+    ratingTrend: number
+    recentReviews: Array<{
+      rating: number
+      comment?: string
+      author: string
+      date: string
+      isNew: boolean
+    }>
+  }
+  content: {
+    totalPhotos: number
+    newPhotos: number
+    totalPosts: number
+    newPosts: number
+    photoViewsTrend: number
+    engagementTrend: number
+  }
+}
 
 export class ClientReportDataGenerator {
   // Generate report data from real analytics (client-side safe)
