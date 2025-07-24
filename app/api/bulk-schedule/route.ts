@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Load business profile and photos
     let profile
     try {
-      profile = BusinessProfilesStorage.getProfile(businessProfileId)
+      profile = BusinessProfilesStorage.getProfileByGoogleId(businessProfileId)
       console.log('[Bulk Schedule API] Profile lookup result:', profile ? 'Found' : 'Not found')
     } catch (error) {
       console.error('[Bulk Schedule API] Error loading profile:', error)
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (!profile) {
-      throw new Error(`Business profile not found with ID: ${businessProfileId}`)
+      throw new Error(`Business profile not found with Google Business ID: ${businessProfileId}`)
     }
 
     // Load business photos (non-blocking)

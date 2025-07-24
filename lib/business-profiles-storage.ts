@@ -185,6 +185,12 @@ export class BusinessProfilesStorage {
     return profiles.find(p => p.id === id) || null
   }
 
+  // Get a specific profile by Google Business ID
+  static getProfileByGoogleId(googleBusinessId: string): SavedBusinessProfile | null {
+    const profiles = this.getAllProfiles()
+    return profiles.find(p => p.googleBusinessId === googleBusinessId) || null
+  }
+
   // Update a profile
   static updateProfile(id: string, updates: Partial<SavedBusinessProfile>): boolean {
     try {

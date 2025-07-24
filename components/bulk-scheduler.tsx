@@ -70,7 +70,7 @@ export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkSche
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          businessProfileId: selectedProfile.id,
+          businessProfileId: selectedProfile.googleBusinessId,
           businessName: selectedProfile.name,
           postCount: parseInt(postCount.toString()),
           startDate: new Date(startDate).toISOString(),
