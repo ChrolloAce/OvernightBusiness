@@ -35,13 +35,15 @@ export async function POST(request: NextRequest) {
       throw new Error('Missing required field: startDate')
     }
 
-    // Load business photos (optional - don't fail if this doesn't work)
+    // Load business photos (try to match content hub approach)
     let businessPhotos: any[] = []
     try {
       // Try to find the profile for photos (optional)
       const profile = BusinessProfilesStorage.getProfileByGoogleId(businessProfileId)
       if (profile) {
-        console.log('[Bulk Schedule API] Profile found, loading photos...')
+        console.log('[Bulk Schedule API] Profile found, loading photos using same method as content hub...')
+        
+        // Use the same method as content hub
         const result = await CentralizedDataLoader.loadAllProfileData(profile, {
           includeMedia: true,
           includeReviews: false,
@@ -50,12 +52,24 @@ export async function POST(request: NextRequest) {
           includePosts: false
         })
 
-        if (result.success && result.media) {
-          businessPhotos = result.media.allPhotos || []
-          console.log(`[Bulk Schedule API] Loaded ${businessPhotos.length} business photos`)
+        if (result.success && result.media && result.media.allPhotos) {
+          businessPhotos = result.media.allPhotos
+          console.log(`[Bulk Schedule API] Successfully loaded ${businessPhotos.length} photos from allPhotos`)
+          console.log('[Bulk Schedule API] Sample photo data:', businessPhotos[0] ? {
+            mediaFormat: businessPhotos[0].mediaFormat,
+            hasSourceUrl: !!businessPhotos[0].sourceUrl,
+            hasGoogleUrl: !!businessPhotos[0].googleUrl
+          } : 'No photos')
+        } else {
+          console.log('[Bulk Schedule API] No media data or allPhotos found:', {
+            success: result.success,
+            hasMedia: !!result.media,
+            hasAllPhotos: result.media?.allPhotos?.length || 0,
+            errors: result.errors
+          })
         }
       } else {
-        console.log('[Bulk Schedule API] Profile not found, continuing without photos')
+        console.log('[Bulk Schedule API] Profile not found for photos, continuing without photos')
       }
     } catch (error) {
       console.warn('[Bulk Schedule API] Failed to load photos (continuing without photos):', error)
