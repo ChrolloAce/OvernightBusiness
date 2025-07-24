@@ -20,6 +20,7 @@ import {
   Tags,
   TrendingUp
 } from 'lucide-react'
+import { ScheduledPost } from '@/lib/scheduling-service'
 
 
 interface BulkScheduleModalProps {
@@ -136,7 +137,7 @@ export function BulkScheduleModal({ isOpen, onClose, onScheduled, selectedProfil
             const { schedulingService: verifyService } = require('@/lib/scheduling-service')
             const allPosts = verifyService.getScheduledPosts()
             console.log(`[BulkScheduler] Verification: Found ${allPosts.length} total posts in localStorage`)
-            console.log('[BulkScheduler] Recent posts:', allPosts.slice(-3).map(p => ({
+            console.log('[BulkScheduler] Recent posts:', allPosts.slice(-3).map((p: ScheduledPost) => ({
               id: p.id,
               content: p.content.substring(0, 50) + '...',
               scheduledDate: p.scheduledDate
