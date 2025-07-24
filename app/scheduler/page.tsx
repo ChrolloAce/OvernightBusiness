@@ -287,6 +287,8 @@ export default function SchedulerPage() {
   const loadScheduledPosts = () => {
     try {
       const posts = schedulingService.getScheduledPosts()
+      console.log('[Scheduler] Loaded posts:', posts.length)
+      console.log('[Scheduler] Posts preview:', posts.slice(0, 3).map(p => ({ id: p.id, content: p.content.substring(0, 50) + '...', scheduledDate: p.scheduledDate })))
       setScheduledPosts(posts)
     } catch (error) {
       console.error('[Scheduler] Error loading posts:', error)
@@ -761,7 +763,13 @@ export default function SchedulerPage() {
         isOpen={showBulkModal}
         onClose={() => {
           setShowBulkModal(false)
-          loadScheduledPosts() // Refresh posts after bulk scheduling
+        }}
+        onScheduled={() => {
+          console.log('[Scheduler] Refreshing posts after bulk scheduling...')
+          // Try refreshing multiple times to ensure posts show up
+          loadScheduledPosts()
+          setTimeout(() => loadScheduledPosts(), 500)
+          setTimeout(() => loadScheduledPosts(), 1500)
         }}
         selectedProfile={selectedProfile}
       />

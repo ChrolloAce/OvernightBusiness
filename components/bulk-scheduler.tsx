@@ -25,10 +25,11 @@ import {
 interface BulkScheduleModalProps {
   isOpen: boolean
   onClose: () => void
+  onScheduled?: () => void // Add callback for when posts are successfully scheduled
   selectedProfile: any
 }
 
-export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkScheduleModalProps) {
+export function BulkScheduleModal({ isOpen, onClose, onScheduled, selectedProfile }: BulkScheduleModalProps) {
   const [postCount, setPostCount] = useState(10)
   const [startDate, setStartDate] = useState('')
   const [frequency, setFrequency] = useState('daily')
@@ -93,6 +94,12 @@ export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkSche
       
       if (data.success) {
         setResult(data)
+        // Call the onScheduled callback with a small delay to ensure posts are saved
+        if (onScheduled) {
+          setTimeout(() => {
+            onScheduled()
+          }, 1000)
+        }
       } else {
         throw new Error(data.details || data.error || 'Failed to bulk schedule posts')
       }
