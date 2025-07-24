@@ -29,6 +29,7 @@ import { GoogleAuthService } from '@/lib/google-auth'
 import { GoogleBusinessAPI, BusinessLocation } from '@/lib/google-business-api'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
+import { TestSubscriptionButton } from '@/components/test-subscription-button'
 
 interface BusinessProfile {
   id: string
@@ -505,6 +506,13 @@ export default function ProfilesPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Test Subscription Section - Only show in development */}
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="border-t border-white/20 dark:border-white/10 pt-4">
+                    <TestSubscriptionButton className="w-full" />
+                  </div>
+                )}
 
                 {/* User Info (when connected) */}
                 {mounted && isConnected && userInfo && (

@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-
 import { Badge } from '@/components/ui/badge'
+
 import { 
   CalendarPlus, 
   Zap, 
@@ -20,6 +20,7 @@ import {
   Tags,
   TrendingUp
 } from 'lucide-react'
+
 
 interface BulkScheduleModalProps {
   isOpen: boolean
@@ -36,6 +37,15 @@ export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkSche
   const [isGenerating, setIsGenerating] = useState(false)
   const [result, setResult] = useState<any>(null)
 
+  // Set default date to today when modal opens
+  useEffect(() => {
+    if (isOpen && !startDate) {
+      const today = new Date()
+      const todayString = today.toISOString().split('T')[0]
+      setStartDate(todayString)
+    }
+  }, [isOpen, startDate])
+
   if (!isOpen) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,6 +56,16 @@ export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkSche
     setResult(null)
 
     try {
+      console.log('[BulkScheduler] Submitting bulk schedule request:', {
+        businessProfileId: selectedProfile.id,
+        businessName: selectedProfile.name,
+        postCount,
+        startDate: new Date(startDate).toISOString(),
+        frequency,
+        customTopics,
+        postType
+      })
+
       const response = await fetch('/api/bulk-schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -53,7 +73,7 @@ export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkSche
           businessProfileId: selectedProfile.id,
           businessName: selectedProfile.name,
           postCount: parseInt(postCount.toString()),
-          startDate,
+          startDate: new Date(startDate).toISOString(),
           frequency,
           customTopics,
           postType
@@ -61,17 +81,19 @@ export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkSche
       })
 
       const data = await response.json()
+      console.log('[BulkScheduler] API response:', data)
       
       if (data.success) {
         setResult(data)
       } else {
-        throw new Error(data.error || 'Failed to bulk schedule posts')
+        throw new Error(data.details || data.error || 'Failed to bulk schedule posts')
       }
     } catch (error) {
-      console.error('Bulk scheduling error:', error)
+      console.error('[BulkScheduler] Bulk scheduling error:', error)
       setResult({
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to create bulk posts'
+        error: error instanceof Error ? error.message : 'Failed to create bulk posts',
+        details: error instanceof Error ? error.message : 'Unknown error occurred'
       })
     } finally {
       setIsGenerating(false)
@@ -81,7 +103,8 @@ export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkSche
   const resetForm = () => {
     setResult(null)
     setPostCount(10)
-    setStartDate('')
+    const today = new Date().toISOString().split('T')[0]
+    setStartDate(today) // Reset to today
     setFrequency('daily')
     setCustomTopics('')
     setPostType('update')
@@ -150,6 +173,7 @@ export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkSche
                     className="mt-1"
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">Defaults to today, cannot select past dates</p>
                 </div>
               </div>
 
@@ -245,64 +269,64 @@ export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkSche
                     <span className="font-semibold">Success!</span>
                   </div>
                   
-                                     <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                     <p className="text-green-800 font-medium">{result.message}</p>
-                     
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                       <div className="text-center">
-                         <div className="text-2xl font-bold text-green-600">{result.posts?.length || 0}</div>
-                         <div className="text-sm text-green-700">Posts Scheduled</div>
-                       </div>
-                       
-                       {result.photosFound !== undefined && (
-                         <div className="text-center">
-                           <div className="text-2xl font-bold text-blue-600">{result.photosFound}</div>
-                           <div className="text-sm text-blue-700">
-                             <Camera className="w-3 h-3 inline mr-1" />
-                             Photos Available
-                           </div>
-                         </div>
-                       )}
-                       
-                       <div className="text-center">
-                         <div className="text-2xl font-bold text-purple-600">
-                           {frequency === 'daily' ? postCount : 
-                            frequency === 'every2days' ? postCount * 2 : 
-                            postCount * 7}
-                         </div>
-                         <div className="text-sm text-purple-700">Days of Content</div>
-                       </div>
-                     </div>
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <p className="text-green-800 font-medium">{result.message}</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">{result.posts?.length || 0}</div>
+                        <div className="text-sm text-green-700">Posts Scheduled</div>
+                      </div>
+                      
+                      {result.photosFound !== undefined && (
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-blue-600">{result.photosFound}</div>
+                          <div className="text-sm text-blue-700">
+                            <Camera className="w-3 h-3 inline mr-1" />
+                            Photos Available
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {frequency === 'daily' ? postCount : 
+                           frequency === 'every2days' ? postCount * 2 : 
+                           postCount * 7}
+                        </div>
+                        <div className="text-sm text-purple-700">Days of Content</div>
+                      </div>
+                    </div>
 
-                     {/* Photo Preview Section */}
-                     {result.samplePhotos && result.samplePhotos.length > 0 && (
-                       <div className="mt-4 pt-4 border-t border-green-200">
-                         <h4 className="font-medium text-green-800 mb-2 flex items-center gap-2">
-                           <Camera className="w-4 h-4" />
-                           Sample Photos Being Used
-                         </h4>
-                         <div className="flex gap-2 overflow-x-auto">
-                           {result.samplePhotos.map((photo: any, index: number) => (
-                             <div key={index} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 border-green-300">
-                               <img
-                                 src={photo.url}
-                                 alt={photo.description}
-                                 className="w-full h-full object-cover"
-                               />
-                             </div>
-                           ))}
-                           {result.photosFound > 3 && (
-                             <div className="flex-shrink-0 w-16 h-16 rounded-lg border-2 border-dashed border-green-300 flex items-center justify-center bg-green-100">
-                               <span className="text-xs text-green-600 font-medium">+{result.photosFound - 3}</span>
-                             </div>
-                           )}
-                         </div>
-                         <p className="text-xs text-green-600 mt-2">
-                           Photos are randomly selected for each post from your business media
-                         </p>
-                       </div>
-                     )}
-                   </div>
+                    {/* Photo Preview Section */}
+                    {result.samplePhotos && result.samplePhotos.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-green-200">
+                        <h4 className="font-medium text-green-800 mb-2 flex items-center gap-2">
+                          <Camera className="w-4 h-4" />
+                          Sample Photos Being Used
+                        </h4>
+                        <div className="flex gap-2 overflow-x-auto">
+                          {result.samplePhotos.map((photo: any, index: number) => (
+                            <div key={index} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 border-green-300">
+                              <img
+                                src={photo.url}
+                                alt={photo.description}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ))}
+                          {result.photosFound > 3 && (
+                            <div className="flex-shrink-0 w-16 h-16 rounded-lg border-2 border-dashed border-green-300 flex items-center justify-center bg-green-100">
+                              <span className="text-xs text-green-600 font-medium">+{result.photosFound - 3}</span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-green-600 mt-2">
+                          Photos are randomly selected for each post from your business media
+                        </p>
+                      </div>
+                    )}
+                  </div>
 
                   {result.posts && result.posts.length > 0 && (
                     <div className="space-y-2">
@@ -311,46 +335,46 @@ export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkSche
                         Scheduled Posts Preview
                       </h4>
                       <div className="max-h-60 overflow-y-auto space-y-2">
-                                                 {result.posts.slice(0, 5).map((post: any, index: number) => (
-                           <div key={index} className="bg-gray-50 rounded-lg p-3 border">
-                             <div className="flex items-start gap-3">
-                               {/* Photo Preview */}
-                               {post.photoUrl && (
-                                 <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border">
-                                   <img
-                                     src={post.photoUrl}
-                                     alt={post.photoDescription || 'Business photo'}
-                                     className="w-full h-full object-cover"
-                                   />
-                                 </div>
-                               )}
-                               
-                               <div className="flex-1">
-                                 <p className="text-sm text-gray-800">{post.content}</p>
-                                 {post.keywords && post.keywords.length > 0 && (
-                                   <div className="flex flex-wrap gap-1 mt-2">
-                                     {post.keywords.map((keyword: string, i: number) => (
-                                       <Badge key={i} variant="secondary" className="text-xs">
-                                         {keyword}
-                                       </Badge>
-                                     ))}
-                                   </div>
-                                 )}
-                               </div>
-                               
-                               <div className="text-right text-xs text-gray-500 flex-shrink-0">
-                                 <div>{new Date(post.scheduledDate).toLocaleDateString()}</div>
-                                 <div>{new Date(post.scheduledDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-                                 {post.hasPhoto && (
-                                   <Badge variant="outline" className="mt-1 text-green-600 border-green-300">
-                                     <Camera className="w-3 h-3 mr-1" />
-                                     Photo
-                                   </Badge>
-                                 )}
-                               </div>
-                             </div>
-                           </div>
-                         ))}
+                        {result.posts.slice(0, 5).map((post: any, index: number) => (
+                          <div key={index} className="bg-gray-50 rounded-lg p-3 border">
+                            <div className="flex items-start gap-3">
+                              {/* Photo Preview */}
+                              {post.photoUrl && (
+                                <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border">
+                                  <img
+                                    src={post.photoUrl}
+                                    alt={post.photoDescription || 'Business photo'}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                              
+                              <div className="flex-1">
+                                <p className="text-sm text-gray-800">{post.content}</p>
+                                {post.keywords && post.keywords.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {post.keywords.map((keyword: string, i: number) => (
+                                      <Badge key={i} variant="secondary" className="text-xs">
+                                        {keyword}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="text-right text-xs text-gray-500 flex-shrink-0">
+                                <div>{new Date(post.scheduledDate).toLocaleDateString()}</div>
+                                <div>{new Date(post.scheduledDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                {post.hasPhoto && (
+                                  <Badge variant="outline" className="mt-1 text-green-600 border-green-300">
+                                    <Camera className="w-3 h-3 mr-1" />
+                                    Photo
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                         {result.posts.length > 5 && (
                           <div className="text-center text-sm text-gray-500 py-2">
                             ... and {result.posts.length - 5} more posts
@@ -367,9 +391,19 @@ export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkSche
                     <span className="font-semibold">Error</span>
                   </div>
                   <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-                    <p className="text-red-800">{result.error}</p>
+                    <p className="text-red-800 font-medium">{result.error}</p>
                     {result.details && (
-                      <p className="text-sm text-red-600 mt-2">{result.details}</p>
+                      <div className="mt-2 p-2 bg-red-100 rounded text-sm text-red-700">
+                        <strong>Details:</strong> {result.details}
+                      </div>
+                    )}
+                    {result.debug && (
+                      <details className="mt-2">
+                        <summary className="text-sm text-red-600 cursor-pointer">Debug Information</summary>
+                        <pre className="mt-2 text-xs text-red-600 bg-red-100 p-2 rounded overflow-auto">
+                          {JSON.stringify(result.debug, null, 2)}
+                        </pre>
+                      </details>
                     )}
                   </div>
                 </div>

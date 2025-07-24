@@ -16,22 +16,43 @@ export async function POST(request: NextRequest) {
     } = await request.json()
 
     console.log('[Bulk Schedule API] Generating bulk posts:', {
+      businessProfileId,
       businessName,
       postCount,
       startDate,
-      frequency
+      frequency,
+      postType
     })
 
-    // Load business profile and photos
-    const profile = BusinessProfilesStorage.getProfile(businessProfileId)
-    
-    if (!profile) {
-      throw new Error('Business profile not found')
+    // Validate required fields
+    if (!businessProfileId) {
+      throw new Error('Missing required field: businessProfileId')
+    }
+    if (!businessName) {
+      throw new Error('Missing required field: businessName')
+    }
+    if (!startDate) {
+      throw new Error('Missing required field: startDate')
     }
 
-    // Load business photos
+    // Load business profile and photos
+    let profile
+    try {
+      profile = BusinessProfilesStorage.getProfile(businessProfileId)
+      console.log('[Bulk Schedule API] Profile lookup result:', profile ? 'Found' : 'Not found')
+    } catch (error) {
+      console.error('[Bulk Schedule API] Error loading profile:', error)
+      throw new Error(`Failed to load business profile: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+    
+    if (!profile) {
+      throw new Error(`Business profile not found with ID: ${businessProfileId}`)
+    }
+
+    // Load business photos (non-blocking)
     let businessPhotos: any[] = []
     try {
+      console.log('[Bulk Schedule API] Loading business photos...')
       const result = await CentralizedDataLoader.loadAllProfileData(profile, {
         includeMedia: true,
         includeReviews: false,
@@ -43,9 +64,12 @@ export async function POST(request: NextRequest) {
       if (result.success && result.media) {
         businessPhotos = result.media.allPhotos || []
         console.log(`[Bulk Schedule API] Loaded ${businessPhotos.length} business photos`)
+      } else {
+        console.log('[Bulk Schedule API] No photos loaded:', result.errors || 'Unknown reason')
       }
     } catch (error) {
-      console.warn('[Bulk Schedule API] Failed to load photos:', error)
+      console.warn('[Bulk Schedule API] Failed to load photos (continuing without photos):', error)
+      // Continue without photos - this shouldn't block the entire process
     }
 
     const posts = []
@@ -101,78 +125,101 @@ export async function POST(request: NextRequest) {
         `When you choose ${businessName} for ${topic}, you get experienced professionals who show up prepared. We bring the right tools for each job and complete work according to schedule. Fair pricing and reliable service have earned us referrals from satisfied customers.`
     ]
 
+    console.log('[Bulk Schedule API] Generating posts...')
     for (let i = 0; i < postCount; i++) {
-      // Calculate schedule date
-      const scheduleDate = new Date(startDate)
-      
-      switch (frequency) {
-        case 'daily':
-          scheduleDate.setDate(scheduleDate.getDate() + i)
-          break
-        case 'every2days':
-          scheduleDate.setDate(scheduleDate.getDate() + (i * 2))
-          break
-        case 'weekly':
-          scheduleDate.setDate(scheduleDate.getDate() + (i * 7))
-          break
+      try {
+        // Calculate schedule date
+        const scheduleDate = new Date(startDate)
+        
+        switch (frequency) {
+          case 'daily':
+            scheduleDate.setDate(scheduleDate.getDate() + i)
+            break
+          case 'every2days':
+            scheduleDate.setDate(scheduleDate.getDate() + (i * 2))
+            break
+          case 'weekly':
+            scheduleDate.setDate(scheduleDate.getDate() + (i * 7))
+            break
+        }
+
+        // Random time between 9 AM and 5 PM for better engagement
+        const hour = 9 + Math.floor(Math.random() * 8)
+        const minute = Math.floor(Math.random() * 60)
+        scheduleDate.setHours(hour, minute, 0, 0)
+
+        // Generate human-style content
+        const topic = keywordTopics[i % keywordTopics.length]
+        const template = contentTemplates[Math.floor(Math.random() * contentTemplates.length)]
+        const businessType = profile.category || 'business'
+        const content = template(topic, businessType)
+
+        // Randomly select a business photo if available
+        let selectedPhoto = null
+        if (businessPhotos.length > 0) {
+          const randomIndex = Math.floor(Math.random() * businessPhotos.length)
+          selectedPhoto = businessPhotos[randomIndex]
+        }
+
+        posts.push({
+          businessProfileId,
+          businessName,
+          content,
+          postType,
+          status: 'scheduled' as const,
+          scheduledDate: scheduleDate.toISOString(),
+          photo: selectedPhoto ? {
+            url: GoogleBusinessAPI.getBestImageUrl(selectedPhoto),
+            description: `${businessName} - Professional Services`
+          } : null,
+          keywords: topic.split(' ').filter((word: string) => word.length > 3), // Extract relevant keywords
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+      } catch (error) {
+        console.error(`[Bulk Schedule API] Error generating post ${i + 1}:`, error)
+        throw new Error(`Failed to generate post ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
-
-      // Random time between 9 AM and 5 PM for better engagement
-      const hour = 9 + Math.floor(Math.random() * 8)
-      const minute = Math.floor(Math.random() * 60)
-      scheduleDate.setHours(hour, minute, 0, 0)
-
-      // Generate human-style content
-      const topic = keywordTopics[i % keywordTopics.length]
-      const template = contentTemplates[Math.floor(Math.random() * contentTemplates.length)]
-      const businessType = profile.category || 'business'
-      const content = template(topic, businessType)
-
-      // Randomly select a business photo if available
-      let selectedPhoto = null
-      if (businessPhotos.length > 0) {
-        const randomIndex = Math.floor(Math.random() * businessPhotos.length)
-        selectedPhoto = businessPhotos[randomIndex]
-      }
-
-      posts.push({
-        businessProfileId,
-        businessName,
-        content,
-        postType,
-        status: 'scheduled' as const,
-        scheduledDate: scheduleDate.toISOString(),
-        photo: selectedPhoto ? {
-          url: GoogleBusinessAPI.getBestImageUrl(selectedPhoto),
-          description: `${businessName} - Professional Services`
-        } : null,
-        keywords: topic.split(' ').filter((word: string) => word.length > 3), // Extract relevant keywords
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      })
     }
+
+    console.log(`[Bulk Schedule API] Generated ${posts.length} posts, now scheduling...`)
 
     // Save to scheduling service
-    const schedulingService = (await import('@/lib/scheduling-service')).schedulingService
+    let schedulingService
+    try {
+      schedulingService = (await import('@/lib/scheduling-service')).schedulingService
+      console.log('[Bulk Schedule API] Scheduling service imported successfully')
+    } catch (error) {
+      console.error('[Bulk Schedule API] Error importing scheduling service:', error)
+      throw new Error(`Failed to import scheduling service: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
     
+    let scheduledCount = 0
     for (const post of posts) {
-      await schedulingService.schedulePost({
-        businessProfileId: post.businessProfileId,
-        businessName: post.businessName,
-        content: post.content,
-        postType: post.postType,
-        status: post.status,
-        scheduledDate: post.scheduledDate,
-        photoUrl: post.photo?.url || undefined,
-        photoDescription: post.photo?.description
-      })
+      try {
+        await schedulingService.schedulePost({
+          businessProfileId: post.businessProfileId,
+          businessName: post.businessName,
+          content: post.content,
+          postType: post.postType,
+          status: post.status,
+          scheduledDate: post.scheduledDate,
+          photoUrl: post.photo?.url || undefined,
+          photoDescription: post.photo?.description
+        })
+        scheduledCount++
+        console.log(`[Bulk Schedule API] Scheduled post ${scheduledCount}/${posts.length}`)
+      } catch (error) {
+        console.error(`[Bulk Schedule API] Error scheduling post ${scheduledCount + 1}:`, error)
+        throw new Error(`Failed to schedule post ${scheduledCount + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
     }
 
-    console.log(`[Bulk Schedule API] Successfully scheduled ${posts.length} posts with ${businessPhotos.length > 0 ? 'photos' : 'no photos'}`)
+    console.log(`[Bulk Schedule API] Successfully scheduled ${scheduledCount} posts with ${businessPhotos.length > 0 ? 'photos' : 'no photos'}`)
 
     return NextResponse.json({
       success: true,
-      message: `Successfully scheduled ${posts.length} SEO posts${businessPhotos.length > 0 ? ' with business photos' : ''}`,
+      message: `Successfully scheduled ${scheduledCount} SEO posts${businessPhotos.length > 0 ? ' with business photos' : ''}`,
       posts: posts.map(p => ({
         id: `bulk-${Date.now()}-${Math.random()}`,
         content: p.content.substring(0, 150) + '...',
@@ -191,10 +238,19 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('[Bulk Schedule API] Error:', error)
+    
+    // Return detailed error information for debugging
+    const errorDetails = {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    }
+    
     return NextResponse.json({
       success: false,
       error: 'Failed to bulk schedule posts',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: errorDetails.message,
+      debug: process.env.NODE_ENV === 'development' ? errorDetails : undefined
     }, { status: 500 })
   }
 }
