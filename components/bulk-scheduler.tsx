@@ -57,13 +57,21 @@ export function BulkScheduleModal({ isOpen, onClose, selectedProfile }: BulkSche
 
     try {
       console.log('[BulkScheduler] Submitting bulk schedule request:', {
-        businessProfileId: selectedProfile.id,
+        businessProfileId: selectedProfile.googleBusinessId,
         businessName: selectedProfile.name,
         postCount,
         startDate: new Date(startDate).toISOString(),
         frequency,
         customTopics,
         postType
+      })
+
+      // Debug: Let's see the full selectedProfile object
+      console.log('[BulkScheduler] Full selectedProfile object:', {
+        id: selectedProfile.id,
+        name: selectedProfile.name,
+        googleBusinessId: selectedProfile.googleBusinessId,
+        hasGoogleBusinessId: !!selectedProfile.googleBusinessId
       })
 
       const response = await fetch('/api/bulk-schedule', {

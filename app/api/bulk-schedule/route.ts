@@ -38,8 +38,25 @@ export async function POST(request: NextRequest) {
     // Load business profile and photos
     let profile
     try {
+      // Debug: Let's see what profiles are actually stored
+      const allProfiles = BusinessProfilesStorage.getAllProfiles()
+      console.log('[Bulk Schedule API] All stored profiles:', allProfiles.map(p => ({
+        id: p.id,
+        name: p.name,
+        googleBusinessId: p.googleBusinessId
+      })))
+      console.log('[Bulk Schedule API] Looking for googleBusinessId:', businessProfileId)
+      
       profile = BusinessProfilesStorage.getProfileByGoogleId(businessProfileId)
       console.log('[Bulk Schedule API] Profile lookup result:', profile ? 'Found' : 'Not found')
+      
+      // If not found by googleBusinessId, let's try by regular id as fallback
+      if (!profile) {
+        console.log('[Bulk Schedule API] Trying fallback lookup by regular ID...')
+        profile = BusinessProfilesStorage.getProfile(businessProfileId)
+        console.log('[Bulk Schedule API] Fallback lookup result:', profile ? 'Found' : 'Not found')
+      }
+      
     } catch (error) {
       console.error('[Bulk Schedule API] Error loading profile:', error)
       throw new Error(`Failed to load business profile: ${error instanceof Error ? error.message : 'Unknown error'}`)
