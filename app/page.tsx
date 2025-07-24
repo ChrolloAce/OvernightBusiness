@@ -29,6 +29,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { PremiumButton } from '@/components/premium-button'
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -170,17 +171,16 @@ export default function LandingPage() {
               <a href="#pricing" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
                 Pricing
               </a>
-              <Link href="/dashboard">
+              <Link href="/profiles">
                 <Button variant="outline" className="border-gray-300 dark:border-gray-600">
                   Sign In
                 </Button>
               </Link>
-              <Link href="/dashboard">
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none shadow-lg">
-                  Get Started
-                  <ArrowRight className="ml-2 w-4 h-4" />
-                </Button>
-              </Link>
+              <PremiumButton 
+                variant="landing" 
+                size="default"
+                className="relative"
+              />
             </div>
 
             {/* Mobile menu button */}
@@ -214,16 +214,18 @@ export default function LandingPage() {
                 Pricing
               </a>
               <div className="pt-4 space-y-2">
-                <Link href="/dashboard" className="block">
+                <Link href="/profiles" className="block">
                   <Button variant="outline" className="w-full">
                     Sign In
                   </Button>
                 </Link>
-                <Link href="/dashboard" className="block">
-                  <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                    Get Started
-                  </Button>
-                </Link>
+                <div className="block">
+                  <PremiumButton 
+                    variant="landing" 
+                    size="default"
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
           </motion.div>

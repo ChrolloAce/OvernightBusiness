@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google'
 import { ProfileProvider } from '@/contexts/profile-context'
 import { ConditionalLayout } from '@/components/conditional-layout'
 import { ClientInitializer } from '@/components/client-initializer'
+import { AutoLogin } from '@/components/auto-login'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -23,11 +24,13 @@ export default function RootLayout({
     <html lang="en" className="light">
       <body className={`${inter.className} bg-gray-50`}>
         <ProfileProvider>
-          <div className="min-h-screen bg-gray-50">
-            <ConditionalLayout>
-              {children}
-            </ConditionalLayout>
-          </div>
+          <AutoLogin>
+            <div className="min-h-screen bg-gray-50">
+              <ConditionalLayout>
+                {children}
+              </ConditionalLayout>
+            </div>
+          </AutoLogin>
           
           <ClientInitializer />
         </ProfileProvider>
