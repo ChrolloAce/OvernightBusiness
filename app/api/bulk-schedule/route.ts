@@ -172,45 +172,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[Bulk Schedule API] Generated ${posts.length} posts, now scheduling...`)
+    console.log(`[Bulk Schedule API] Generated ${posts.length} posts, returning to client for scheduling...`)
 
-    // Use the same scheduling service that the regular scheduler uses
-    let schedulingService
-    try {
-      schedulingService = (await import('@/lib/scheduling-service')).schedulingService
-      console.log('[Bulk Schedule API] Scheduling service imported successfully')
-    } catch (error) {
-      console.error('[Bulk Schedule API] Error importing scheduling service:', error)
-      throw new Error(`Failed to import scheduling service: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
-    
-    let scheduledCount = 0
-    for (const post of posts) {
-      try {
-        // Use the same method as regular scheduler - just pass the data directly
-        await schedulingService.schedulePost({
-          businessProfileId: post.businessProfileId, // This is the googleBusinessId
-          businessName: post.businessName,
-          content: post.content,
-          postType: post.postType,
-          status: post.status,
-          scheduledDate: post.scheduledDate,
-          photoUrl: post.photo?.url || undefined,
-          photoDescription: post.photo?.description
-        })
-        scheduledCount++
-        console.log(`[Bulk Schedule API] Scheduled post ${scheduledCount}/${posts.length}`)
-      } catch (error) {
-        console.error(`[Bulk Schedule API] Error scheduling post ${scheduledCount + 1}:`, error)
-        throw new Error(`Failed to schedule post ${scheduledCount + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      }
-    }
-
-    console.log(`[Bulk Schedule API] Successfully scheduled ${scheduledCount} posts with ${businessPhotos.length > 0 ? 'photos' : 'no photos'}`)
-
+    // Return the posts to the client - don't try to save them server-side
+    // The client will handle saving to localStorage using schedulingService
     return NextResponse.json({
       success: true,
-      message: `Successfully scheduled ${scheduledCount} SEO posts${businessPhotos.length > 0 ? ' with business photos' : ''}`,
+      message: `Generated ${posts.length} SEO posts${businessPhotos.length > 0 ? ' with business photos' : ''}`,
+      postsToSchedule: posts, // Send the full post objects to the client
       posts: posts.map(p => ({
         id: `bulk-${Date.now()}-${Math.random()}`,
         content: p.content.substring(0, 150) + '...',

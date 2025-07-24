@@ -93,6 +93,36 @@ export function BulkScheduleModal({ isOpen, onClose, onScheduled, selectedProfil
       console.log('[BulkScheduler] API response:', data)
       
       if (data.success) {
+        // If the API returned posts to schedule, save them using the client-side scheduling service
+        if (data.postsToSchedule && data.postsToSchedule.length > 0) {
+          console.log('[BulkScheduler] Saving posts to client-side scheduling service...')
+          
+          // Import and use the scheduling service on the client-side
+          const { schedulingService } = await import('@/lib/scheduling-service')
+          
+          let savedCount = 0
+          for (const post of data.postsToSchedule) {
+            try {
+              schedulingService.schedulePost({
+                businessProfileId: post.businessProfileId,
+                businessName: post.businessName,
+                content: post.content,
+                postType: post.postType,
+                status: post.status,
+                scheduledDate: post.scheduledDate,
+                photoUrl: post.photo?.url || undefined,
+                photoDescription: post.photo?.description
+              })
+              savedCount++
+              console.log(`[BulkScheduler] Saved post ${savedCount}/${data.postsToSchedule.length}`)
+            } catch (error) {
+              console.error(`[BulkScheduler] Error saving post ${savedCount + 1}:`, error)
+            }
+          }
+          
+          console.log(`[BulkScheduler] Successfully saved ${savedCount} posts to localStorage`)
+        }
+        
         setResult(data)
         // Call the onScheduled callback with a small delay to ensure posts are saved
         if (onScheduled) {
