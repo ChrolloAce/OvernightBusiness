@@ -35,54 +35,27 @@ export async function POST(request: NextRequest) {
       throw new Error('Missing required field: startDate')
     }
 
-    // Load business profile and photos
-    let profile
-    try {
-      // Debug: Let's see what profiles are actually stored
-      const allProfiles = BusinessProfilesStorage.getAllProfiles()
-      console.log('[Bulk Schedule API] All stored profiles:', allProfiles.map(p => ({
-        id: p.id,
-        name: p.name,
-        googleBusinessId: p.googleBusinessId
-      })))
-      console.log('[Bulk Schedule API] Looking for googleBusinessId:', businessProfileId)
-      
-      profile = BusinessProfilesStorage.getProfileByGoogleId(businessProfileId)
-      console.log('[Bulk Schedule API] Profile lookup result:', profile ? 'Found' : 'Not found')
-      
-      // If not found by googleBusinessId, let's try by regular id as fallback
-      if (!profile) {
-        console.log('[Bulk Schedule API] Trying fallback lookup by regular ID...')
-        profile = BusinessProfilesStorage.getProfile(businessProfileId)
-        console.log('[Bulk Schedule API] Fallback lookup result:', profile ? 'Found' : 'Not found')
-      }
-      
-    } catch (error) {
-      console.error('[Bulk Schedule API] Error loading profile:', error)
-      throw new Error(`Failed to load business profile: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
-    
-    if (!profile) {
-      throw new Error(`Business profile not found with Google Business ID: ${businessProfileId}`)
-    }
-
-    // Load business photos (non-blocking)
+    // Load business photos (optional - don't fail if this doesn't work)
     let businessPhotos: any[] = []
     try {
-      console.log('[Bulk Schedule API] Loading business photos...')
-      const result = await CentralizedDataLoader.loadAllProfileData(profile, {
-        includeMedia: true,
-        includeReviews: false,
-        includeAnalytics: false,
-        includeQA: false,
-        includePosts: false
-      })
+      // Try to find the profile for photos (optional)
+      const profile = BusinessProfilesStorage.getProfileByGoogleId(businessProfileId)
+      if (profile) {
+        console.log('[Bulk Schedule API] Profile found, loading photos...')
+        const result = await CentralizedDataLoader.loadAllProfileData(profile, {
+          includeMedia: true,
+          includeReviews: false,
+          includeAnalytics: false,
+          includeQA: false,
+          includePosts: false
+        })
 
-      if (result.success && result.media) {
-        businessPhotos = result.media.allPhotos || []
-        console.log(`[Bulk Schedule API] Loaded ${businessPhotos.length} business photos`)
+        if (result.success && result.media) {
+          businessPhotos = result.media.allPhotos || []
+          console.log(`[Bulk Schedule API] Loaded ${businessPhotos.length} business photos`)
+        }
       } else {
-        console.log('[Bulk Schedule API] No photos loaded:', result.errors || 'Unknown reason')
+        console.log('[Bulk Schedule API] Profile not found, continuing without photos')
       }
     } catch (error) {
       console.warn('[Bulk Schedule API] Failed to load photos (continuing without photos):', error)
@@ -168,7 +141,7 @@ export async function POST(request: NextRequest) {
         // Generate human-style content
         const topic = keywordTopics[i % keywordTopics.length]
         const template = contentTemplates[Math.floor(Math.random() * contentTemplates.length)]
-        const businessType = profile.category || 'business'
+        const businessType = 'business' // Default since we might not have profile
         const content = template(topic, businessType)
 
         // Randomly select a business photo if available
@@ -201,7 +174,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Bulk Schedule API] Generated ${posts.length} posts, now scheduling...`)
 
-    // Save to scheduling service
+    // Use the same scheduling service that the regular scheduler uses
     let schedulingService
     try {
       schedulingService = (await import('@/lib/scheduling-service')).schedulingService
@@ -214,8 +187,9 @@ export async function POST(request: NextRequest) {
     let scheduledCount = 0
     for (const post of posts) {
       try {
+        // Use the same method as regular scheduler - just pass the data directly
         await schedulingService.schedulePost({
-          businessProfileId: post.businessProfileId,
+          businessProfileId: post.businessProfileId, // This is the googleBusinessId
           businessName: post.businessName,
           content: post.content,
           postType: post.postType,
