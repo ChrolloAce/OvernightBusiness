@@ -96,6 +96,14 @@ export function BulkScheduleModal({ isOpen, onClose, onScheduled, selectedProfil
         // If the API returned posts to schedule, save them using the client-side scheduling service
         if (data.postsToSchedule && data.postsToSchedule.length > 0) {
           console.log('[BulkScheduler] Saving posts to client-side scheduling service...')
+          console.log('[BulkScheduler] Posts to save:', data.postsToSchedule.length)
+          console.log('[BulkScheduler] Sample post data:', {
+            businessProfileId: data.postsToSchedule[0]?.businessProfileId,
+            businessName: data.postsToSchedule[0]?.businessName,
+            hasPhoto: !!data.postsToSchedule[0]?.photo,
+            photoUrl: data.postsToSchedule[0]?.photo?.url,
+            scheduledDate: data.postsToSchedule[0]?.scheduledDate
+          })
           
           // Import and use the scheduling service on the client-side
           const { schedulingService } = await import('@/lib/scheduling-service')
@@ -103,7 +111,7 @@ export function BulkScheduleModal({ isOpen, onClose, onScheduled, selectedProfil
           let savedCount = 0
           for (const post of data.postsToSchedule) {
             try {
-              schedulingService.schedulePost({
+              const scheduledPost = schedulingService.schedulePost({
                 businessProfileId: post.businessProfileId,
                 businessName: post.businessName,
                 content: post.content,
@@ -114,13 +122,26 @@ export function BulkScheduleModal({ isOpen, onClose, onScheduled, selectedProfil
                 photoDescription: post.photo?.description
               })
               savedCount++
-              console.log(`[BulkScheduler] Saved post ${savedCount}/${data.postsToSchedule.length}`)
+              console.log(`[BulkScheduler] Saved post ${savedCount}/${data.postsToSchedule.length} with ID: ${scheduledPost.id}`)
             } catch (error) {
               console.error(`[BulkScheduler] Error saving post ${savedCount + 1}:`, error)
             }
           }
           
           console.log(`[BulkScheduler] Successfully saved ${savedCount} posts to localStorage`)
+          console.log('[BulkScheduler] Verifying posts in localStorage...')
+          
+          // Verify posts were saved by checking localStorage
+          setTimeout(() => {
+            const { schedulingService: verifyService } = require('@/lib/scheduling-service')
+            const allPosts = verifyService.getScheduledPosts()
+            console.log(`[BulkScheduler] Verification: Found ${allPosts.length} total posts in localStorage`)
+            console.log('[BulkScheduler] Recent posts:', allPosts.slice(-3).map(p => ({
+              id: p.id,
+              content: p.content.substring(0, 50) + '...',
+              scheduledDate: p.scheduledDate
+            })))
+          }, 100)
         }
         
         setResult(data)
@@ -344,31 +365,52 @@ export function BulkScheduleModal({ isOpen, onClose, onScheduled, selectedProfil
                     </div>
 
                     {/* Photo Preview Section */}
-                    {result.samplePhotos && result.samplePhotos.length > 0 && (
+                    {result.samplePhotos && result.samplePhotos.length > 0 ? (
                       <div className="mt-4 pt-4 border-t border-green-200">
                         <h4 className="font-medium text-green-800 mb-2 flex items-center gap-2">
                           <Camera className="w-4 h-4" />
-                          Sample Photos Being Used
+                          Business Photos ({result.photosFound} available)
                         </h4>
-                        <div className="flex gap-2 overflow-x-auto">
+                        <div className="grid grid-cols-3 gap-2 mb-3">
                           {result.samplePhotos.map((photo: any, index: number) => (
-                            <div key={index} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 border-green-300">
+                            <div key={index} className="aspect-square rounded-lg overflow-hidden border-2 border-green-300 bg-gray-100">
                               <img
                                 src={photo.url}
-                                alt={photo.description}
-                                className="w-full h-full object-cover"
+                                alt={photo.description || `Business photo ${index + 1}`}
+                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+                                onError={(e) => {
+                                  console.log('Photo failed to load:', photo.url)
+                                  e.currentTarget.style.display = 'none'
+                                }}
                               />
                             </div>
                           ))}
                           {result.photosFound > 3 && (
-                            <div className="flex-shrink-0 w-16 h-16 rounded-lg border-2 border-dashed border-green-300 flex items-center justify-center bg-green-100">
-                              <span className="text-xs text-green-600 font-medium">+{result.photosFound - 3}</span>
+                            <div className="aspect-square rounded-lg border-2 border-dashed border-green-300 bg-green-50 flex items-center justify-center">
+                              <div className="text-center">
+                                <Camera className="w-4 h-4 mx-auto mb-1 text-green-600" />
+                                <span className="text-xs text-green-600 font-medium">+{result.photosFound - 3} more</span>
+                              </div>
                             </div>
                           )}
                         </div>
-                        <p className="text-xs text-green-600 mt-2">
-                          Photos are randomly selected for each post from your business media
-                        </p>
+                        <div className="bg-green-50 rounded-lg p-2">
+                          <p className="text-xs text-green-600">
+                            ✅ Photos randomly selected from your Google Business Profile media library
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-4 pt-4 border-t border-yellow-200">
+                        <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Camera className="w-4 h-4 text-yellow-600" />
+                            <span className="font-medium text-yellow-800">No Photos Available</span>
+                          </div>
+                          <p className="text-xs text-yellow-700">
+                            Posts created without images. Add photos to your Google Business Profile for better engagement.
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
