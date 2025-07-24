@@ -4,8 +4,8 @@ export async function POST(request: NextRequest) {
   try {
     console.log('[Send Report API] Report sending temporarily disabled for Vercel deployment')
     
-    return NextResponse.json({
-      success: false,
+      return NextResponse.json({
+        success: false,
       error: 'Report sending temporarily disabled',
       message: 'Email reporting functionality is being updated and will be available soon.'
     }, { status: 503 })
