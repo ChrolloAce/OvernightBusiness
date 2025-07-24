@@ -15,6 +15,8 @@ export interface ScheduledPost {
     text: string
     url: string
   }
+  photoUrl?: string
+  photoDescription?: string
   createdAt: string
   updatedAt: string
   error?: string

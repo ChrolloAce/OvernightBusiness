@@ -74,31 +74,31 @@ export async function POST(request: NextRequest) {
       `established ${businessName} reputation`
     ]
 
-    // Human-style content templates without emojis/hashtags
+    // Natural, specific content templates - no generic language
     const contentTemplates = [
       (topic: string, businessType: string) => 
-        `Looking for ${topic}? Our team at ${businessName} brings years of experience and dedication to every project. We understand that choosing the right ${businessType.toLowerCase()} is important, which is why we focus on delivering exceptional results that exceed expectations. Contact us today to discuss how we can help with your needs.`,
+        `${businessName} provides ${topic} for residential and commercial clients. Our licensed technicians complete each project with attention to detail and use only quality materials. We serve the local area and offer free estimates for all ${businessType.toLowerCase()} work. Call us to schedule your consultation.`,
       
       (topic: string, businessType: string) => 
-        `At ${businessName}, we believe in ${topic} that makes a real difference. Our skilled professionals work closely with each client to understand their unique requirements and deliver solutions that truly matter. Whether you need consultation, implementation, or ongoing support, we are here to help you achieve your goals.`,
+        `Need ${topic}? ${businessName} has completed over 500 successful projects since opening. We handle everything from initial planning to final cleanup. Our team works Monday through Friday and can accommodate weekend appointments. Contact us for pricing and availability.`,
       
       (topic: string, businessType: string) => 
-        `What sets ${businessName} apart is our commitment to ${topic}. We have built our reputation on trust, quality, and results. Our experienced team understands the local market and knows what it takes to deliver outstanding ${businessType.toLowerCase()} services. Let us show you why so many customers choose us for their important projects.`,
+        `${businessName} specializes in ${topic} using modern equipment and proven techniques. We maintain full insurance coverage and all required permits. Most projects are completed within the quoted timeframe. Request your free quote today and see why customers recommend our services.`,
       
       (topic: string, businessType: string) => 
-        `When you need ${topic}, experience matters. ${businessName} has been serving the community with professional ${businessType.toLowerCase()} services that you can depend on. We take pride in our work and stand behind everything we do. Our team is ready to discuss your project and provide the expert guidance you deserve.`,
+        `Looking for reliable ${topic}? ${businessName} has served this community for years with honest pricing and quality workmanship. We provide written estimates and stand behind our work with a satisfaction guarantee. Schedule an appointment to discuss your ${businessType.toLowerCase()} needs.`,
       
       (topic: string, businessType: string) => 
-        `Discover why ${businessName} is the preferred choice for ${topic}. Our approach combines industry expertise with personalized service to deliver results that make a lasting impact. We understand that every client is unique, and we tailor our ${businessType.toLowerCase()} solutions to meet your specific needs and budget.`,
+        `${businessName} offers ${topic} for both small repairs and large installations. Our crew arrives on time and completes work efficiently without compromising quality. We clean up thoroughly after each job. Call now for same-day estimates on most ${businessType.toLowerCase()} services.`,
       
       (topic: string, businessType: string) => 
-        `${businessName} is dedicated to providing ${topic} that you can trust. Our certified professionals bring extensive knowledge and proven methods to every engagement. We believe in transparent communication, fair pricing, and delivering on our promises. Get in touch to learn more about how we can assist with your ${businessType.toLowerCase()} needs.`,
+        `Professional ${topic} from ${businessName} includes detailed planning and skilled execution. We source materials locally when possible and always follow manufacturer specifications. Our work meets all building codes and inspection requirements. Get your project started with a quick phone call.`,
       
       (topic: string, businessType: string) => 
-        `Looking to partner with professionals who understand ${topic}? ${businessName} offers comprehensive ${businessType.toLowerCase()} solutions designed to meet the highest standards. Our team stays current with industry best practices and uses proven approaches to ensure your success. We would love to discuss your project requirements.`,
+        `${businessName} delivers ${topic} that lasts. We use established suppliers and maintain high standards on every job site. Our team communicates clearly throughout each project and respects your property. Experience the difference proper ${businessType.toLowerCase()} makes for your investment.`,
       
       (topic: string, businessType: string) => 
-        `At ${businessName}, we specialize in ${topic} that delivers measurable results. Our commitment to excellence means we go above and beyond to ensure your complete satisfaction. From initial consultation through project completion, we maintain the highest standards of professionalism and quality in everything we do.`
+        `When you choose ${businessName} for ${topic}, you get experienced professionals who show up prepared. We bring the right tools for each job and complete work according to schedule. Fair pricing and reliable service have earned us referrals from satisfied customers.`
     ]
 
     for (let i = 0; i < postCount; i++) {
@@ -162,7 +162,9 @@ export async function POST(request: NextRequest) {
         content: post.content,
         postType: post.postType,
         status: post.status,
-        scheduledDate: post.scheduledDate
+        scheduledDate: post.scheduledDate,
+        photoUrl: post.photo?.url || undefined,
+        photoDescription: post.photo?.description
       })
     }
 
@@ -176,9 +178,15 @@ export async function POST(request: NextRequest) {
         content: p.content.substring(0, 150) + '...',
         scheduledDate: p.scheduledDate,
         hasPhoto: !!p.photo,
+        photoUrl: p.photo?.url,
+        photoDescription: p.photo?.description,
         keywords: p.keywords.slice(0, 5) // Show first 5 keywords
       })),
-      photosFound: businessPhotos.length
+      photosFound: businessPhotos.length,
+      samplePhotos: businessPhotos.slice(0, 3).map(photo => ({
+        url: GoogleBusinessAPI.getBestImageUrl(photo) || '',
+        description: `${businessName} - Business Photo`
+      }))
     })
 
   } catch (error) {
