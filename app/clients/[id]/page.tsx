@@ -36,7 +36,29 @@ import { ClientPhoneManager } from '@/components/client-phone-manager'
 import { useClients } from '@/contexts/client-context'
 
 // Mock client data
-const mockClient = {
+interface ClientData {
+  id: string
+  name: string
+  email: string
+  phone: string
+  website: string
+  status: string
+  tags: string[]
+  notes: string
+  avatar: string
+  createdAt: string
+  googleBusinessProfile?: {
+    id: string
+    name: string
+    rating: number
+    reviewCount: number
+    isConnected: boolean
+    address: string
+    category: string
+  }
+}
+
+const mockClient: ClientData = {
   id: '1',
   name: 'BMW Company',
   email: 'contact@bmw.com',
@@ -106,7 +128,7 @@ export default function ClientDetailPage() {
   const { clients } = useClients()
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
-  const [client, setClient] = useState(mockClient)
+  const [client, setClient] = useState<ClientData>(mockClient)
 
   useEffect(() => {
     setMounted(true)
@@ -116,7 +138,7 @@ export default function ClientDetailPage() {
     const realClient = clients.find(c => c.id === clientId)
     
     if (realClient) {
-      setClient({
+      const newClientData: ClientData = {
         id: realClient.id,
         name: realClient.name,
         email: realClient.email || '',
@@ -126,17 +148,22 @@ export default function ClientDetailPage() {
         tags: realClient.tags,
         notes: realClient.notes || '',
         avatar: realClient.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2),
-        createdAt: realClient.createdAt,
-        googleBusinessProfile: realClient.googleBusinessProfile ? {
+        createdAt: realClient.createdAt
+      }
+      
+      if (realClient.googleBusinessProfile) {
+        newClientData.googleBusinessProfile = {
           id: realClient.googleBusinessProfile.id,
           name: realClient.googleBusinessProfile.name,
-          rating: realClient.googleBusinessProfile.rating,
-          reviewCount: realClient.googleBusinessProfile.reviewCount,
+          rating: realClient.googleBusinessProfile.rating || 0,
+          reviewCount: realClient.googleBusinessProfile.reviewCount || 0,
           isConnected: !!realClient.googleBusinessProfileId,
-          address: realClient.googleBusinessProfile.address,
-          category: realClient.googleBusinessProfile.category
-        } : null
-      })
+          address: realClient.googleBusinessProfile.address || '',
+          category: realClient.googleBusinessProfile.category || ''
+        }
+      }
+      
+      setClient(newClientData)
       
       console.log('[ClientDetail] Loaded real client data:', realClient.name)
     } else {
