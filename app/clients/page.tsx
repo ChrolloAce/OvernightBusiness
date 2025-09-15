@@ -44,8 +44,7 @@ const mockClients = [
       id: 'bmw-downtown',
       name: 'BMW Downtown',
       rating: 4.8,
-      reviewCount: 127,
-      isConnected: true
+      reviewCount: 127
     }
   },
   {
@@ -62,8 +61,7 @@ const mockClients = [
       id: 'samsung-store',
       name: 'Samsung Store',
       rating: 4.6,
-      reviewCount: 89,
-      isConnected: true
+      reviewCount: 89
     }
   },
   {
@@ -92,8 +90,7 @@ const mockClients = [
       id: 'fedex-center',
       name: 'FedEx Center',
       rating: 4.2,
-      reviewCount: 203,
-      isConnected: false
+      reviewCount: 203
     }
   }
 ]
@@ -254,7 +251,7 @@ export default function ClientsPage() {
                           {client.googleBusinessProfile ? (
                             <div className="space-y-1">
                               <div className="flex items-center space-x-2">
-                                <div className={`w-2 h-2 rounded-full ${client.googleBusinessProfile.isConnected ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                                <div className={`w-2 h-2 rounded-full ${client.googleBusinessProfileId ? 'bg-green-500' : 'bg-yellow-500'}`} />
                                 <span className="text-sm font-medium text-gray-900">
                                   {client.googleBusinessProfile.name}
                                 </span>
