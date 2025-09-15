@@ -16,7 +16,8 @@ import {
   Sun,
   Sparkles,
   Zap,
-  ChevronRight
+  ChevronRight,
+  PhoneCall
 } from 'lucide-react'
 import { useTheme } from '@/components/theme-provider'
 import { Button } from '@/components/ui/button'
@@ -64,6 +65,13 @@ const navigation = [
     icon: BarChart3,
     gradient: 'from-yellow-500 to-orange-500',
     description: 'Performance Insights'
+  },
+  {
+    name: 'Calls',
+    href: '/calls',
+    icon: PhoneCall,
+    gradient: 'from-emerald-500 to-teal-500',
+    description: 'Call Analytics'
   },
   {
     name: 'Reports',

@@ -24,13 +24,15 @@ import {
   MoreHorizontal,
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  PhoneCall
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Link from 'next/link'
+import { ClientPhoneManager } from '@/components/client-phone-manager'
 
 // Mock client data
 const mockClient = {
@@ -211,8 +213,9 @@ export default function ClientDetailPage() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7 bg-white border border-gray-200 rounded-lg">
+            <TabsList className="grid w-full grid-cols-8 bg-white border border-gray-200 rounded-lg">
               <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="phone">Phone</TabsTrigger>
               <TabsTrigger value="access">Access</TabsTrigger>
               <TabsTrigger value="website">Website</TabsTrigger>
               <TabsTrigger value="files">Files</TabsTrigger>
@@ -335,6 +338,18 @@ export default function ClientDetailPage() {
                   </CardContent>
                 </Card>
               )}
+            </TabsContent>
+
+            {/* Phone Tab */}
+            <TabsContent value="phone" className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                  <PhoneCall className="mr-2 h-5 w-5 text-blue-600" />
+                  Phone Number & Call Management
+                </h2>
+                <p className="text-gray-600">Manage Twilio phone numbers and track call analytics for this client</p>
+              </div>
+              <ClientPhoneManager clientId={mockClient.id} clientName={mockClient.name} />
             </TabsContent>
 
             {/* Access Tab */}
