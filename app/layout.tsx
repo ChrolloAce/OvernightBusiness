@@ -2,10 +2,10 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { ProfileProvider } from '@/contexts/profile-context'
-// import { ClientProvider } from '@/contexts/client-context'
+import { ClientProvider } from '@/contexts/client-context'
 import { ConditionalLayout } from '@/components/conditional-layout'
 import { ClientInitializer } from '@/components/client-initializer'
-// import { ClientDataInitializer } from '@/components/client-data-initializer'
+import { ClientDataInitializer } from '@/components/client-data-initializer'
 import { AutoLogin } from '@/components/auto-login'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -26,7 +26,7 @@ export default function RootLayout({
     <html lang="en" className="light">
       <body className={`${inter.className} bg-gray-50`}>
         <ProfileProvider>
-          {/* <ClientProvider> */}
+          <ClientProvider>
             <AutoLogin>
               <div className="min-h-screen bg-gray-50">
                 <ConditionalLayout>
@@ -36,8 +36,8 @@ export default function RootLayout({
             </AutoLogin>
             
             <ClientInitializer />
-            {/* <ClientDataInitializer /> */}
-          {/* </ClientProvider> */}
+            <ClientDataInitializer />
+          </ClientProvider>
         </ProfileProvider>
       </body>
     </html>

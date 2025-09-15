@@ -25,9 +25,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-// Temporarily comment out to avoid build issues
-// import { useClients } from '@/contexts/client-context'
-// import { useProfile } from '@/contexts/profile-context'
+import { useClients } from '@/contexts/client-context'
+import { useProfile } from '@/contexts/profile-context'
 
 // Mock client data for fallback
 const mockClients = [
@@ -107,13 +106,12 @@ export default function ClientsPage() {
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  // Temporarily use mock data to avoid build issues
-  // const { clients, loadClients } = useClients()
-  // const { profiles } = useProfile()
+  const { clients, loadClients } = useClients()
+  const { profiles } = useProfile()
 
   useEffect(() => {
     setMounted(true)
-    // loadClients()
+    loadClients()
   }, [])
 
   const getStatusColor = (status: string) => {
@@ -126,8 +124,10 @@ export default function ClientsPage() {
     }
   }
 
-  // Use mock data for now
-  const filteredClients = mockClients.filter(client => {
+  // Use real clients if available, otherwise fall back to mock data
+  const clientsToDisplay = clients.length > 0 ? clients : mockClients
+  
+  const filteredClients = clientsToDisplay.filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          client.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          client.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))

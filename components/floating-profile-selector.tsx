@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
 import { SavedBusinessProfile } from '@/lib/business-profiles-storage'
+import { useClients } from '@/contexts/client-context'
 
 // Business Logo Component
 interface BusinessLogoProps {
@@ -85,6 +86,7 @@ interface FloatingProfileSelectorProps {
 export default function FloatingProfileSelector({ selectedProfile, onProfileSelect }: FloatingProfileSelectorProps) {
   const [profiles, setProfiles] = useState<SavedBusinessProfile[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const { getClientByGoogleBusinessProfileId } = useClients()
 
   useEffect(() => {
     const loadProfiles = () => {
@@ -158,6 +160,19 @@ export default function FloatingProfileSelector({ selectedProfile, onProfileSele
                             <MapPin className="w-3 h-3 flex-shrink-0" />
                             <span className="truncate">{profile.address}</span>
                           </div>
+                          {(() => {
+                            const assignedClient = getClientByGoogleBusinessProfileId(profile.googleBusinessId || profile.id)
+                            return assignedClient ? (
+                              <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
+                                <Building2 className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">Client: {assignedClient.name}</span>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-400 mt-1">
+                                Unassigned
+                              </div>
+                            )
+                          })()}
                         </div>
                         {selectedProfile?.id === profile.id && (
                           <Check className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />

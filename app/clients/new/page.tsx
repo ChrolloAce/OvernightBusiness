@@ -19,13 +19,13 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
-// Temporarily comment out to avoid build issues
-// import { useProfile } from '@/contexts/profile-context'
+import { useProfile } from '@/contexts/profile-context'
+import { useClients } from '@/contexts/client-context'
 
 export default function NewClientPage() {
   const router = useRouter()
-  // const { profiles } = useProfile()
-  const profiles: any[] = [] // Temporary mock
+  const { profiles } = useProfile()
+  const { createClient } = useClients()
   const [mounted, setMounted] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -70,14 +70,28 @@ export default function NewClientPage() {
     setIsSubmitting(true)
 
     try {
-      // In a real app, this would make an API call to create the client
       console.log('Creating client:', formData)
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Create the client using the client manager
+      const newClient = createClient({
+        name: formData.name,
+        email: formData.email || undefined,
+        phone: formData.phone || undefined,
+        website: formData.website || undefined,
+        status: formData.status,
+        tags: formData.tags,
+        notes: formData.notes || undefined,
+        googleBusinessProfileId: formData.googleBusinessProfileId || undefined,
+        activeProjects: 0,
+        lastActivity: new Date().toISOString(),
+        totalRevenue: 0,
+        outstandingInvoices: 0
+      })
+      
+      console.log('Client created successfully:', newClient)
       
       // Redirect to client detail page
-      router.push('/clients/1') // In real app, use the created client ID
+      router.push(`/clients/${newClient.id}`)
     } catch (error) {
       console.error('Error creating client:', error)
     } finally {

@@ -30,6 +30,7 @@ import { GoogleBusinessAPI, BusinessLocation } from '@/lib/google-business-api'
 import { BusinessProfilesStorage, SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
 import { TestSubscriptionButton } from '@/components/test-subscription-button'
+import { useClients } from '@/contexts/client-context'
 
 interface BusinessProfile {
   id: string
@@ -147,6 +148,7 @@ export default function ProfilesPage() {
   const [profiles, setProfiles] = useState<BusinessProfile[]>([])
   const [isConnected, setIsConnected] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const { clients, getClientByGoogleBusinessProfileId } = useClients()
   const [showAddForm, setShowAddForm] = useState(false)
   const [googleLocations, setGoogleLocations] = useState<BusinessLocation[]>([])
   const [loadingLocations, setLoadingLocations] = useState(false)
@@ -685,6 +687,32 @@ export default function ProfilesPage() {
                             </div>
                           </div>
                         </div>
+
+                        {/* Client Assignment Status */}
+                        {(() => {
+                          const assignedClient = getClientByGoogleBusinessProfileId(profile.googleBusinessId || profile.id)
+                          return assignedClient ? (
+                            <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-3 border border-green-200">
+                              <div className="flex items-center space-x-2">
+                                <Users className="h-4 w-4 text-green-600" />
+                                <div>
+                                  <p className="text-sm font-medium text-green-900">Assigned to Client</p>
+                                  <p className="text-xs text-green-700">{assignedClient.name}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-3 border border-gray-200">
+                              <div className="flex items-center space-x-2">
+                                <AlertCircle className="h-4 w-4 text-gray-500" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-700">Unassigned</p>
+                                  <p className="text-xs text-gray-500">Available for client assignment</p>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })()}
 
                         {/* Last Updated */}
                         <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-2 lg:px-3 py-2">

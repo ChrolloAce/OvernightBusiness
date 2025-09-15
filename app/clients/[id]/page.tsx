@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Link from 'next/link'
 import { ClientPhoneManager } from '@/components/client-phone-manager'
+import { useClients } from '@/contexts/client-context'
 
 // Mock client data
 const mockClient = {
@@ -102,12 +103,46 @@ const mockAccessItems = [
 
 export default function ClientDetailPage() {
   const params = useParams()
+  const { clients } = useClients()
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
+  const [client, setClient] = useState(mockClient)
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+    
+    // Load real client data if available
+    const clientId = params.id as string
+    const realClient = clients.find(c => c.id === clientId)
+    
+    if (realClient) {
+      setClient({
+        id: realClient.id,
+        name: realClient.name,
+        email: realClient.email || '',
+        phone: realClient.phone || '',
+        website: realClient.website || '',
+        status: realClient.status,
+        tags: realClient.tags,
+        notes: realClient.notes || '',
+        avatar: realClient.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2),
+        createdAt: realClient.createdAt,
+        googleBusinessProfile: realClient.googleBusinessProfile ? {
+          id: realClient.googleBusinessProfile.id,
+          name: realClient.googleBusinessProfile.name,
+          rating: realClient.googleBusinessProfile.rating,
+          reviewCount: realClient.googleBusinessProfile.reviewCount,
+          isConnected: !!realClient.googleBusinessProfileId,
+          address: realClient.googleBusinessProfile.address,
+          category: realClient.googleBusinessProfile.category
+        } : null
+      })
+      
+      console.log('[ClientDetail] Loaded real client data:', realClient.name)
+    } else {
+      console.log('[ClientDetail] Using mock data for client:', clientId)
+    }
+  }, [params.id, clients])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -157,30 +192,30 @@ export default function ClientDetailPage() {
                     {mockClient.avatar}
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900">{mockClient.name}</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">{client.name}</h1>
                     <div className="flex items-center space-x-4 mt-2">
-                      <Badge className={getStatusColor(mockClient.status)} variant="outline">
-                        {mockClient.status.charAt(0).toUpperCase() + mockClient.status.slice(1)}
+                      <Badge className={getStatusColor(client.status)} variant="outline">
+                        {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
                       </Badge>
-                      {mockClient.googleBusinessProfile?.isConnected && (
+                      {client.googleBusinessProfile?.isConnected && (
                         <Badge className="bg-green-100 text-green-800 border-green-200" variant="outline">
                           <Building2 className="mr-1 h-3 w-3" />
                           Google Business Connected
                         </Badge>
                       )}
                     </div>
-                    <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
-                      <div className="flex items-center">
-                        <Mail className="mr-1 h-4 w-4" />
-                        {mockClient.email}
-                      </div>
-                      <div className="flex items-center">
-                        <Phone className="mr-1 h-4 w-4" />
-                        {mockClient.phone}
-                      </div>
-                      {mockClient.website && (
+                      <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+                        <div className="flex items-center">
+                          <Mail className="mr-1 h-4 w-4" />
+                          {client.email}
+                        </div>
+                        <div className="flex items-center">
+                          <Phone className="mr-1 h-4 w-4" />
+                          {client.phone}
+                        </div>
+                        {client.website && (
                         <a 
-                          href={mockClient.website} 
+                          href={client.website} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="flex items-center text-blue-600 hover:text-blue-700"
@@ -277,7 +312,7 @@ export default function ClientDetailPage() {
               </div>
 
               {/* Google Business Profile Integration */}
-              {mockClient.googleBusinessProfile && (
+              {client.googleBusinessProfile && (
                 <Card className="bg-white shadow-sm border-gray-200">
                   <CardHeader>
                     <CardTitle className="text-lg font-semibold flex items-center">
@@ -292,22 +327,22 @@ export default function ClientDetailPage() {
                           <Building2 className="h-6 w-6 text-blue-600" />
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">{mockClient.googleBusinessProfile.name}</p>
-                          <p className="text-sm text-gray-600">{mockClient.googleBusinessProfile.category}</p>
+                          <p className="font-semibold text-gray-900">{client.googleBusinessProfile.name}</p>
+                          <p className="text-sm text-gray-600">{client.googleBusinessProfile.category}</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
                         <Star className="h-5 w-5 text-yellow-400 fill-current" />
                         <div>
-                          <p className="font-semibold text-gray-900">{mockClient.googleBusinessProfile.rating}</p>
-                          <p className="text-sm text-gray-600">{mockClient.googleBusinessProfile.reviewCount} reviews</p>
+                          <p className="font-semibold text-gray-900">{client.googleBusinessProfile.rating}</p>
+                          <p className="text-sm text-gray-600">{client.googleBusinessProfile.reviewCount} reviews</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <div className={`w-3 h-3 rounded-full ${mockClient.googleBusinessProfile.isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <div className={`w-3 h-3 rounded-full ${client.googleBusinessProfile.isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
                         <div>
                           <p className="font-semibold text-gray-900">
-                            {mockClient.googleBusinessProfile.isConnected ? 'Connected' : 'Disconnected'}
+                            {client.googleBusinessProfile.isConnected ? 'Connected' : 'Disconnected'}
                           </p>
                           <p className="text-sm text-gray-600">Sync status</p>
                         </div>
@@ -315,19 +350,19 @@ export default function ClientDetailPage() {
                     </div>
                     <div className="mt-4 pt-4 border-t border-gray-200">
                       <div className="flex space-x-3">
-                        <Link href={`/analytics?profile=${mockClient.googleBusinessProfile.id}`}>
+                        <Link href={`/analytics?profile=${client.googleBusinessProfile.id}`}>
                           <Button variant="outline" size="sm">
                             <BarChart3 className="mr-2 h-4 w-4" />
                             View Analytics
                           </Button>
                         </Link>
-                        <Link href={`/reviews?profile=${mockClient.googleBusinessProfile.id}`}>
+                        <Link href={`/reviews?profile=${client.googleBusinessProfile.id}`}>
                           <Button variant="outline" size="sm">
                             <Star className="mr-2 h-4 w-4" />
                             Manage Reviews
                           </Button>
                         </Link>
-                        <Link href={`/content?profile=${mockClient.googleBusinessProfile.id}`}>
+                        <Link href={`/content?profile=${client.googleBusinessProfile.id}`}>
                           <Button variant="outline" size="sm">
                             <Calendar className="mr-2 h-4 w-4" />
                             Create Content
@@ -349,7 +384,7 @@ export default function ClientDetailPage() {
                 </h2>
                 <p className="text-gray-600">Manage Twilio phone numbers and track call analytics for this client</p>
               </div>
-              <ClientPhoneManager clientId={mockClient.id} clientName={mockClient.name} />
+              <ClientPhoneManager clientId={client.id} clientName={client.name} />
             </TabsContent>
 
             {/* Access Tab */}

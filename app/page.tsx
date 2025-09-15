@@ -199,19 +199,48 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      // For now, use mock data to avoid build issues
-      // When Node.js is available, uncomment the real implementation
+      // Load client data
+      const { ClientManager } = await import('@/lib/managers/client-manager')
+      const clientManager = ClientManager.getInstance()
+      
+      // Load existing Google Business Profile data
+      const { BusinessProfilesStorage } = await import('@/lib/business-profiles-storage')
+      const profiles = BusinessProfilesStorage.getAllProfiles()
+      
+      const clients = clientManager.getAllClients()
+      const activeClients = clientManager.getActiveClientsCount()
+      const connectedProfiles = clientManager.getGoogleBusinessConnectedCount()
+      
+      // Calculate KPIs
+      const totalRevenue = clients.reduce((sum, client) => sum + (client.totalRevenue || 0), 0)
+      const outstandingInvoices = clients.reduce((sum, client) => sum + (client.outstandingInvoices || 0), 0)
       
       setDashboardData({
-        activeClients: 24,
-        totalRevenue: 45230,
-        connectedProfiles: 3,
-        outstandingInvoices: 8,
-        clients: [],
-        profiles: []
+        activeClients: activeClients || 0,
+        totalRevenue: totalRevenue || 0,
+        connectedProfiles: connectedProfiles || 0,
+        outstandingInvoices: outstandingInvoices || 0,
+        clients,
+        profiles
+      })
+
+      console.log('[Dashboard] Loaded real data:', {
+        clients: clients.length,
+        activeClients,
+        profiles: profiles.length,
+        connectedProfiles
       })
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
+      // Fallback to mock data
+      setDashboardData({
+        activeClients: 0,
+        totalRevenue: 0,
+        connectedProfiles: 0,
+        outstandingInvoices: 0,
+        clients: [],
+        profiles: []
+      })
     }
   }
 
