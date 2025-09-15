@@ -251,7 +251,7 @@ export default function ClientsPage() {
                           {client.googleBusinessProfile ? (
                             <div className="space-y-1">
                               <div className="flex items-center space-x-2">
-                                <div className={`w-2 h-2 rounded-full ${client.googleBusinessProfileId ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                                <div className="w-2 h-2 rounded-full bg-green-500" />
                                 <span className="text-sm font-medium text-gray-900">
                                   {client.googleBusinessProfile.name}
                                 </span>
