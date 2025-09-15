@@ -25,45 +25,52 @@ import { Badge } from '@/components/ui/badge'
 const navigation = [
   {
     name: 'Dashboard',
-    href: '/dashboard',
+    href: '/',
     icon: LayoutDashboard,
     gradient: 'from-blue-500 to-cyan-500',
-    description: 'Overview & Analytics'
+    description: 'Overview & KPIs'
+  },
+  {
+    name: 'Clients',
+    href: '/clients',
+    icon: Building2,
+    gradient: 'from-purple-500 to-pink-500',
+    description: 'Client Management'
   },
   {
     name: 'Business Profiles',
     href: '/profiles',
     icon: Building2,
-    gradient: 'from-purple-500 to-pink-500',
-    description: 'Manage Locations'
+    gradient: 'from-green-500 to-emerald-500',
+    description: 'Google Business Profiles'
   },
   {
-    name: 'Content Hub',
-    href: '/content',
-    icon: PenTool,
-    gradient: 'from-green-500 to-emerald-500',
-    description: 'AI Content Creation'
+    name: 'Tasks',
+    href: '/tasks',
+    icon: Calendar,
+    gradient: 'from-orange-500 to-red-500',
+    description: 'Task Management'
+  },
+  {
+    name: 'Deals',
+    href: '/deals',
+    icon: Star,
+    gradient: 'from-indigo-500 to-purple-500',
+    description: 'Sales Pipeline'
   },
   {
     name: 'Analytics',
     href: '/analytics',
     icon: BarChart3,
-    gradient: 'from-orange-500 to-red-500',
+    gradient: 'from-yellow-500 to-orange-500',
     description: 'Performance Insights'
   },
   {
-    name: 'Scheduler',
-    href: '/scheduler',
-    icon: Calendar,
-    gradient: 'from-indigo-500 to-purple-500',
-    description: 'Post Scheduling'
-  },
-  {
-    name: 'Reviews',
-    href: '/reviews',
-    icon: Star,
-    gradient: 'from-yellow-500 to-orange-500',
-    description: 'Review Management'
+    name: 'Reports',
+    href: '/reports',
+    icon: PenTool,
+    gradient: 'from-pink-500 to-rose-500',
+    description: 'Financial Reports'
   }
 ]
 

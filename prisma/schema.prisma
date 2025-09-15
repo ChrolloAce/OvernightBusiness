@@ -1,0 +1,372 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatar    String?
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  clients       Client[]
+  tasks         Task[]
+  deals         Deal[]
+  auditLogs     AuditLog[]
+  
+  @@map("users")
+}
+
+model Client {
+  id          String      @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  website     String?
+  logo        String?
+  status      ClientStatus @default(ACTIVE)
+  tags        String[]
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Owner relationship
+  ownerId     String
+  owner       User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  // Google Business Profile Integration
+  googleBusinessProfileId String?
+  googleBusinessProfile   Json?    // Store the SavedBusinessProfile data
+  
+  // Relations
+  projects    Project[]
+  tasks       Task[]
+  deals       Deal[]
+  invoices    Invoice[]
+  transactions Transaction[]
+  files       File[]
+  accessItems AccessItem[]
+  websites    Website[]
+  adAccounts  AdAccount[]
+  auditLogs   AuditLog[]
+  
+  @@map("clients")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+  startDate   DateTime?
+  endDate     DateTime?
+  budget      Decimal?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  // Client relationship
+  clientId    String
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  tasks       Task[]
+  files       File[]
+  
+  @@map("projects")
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  // Relationships
+  clientId    String?
+  client      Client?    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  projectId   String?
+  project     Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  assigneeId  String?
+  assignee    User?      @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  
+  @@map("tasks")
+}
+
+model Deal {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  value       Decimal?
+  stage       DealStage  @default(LEAD)
+  probability Int        @default(50) // 0-100%
+  expectedCloseDate DateTime?
+  actualCloseDate   DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  // Relationships
+  clientId    String
+  client      Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  ownerId     String
+  owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  @@map("deals")
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  title         String
+  description   String?
+  amount        Decimal
+  status        InvoiceStatus @default(DRAFT)
+  dueDate       DateTime
+  sentDate      DateTime?
+  paidDate      DateTime?
+  stripeId      String?       // Stripe Payment Intent ID
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  // Client relationship
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  // Line items
+  lineItems     InvoiceLineItem[]
+  
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id          String  @id @default(cuid())
+  description String
+  quantity    Int     @default(1)
+  rate        Decimal
+  amount      Decimal
+  
+  // Invoice relationship
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  
+  @@map("invoice_line_items")
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  description String
+  amount      Decimal
+  type        TransactionType
+  category    String?
+  date        DateTime
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  // Client relationship (optional - for client-specific transactions)
+  clientId    String?
+  client      Client?           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  // Invoice relationship (optional - for invoice payments)
+  invoiceId   String?
+  invoice     Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  
+  @@map("transactions")
+}
+
+model File {
+  id           String   @id @default(cuid())
+  name         String
+  originalName String
+  mimeType     String
+  size         Int
+  url          String
+  thumbnailUrl String?
+  tags         String[]
+  metadata     Json?    // Store dimensions, etc.
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relationships
+  clientId     String?
+  client       Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  projectId    String?
+  project      Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@map("files")
+}
+
+model AccessItem {
+  id          String     @id @default(cuid())
+  label       String
+  type        AccessType
+  username    String?
+  secret      String?    // Encrypted
+  meta        Json?      // Extra fields like registrar, nameservers, etc.
+  verified    Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  // Client relationship
+  clientId    String
+  client      Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  @@map("access_items")
+}
+
+model Website {
+  id          String        @id @default(cuid())
+  domain      String
+  stack       String?
+  status      WebsiteStatus @default(DEVELOPMENT)
+  dnsOk       Boolean       @default(false)
+  lastDnsCheck DateTime?
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  // Client relationship
+  clientId    String        @unique
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  @@map("websites")
+}
+
+model AdAccount {
+  id           String      @id @default(cuid())
+  platform     AdPlatform
+  externalId   String      // Business Manager ID, Ad Account ID, etc.
+  pixelId      String?
+  setupProgress Json?       // Checklist progress
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  
+  // Client relationship
+  clientId     String
+  client       Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  @@map("ad_accounts")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // CREATE, UPDATE, DELETE, VIEW
+  entity    String   // Client, AccessItem, Invoice, etc.
+  entityId  String
+  changes   Json?    // What changed
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  
+  // User relationship
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Client relationship (optional)
+  clientId  String?
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  @@map("audit_logs")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  USER
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  PROSPECT
+  ARCHIVED
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum DealStage {
+  LEAD
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum AccessType {
+  CRM
+  GOOGLE_BUSINESS_PROFILE
+  DOMAIN
+  HOSTING
+  AD_PLATFORM
+  WEBSITE
+  EMAIL
+  SOCIAL_MEDIA
+  OTHER
+}
+
+enum WebsiteStatus {
+  DEVELOPMENT
+  STAGING
+  LIVE
+  MAINTENANCE
+}
+
+enum AdPlatform {
+  META
+  GOOGLE
+  TIKTOK
+  LINKEDIN
+  TWITTER
+  OTHER
+}

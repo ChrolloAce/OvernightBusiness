@@ -1,24 +1,41 @@
 # 🚀 Overnight Biz Dashboard
 
-A high-tech, modern dashboard for managing Google Business Profiles and AI-powered content generation.
+A comprehensive client management platform with integrated Google Business Profile management and AI-powered content generation.
 
 ## ✨ Features
 
-- **Google Business Profile Management**: Connect and manage multiple business profiles
-- **AI Content Generation**: Generate blogs and posts using GPT-4, Gemini, and Claude
+### 🏢 Client Management
+- **Client Dashboard**: Track active clients, MRR, profit margins, and outstanding invoices
+- **Client Profiles**: Detailed client information with Google Business Profile integration
+- **Project Tracking**: Manage projects and tasks across all clients
+- **Sales Pipeline**: Kanban-style deal management with stage tracking
+- **Financial Reports**: Revenue tracking, invoice management, and expense reporting
+
+### 🏪 Google Business Profile Integration
+- **Multi-Profile Management**: Connect and manage multiple Google Business Profiles per client
 - **Performance Analytics**: Track views, clicks, and engagement metrics
 - **Review Management**: Respond to and manage customer reviews
-- **Content Scheduling**: Schedule posts and updates across profiles
-- **Modern UI**: Cyberpunk-inspired design with glassmorphism effects
+- **AI Content Generation**: Generate blogs and posts using GPT-4
+- **Content Scheduling**: Automated posting with intelligent timing
+
+### 📊 Business Intelligence
+- **KPI Dashboard**: Real-time metrics for clients, revenue, and performance
+- **Financial Tracking**: Invoice status, payment tracking, and profit analysis
+- **Task Management**: Assign and track tasks across team members
+- **Access Vault**: Secure credential management for client accounts
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 14, React 18, TypeScript
+- **Database**: PostgreSQL with Prisma ORM
 - **Styling**: Tailwind CSS with custom animations
 - **UI Components**: Radix UI primitives
 - **Animations**: Framer Motion
 - **Icons**: Lucide React
 - **Charts**: Recharts
+- **File Uploads**: UploadThing
+- **Email**: Resend
+- **Payments**: Stripe (optional)
 
 ## 🚀 Getting Started
 
@@ -68,12 +85,13 @@ overnight-biz/
 
 ## 📊 Dashboard Sections
 
-1. **Overview**: Key metrics and recent activity
-2. **Business Profiles**: Manage multiple locations
-3. **Content Hub**: AI-powered content generation
-4. **Analytics**: Performance insights and trends
-5. **Scheduler**: Content calendar and posting
-6. **Reviews**: Customer feedback management
+1. **Dashboard**: KPIs, revenue charts, and recent invoices
+2. **Clients**: Client management with Google Business Profile integration
+3. **Tasks**: Task assignment and tracking across clients
+4. **Deals**: Sales pipeline with kanban-style deal management
+5. **Business Profiles**: Google Business Profile management
+6. **Analytics**: Performance insights and trends
+7. **Reports**: Financial reports and business intelligence
 
 ## 🚧 Development Status
 

@@ -18,8 +18,8 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { selectedProfile, setSelectedProfile } = useProfile()
   
-  // Show sidebar for dashboard and internal pages, but not for landing page
-  const showSidebar = pathname !== '/'
+  // Show sidebar for all pages except auth callback
+  const showSidebar = pathname !== '/auth/callback'
   
   if (showSidebar) {
     return (
