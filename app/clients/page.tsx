@@ -40,7 +40,6 @@ const mockClients = [
     tags: ['automotive', 'premium'],
     activeProjects: 3,
     lastActivity: '2 hours ago',
-    avatar: 'BC',
     googleBusinessProfile: {
       id: 'bmw-downtown',
       name: 'BMW Downtown',
@@ -59,7 +58,6 @@ const mockClients = [
     tags: ['technology', 'electronics'],
     activeProjects: 2,
     lastActivity: '1 day ago',
-    avatar: 'SC',
     googleBusinessProfile: {
       id: 'samsung-store',
       name: 'Samsung Store',
@@ -78,7 +76,6 @@ const mockClients = [
     tags: ['social', 'app'],
     activeProjects: 1,
     lastActivity: '3 days ago',
-    avatar: 'TC',
     googleBusinessProfile: null
   },
   {
@@ -91,7 +88,6 @@ const mockClients = [
     tags: ['logistics', 'shipping'],
     activeProjects: 4,
     lastActivity: '5 hours ago',
-    avatar: 'FE',
     googleBusinessProfile: {
       id: 'fedex-center',
       name: 'FedEx Center',
@@ -229,7 +225,7 @@ export default function ClientsPage() {
                         <td className="py-4 px-4">
                           <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-medium">
-                              {client.avatar}
+                              {client.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
                             </div>
                             <div>
                               <p className="font-semibold text-gray-900">{client.name}</p>
