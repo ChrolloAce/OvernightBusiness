@@ -108,6 +108,11 @@ export function ClientAnalytics({ clientId, clientName, googleBusinessProfile }:
 
     try {
       console.log(`[ClientAnalytics] Loading analytics for client: ${clientName}`)
+      console.log(`[ClientAnalytics] Google Business Profile:`, {
+        id: googleBusinessProfile.id,
+        name: googleBusinessProfile.name,
+        googleBusinessId: googleBusinessProfile.googleBusinessId
+      })
       
       const result = await CentralizedDataLoader.loadAnalytics(googleBusinessProfile, {
         enabledMetrics: {
@@ -121,19 +126,24 @@ export function ClientAnalytics({ clientId, clientName, googleBusinessProfile }:
         }
       })
 
+      console.log(`[ClientAnalytics] API result for ${clientName}:`, result)
+
       if (result.success && result.data) {
-        console.log(`[ClientAnalytics] Analytics loaded for ${clientName}:`, result.data)
+        console.log(`[ClientAnalytics] Analytics loaded successfully for ${clientName}:`, result.data)
         const processedData = processAnalyticsData(result.data)
         setAnalyticsData(processedData)
+        setError(null) // Clear any previous errors
       } else {
-        console.error(`[ClientAnalytics] Failed to load analytics for ${clientName}:`, result.error)
-        setError(result.error || 'Failed to load analytics data')
-        // Use mock data as fallback
+        console.error(`[ClientAnalytics] API call failed for ${clientName}:`, result.error)
+        const errorMessage = result.error || 'Failed to load analytics data'
+        setError(`Unable to load real-time analytics: ${errorMessage}. Showing sample data.`)
+        // Use mock data as fallback but inform user
         setAnalyticsData(getMockAnalyticsData())
       }
     } catch (error) {
-      console.error(`[ClientAnalytics] Error loading analytics for ${clientName}:`, error)
-      setError(error instanceof Error ? error.message : 'Unknown error')
+      console.error(`[ClientAnalytics] Exception loading analytics for ${clientName}:`, error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      setError(`Error connecting to Google Analytics: ${errorMessage}. Showing sample data.`)
       setAnalyticsData(getMockAnalyticsData())
     } finally {
       setAnalyticsLoading(false)
@@ -306,7 +316,14 @@ export function ClientAnalytics({ clientId, clientName, googleBusinessProfile }:
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Analytics</h2>
-          <p className="text-gray-600">Performance insights for {googleBusinessProfile.name}</p>
+          <p className="text-gray-600">
+            Performance insights for {googleBusinessProfile.name}
+            {error && (
+              <span className="block text-sm text-orange-600 mt-1">
+                ⚠️ Showing sample data - {error}
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center space-x-3">
           <Select value={timeRange} onValueChange={setTimeRange}>
@@ -330,8 +347,27 @@ export function ClientAnalytics({ clientId, clientName, googleBusinessProfile }:
             ) : (
               <RefreshCw className="mr-2 h-4 w-4" />
             )}
-            Refresh
+            {error ? 'Retry' : 'Refresh'}
           </Button>
+          
+          {error && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => {
+                console.log('[ClientAnalytics] Debug info:', {
+                  clientName,
+                  googleBusinessProfile,
+                  error,
+                  timeRange
+                })
+                alert('Check browser console for debug information')
+              }}
+              className="text-orange-600 hover:text-orange-700"
+            >
+              Debug Info
+            </Button>
+          )}
         </div>
       </div>
 

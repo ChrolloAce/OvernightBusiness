@@ -1284,6 +1284,61 @@ export class GoogleBusinessAPI {
     return await this.handleApiResponse(response, 'Fetch Performance Metrics')
   }
 
+  // Test Performance API access
+  async testPerformanceApiAccess(locationId: string): Promise<{ success: boolean; error?: string; details?: any }> {
+    try {
+      const accessToken = await this.authService.getValidAccessToken()
+      
+      console.log('[Google Business API] Testing Performance API access for location:', locationId)
+      
+      // Try a simple API call with minimal parameters
+      const endDate = new Date()
+      const startDate = new Date()
+      startDate.setDate(endDate.getDate() - 7) // Just 7 days for testing
+      
+      const params = new URLSearchParams()
+      params.append('dailyMetrics', 'BUSINESS_IMPRESSIONS_DESKTOP_MAPS') // Just one metric for testing
+      params.append('dailyRange.start_date.year', startDate.getFullYear().toString())
+      params.append('dailyRange.start_date.month', (startDate.getMonth() + 1).toString())
+      params.append('dailyRange.start_date.day', startDate.getDate().toString())
+      params.append('dailyRange.end_date.year', endDate.getFullYear().toString())
+      params.append('dailyRange.end_date.month', (endDate.getMonth() + 1).toString())
+      params.append('dailyRange.end_date.day', endDate.getDate().toString())
+      
+      const testUrl = `${this.performanceBaseUrl}/locations/${locationId}:fetchMultiDailyMetricsTimeSeries?${params.toString()}`
+      console.log('[Google Business API] Test URL:', testUrl)
+      
+      const response = await fetch(testUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const responseText = await response.text()
+      console.log('[Google Business API] Test response status:', response.status)
+      console.log('[Google Business API] Test response body:', responseText)
+
+      if (!response.ok) {
+        return { 
+          success: false, 
+          error: `HTTP ${response.status}: ${response.statusText}`,
+          details: { responseText, status: response.status }
+        }
+      }
+
+      const data = JSON.parse(responseText)
+      return { success: true, details: data }
+    } catch (error) {
+      console.error('[Google Business API] Performance API test failed:', error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        details: error
+      }
+    }
+  }
+
   // Get performance metrics for the last 30 days
   async getRecentPerformanceMetrics(locationId: string): Promise<PerformanceMetricsResponse> {
     const endDate = new Date()

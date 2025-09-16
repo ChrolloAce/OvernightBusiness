@@ -384,6 +384,19 @@ export class CentralizedDataLoader {
         endDate: { year: end.getFullYear(), month: end.getMonth() + 1, day: end.getDate() }
       })
 
+      // First test Performance API access
+      console.log('[CentralizedDataLoader] Testing Performance API access...')
+      const testResult = await this.googleAPI.testPerformanceApiAccess(locationId)
+      console.log('[CentralizedDataLoader] Performance API test result:', testResult)
+      
+      if (!testResult.success) {
+        console.error('[CentralizedDataLoader] Performance API test failed:', testResult.error)
+        return { 
+          success: false, 
+          error: `Performance API access failed: ${testResult.error}. Please check if the Google Business Profile has sufficient data and permissions.`
+        }
+      }
+
       const data = await this.googleAPI.fetchMultiDailyMetricsTimeSeries(
         locationId,
         metricsToUse,
