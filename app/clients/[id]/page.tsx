@@ -35,6 +35,7 @@ import Link from 'next/link'
 import { ClientPhoneManager } from '@/components/client-phone-manager'
 import { useClients } from '@/contexts/client-context'
 import { useTasks } from '@/contexts/task-context'
+import { ClientAnalytics } from '@/components/client-analytics'
 
 // Mock client data
 interface ClientData {
@@ -113,6 +114,8 @@ export default function ClientDetailPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [client, setClient] = useState<ClientData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
 
   useEffect(() => {
     setMounted(true)
@@ -192,6 +195,41 @@ export default function ClientDetailPage() {
     console.log('Task created for client:', client.name)
   }
 
+  const handleFieldEdit = (field: string, currentValue: string) => {
+    setEditingField(field)
+    setEditValue(currentValue || '')
+  }
+
+  const handleFieldSave = () => {
+    if (editingField && client) {
+      // Update client data
+      const { updateClient } = require('@/contexts/client-context')
+      // Note: In a real implementation, you'd get updateClient from context
+      // For now, we'll update the local state
+      setClient({
+        ...client,
+        [editingField]: editValue
+      })
+      
+      setEditingField(null)
+      setEditValue('')
+      console.log(`Updated ${editingField} to:`, editValue)
+    }
+  }
+
+  const handleFieldCancel = () => {
+    setEditingField(null)
+    setEditValue('')
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleFieldSave()
+    } else if (e.key === 'Escape') {
+      handleFieldCancel()
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800 border-green-200'
@@ -249,40 +287,114 @@ export default function ClientDetailPage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center text-white text-xl font-bold">
                     {client.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
                   </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-900">{client.name}</h1>
+                  <div className="flex-1">
+                    {/* Editable Client Name */}
+                    {editingField === 'name' ? (
+                      <Input
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={handleKeyPress}
+                        onBlur={handleFieldSave}
+                        autoFocus
+                        className="text-2xl font-bold border-blue-200 focus:border-blue-400 bg-white"
+                      />
+                    ) : (
+                      <h1 
+                        className="text-2xl font-bold text-gray-900 hover:text-blue-600 cursor-pointer p-1 rounded hover:bg-blue-50 transition-colors"
+                        onClick={() => handleFieldEdit('name', client.name)}
+                      >
+                        {client.name}
+                      </h1>
+                    )}
+                    
                     <div className="flex items-center space-x-4 mt-2">
                       <Badge className={getStatusColor(client.status)} variant="outline">
                         {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
                       </Badge>
-                      {client.googleBusinessProfile?.isConnected && (
+                      {client.googleBusinessProfile && (
                         <Badge className="bg-green-100 text-green-800 border-green-200" variant="outline">
                           <Building2 className="mr-1 h-3 w-3" />
-                          Google Business Connected
+                          {client.googleBusinessProfile.name}
                         </Badge>
                       )}
                     </div>
-                      <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
-                        <div className="flex items-center">
-                          <Mail className="mr-1 h-4 w-4" />
-                          {client.email}
-                        </div>
-                        <div className="flex items-center">
-                          <Phone className="mr-1 h-4 w-4" />
-                          {client.phone}
-                        </div>
-                        {client.website && (
-                        <a 
-                          href={client.website} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center text-blue-600 hover:text-blue-700"
-                        >
-                          <Globe className="mr-1 h-4 w-4" />
-                          Website
-                          <ExternalLink className="ml-1 h-3 w-3" />
-                        </a>
-                      )}
+                    
+                    <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+                      {/* Editable Email */}
+                      <div className="flex items-center">
+                        <Mail className="mr-1 h-4 w-4" />
+                        {editingField === 'email' ? (
+                          <Input
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            onBlur={handleFieldSave}
+                            autoFocus
+                            className="h-6 text-sm border-blue-200 focus:border-blue-400 bg-white ml-1"
+                          />
+                        ) : (
+                          <span 
+                            className="hover:text-blue-600 cursor-pointer p-1 rounded hover:bg-blue-50 transition-colors"
+                            onClick={() => handleFieldEdit('email', client.email)}
+                          >
+                            {client.email || 'Add email...'}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Editable Phone */}
+                      <div className="flex items-center">
+                        <Phone className="mr-1 h-4 w-4" />
+                        {editingField === 'phone' ? (
+                          <Input
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            onBlur={handleFieldSave}
+                            autoFocus
+                            className="h-6 text-sm border-blue-200 focus:border-blue-400 bg-white ml-1"
+                          />
+                        ) : (
+                          <span 
+                            className="hover:text-blue-600 cursor-pointer p-1 rounded hover:bg-blue-50 transition-colors"
+                            onClick={() => handleFieldEdit('phone', client.phone)}
+                          >
+                            {client.phone || 'Add phone...'}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Editable Website */}
+                      <div className="flex items-center">
+                        <Globe className="mr-1 h-4 w-4" />
+                        {editingField === 'website' ? (
+                          <Input
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            onBlur={handleFieldSave}
+                            autoFocus
+                            className="h-6 text-sm border-blue-200 focus:border-blue-400 bg-white ml-1"
+                          />
+                        ) : client.website ? (
+                          <a 
+                            href={client.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center text-blue-600 hover:text-blue-700"
+                          >
+                            Website
+                            <ExternalLink className="ml-1 h-3 w-3" />
+                          </a>
+                        ) : (
+                          <span 
+                            className="hover:text-blue-600 cursor-pointer p-1 rounded hover:bg-blue-50 transition-colors"
+                            onClick={() => handleFieldEdit('website', client.website)}
+                          >
+                            Add website...
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -308,11 +420,11 @@ export default function ClientDetailPage() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-6 bg-white border border-gray-200 rounded-lg">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="phone">Phone</TabsTrigger>
-              <TabsTrigger value="access">Access</TabsTrigger>
-              <TabsTrigger value="website">Website</TabsTrigger>
-              <TabsTrigger value="files">Files</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
               <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              <TabsTrigger value="phone">Phone</TabsTrigger>
+              <TabsTrigger value="files">Files</TabsTrigger>
+              <TabsTrigger value="access">Access</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
@@ -429,6 +541,15 @@ export default function ClientDetailPage() {
                   </CardContent>
                 </Card>
               )}
+            </TabsContent>
+
+            {/* Analytics Tab */}
+            <TabsContent value="analytics" className="space-y-6">
+              <ClientAnalytics 
+                clientId={client.id}
+                clientName={client.name}
+                googleBusinessProfile={client.googleBusinessProfile || null}
+              />
             </TabsContent>
 
             {/* Phone Tab */}

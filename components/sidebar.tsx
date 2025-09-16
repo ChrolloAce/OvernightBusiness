@@ -31,20 +31,13 @@ const navigation = [
     gradient: 'from-blue-500 to-cyan-500',
     description: 'Overview & KPIs'
   },
-  {
-    name: 'Clients',
-    href: '/clients',
-    icon: Building2,
-    gradient: 'from-purple-500 to-pink-500',
-    description: 'Client Management'
-  },
-  {
-    name: 'Business Profiles',
-    href: '/profiles',
-    icon: Building2,
-    gradient: 'from-green-500 to-emerald-500',
-    description: 'Google Business Profiles'
-  },
+        {
+          name: 'Clients',
+          href: '/clients',
+          icon: Building2,
+          gradient: 'from-purple-500 to-pink-500',
+          description: 'Client Management Hub'
+        },
   {
     name: 'Tasks',
     href: '/tasks',
