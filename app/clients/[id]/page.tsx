@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { 
   Building2, 
   ArrowLeft,
@@ -58,27 +58,7 @@ interface ClientData {
   }
 }
 
-const mockClient: ClientData = {
-  id: '1',
-  name: 'BMW Company',
-  email: 'contact@bmw.com',
-  phone: '(840) 574-8039',
-  website: 'https://bmw.com',
-  status: 'active',
-  tags: ['automotive', 'premium'],
-  notes: 'Premium automotive client with multiple locations',
-  avatar: 'BC',
-  createdAt: '2024-01-01',
-  googleBusinessProfile: {
-    id: 'bmw-downtown',
-    name: 'BMW Downtown',
-    rating: 4.8,
-    reviewCount: 127,
-    isConnected: true,
-    address: '123 Main St, Downtown, NY 10001',
-    category: 'Car Dealer'
-  }
-}
+// No mock client data - will show empty state if no real client found
 
 const mockRecentActivity = [
   { action: 'Invoice INV-001 sent', time: '2 hours ago', type: 'invoice' },
@@ -125,10 +105,11 @@ const mockAccessItems = [
 
 export default function ClientDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const { clients } = useClients()
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
-  const [client, setClient] = useState<ClientData>(mockClient)
+  const [client, setClient] = useState<ClientData | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -167,7 +148,9 @@ export default function ClientDetailPage() {
       
       console.log('[ClientDetail] Loaded real client data:', realClient.name)
     } else {
-      console.log('[ClientDetail] Using mock data for client:', clientId)
+      console.log('[ClientDetail] No client found with ID:', clientId)
+      // Redirect to clients page if client not found
+      router.push('/clients')
     }
   }, [params.id, clients])
 
@@ -190,8 +173,15 @@ export default function ClientDetailPage() {
     }
   }
 
-  if (!mounted) {
-    return <div className="min-h-screen bg-gray-50" />
+  if (!mounted || !client) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading client...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

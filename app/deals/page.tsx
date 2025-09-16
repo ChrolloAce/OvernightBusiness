@@ -48,72 +48,13 @@ interface Deal {
   stage: string
 }
 
-// Mock deals data organized by stage
+// Empty deals - start with clean slate
 const initialDeals: Record<string, Deal[]> = {
-  lead: [
-    {
-      id: '1',
-      title: 'BMW Digital Marketing Package',
-      value: 15000,
-      client: 'BMW Company',
-      clientAvatar: 'BC',
-      probability: 80,
-      expectedCloseDate: '2024-02-15',
-      owner: 'John Doe',
-      stage: 'lead'
-    },
-    {
-      id: '2',
-      title: 'Samsung Website Redesign',
-      value: 25000,
-      client: 'Samsung Company',
-      clientAvatar: 'SC',
-      probability: 60,
-      expectedCloseDate: '2024-03-01',
-      owner: 'Jane Smith',
-      stage: 'lead'
-    }
-  ],
-  qualified: [
-    {
-      id: '3',
-      title: 'Tinder App Store Optimization',
-      value: 8000,
-      client: 'Tinder Company',
-      clientAvatar: 'TC',
-      probability: 90,
-      expectedCloseDate: '2024-02-28',
-      owner: 'Mike Johnson',
-      stage: 'qualified'
-    }
-  ],
-  proposal: [
-    {
-      id: '4',
-      title: 'FedEx Logistics Platform',
-      value: 45000,
-      client: 'Fed Ex Company',
-      clientAvatar: 'FE',
-      probability: 75,
-      expectedCloseDate: '2024-04-15',
-      owner: 'Sarah Wilson',
-      stage: 'proposal'
-    }
-  ],
+  lead: [],
+  qualified: [],
+  proposal: [],
   negotiation: [],
-  closed_won: [
-    {
-      id: '5',
-      title: 'Tesla Social Media Management',
-      value: 12000,
-      client: 'Tesla Inc',
-      clientAvatar: 'TI',
-      probability: 100,
-      expectedCloseDate: '2024-01-15',
-      owner: 'John Doe',
-      stage: 'closed_won'
-    }
-  ],
+  closed_won: [],
   closed_lost: []
 }
 

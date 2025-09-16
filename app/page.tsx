@@ -153,40 +153,7 @@ const mockInvoiceStats = [
   { name: 'Overdue', value: 10, color: '#ef4444' }
 ]
 
-const mockRecentInvoices = [
-  {
-    id: 'INV-001',
-    client: 'BMW Company',
-    amount: '$5,200',
-    status: 'paid',
-    dueDate: '2024-01-15',
-    avatar: 'BC'
-  },
-  {
-    id: 'INV-002',
-    client: 'Samsung Company',
-    amount: '$3,800',
-    status: 'pending',
-    dueDate: '2024-01-20',
-    avatar: 'SC'
-  },
-  {
-    id: 'INV-003',
-    client: 'Tinder Company',
-    amount: '$2,400',
-    status: 'overdue',
-    dueDate: '2024-01-10',
-    avatar: 'TC'
-  },
-  {
-    id: 'INV-004',
-    client: 'Fed Ex Company',
-    amount: '$4,600',
-    status: 'paid',
-    dueDate: '2024-01-18',
-    avatar: 'FE'
-  }
-]
+const mockRecentInvoices: any[] = []
 
 export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
