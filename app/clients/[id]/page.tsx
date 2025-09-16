@@ -106,16 +106,28 @@ const mockAccessItems = [
 export default function ClientDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { clients } = useClients()
+  const { clients, loadClients } = useClients()
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [client, setClient] = useState<ClientData | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setMounted(true)
+    setLoading(true)
+    
+    // Ensure clients are loaded
+    loadClients()
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
     
     // Load real client data if available
     const clientId = params.id as string
+    console.log('[ClientDetail] Looking for client with ID:', clientId)
+    console.log('[ClientDetail] Available clients:', clients.length)
+    
     const realClient = clients.find(c => c.id === clientId)
     
     if (realClient) {
@@ -145,18 +157,20 @@ export default function ClientDetailPage() {
       }
       
       setClient(newClientData)
+      setLoading(false)
       
       console.log('[ClientDetail] Loaded real client data:', realClient.name)
-    } else {
+    } else if (clients.length > 0) {
+      // Only redirect if we have loaded clients and still can't find the client
       console.log('[ClientDetail] No client found with ID:', clientId)
-      // Set a timeout before redirecting to allow for loading
-      setTimeout(() => {
-        if (!realClient) {
-          router.push('/clients')
-        }
-      }, 1000)
+      console.log('[ClientDetail] Redirecting to clients list')
+      router.push('/clients')
+    } else {
+      // Still loading clients, wait a bit more
+      console.log('[ClientDetail] Still loading clients...')
+      setTimeout(() => setLoading(false), 2000)
     }
-  }, [params.id, clients])
+  }, [params.id, clients, mounted])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -177,12 +191,15 @@ export default function ClientDetailPage() {
     }
   }
 
-  if (!mounted || !client) {
+  if (!mounted || loading || !client) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading client...</p>
+          <p className="text-xs text-gray-500 mt-2">
+            {clients.length === 0 ? 'Loading clients...' : `Searching for client...`}
+          </p>
         </div>
       </div>
     )
