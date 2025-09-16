@@ -35,7 +35,7 @@ export default function NewClientPage() {
     status: 'prospect' as 'active' | 'inactive' | 'prospect' | 'archived',
     tags: [] as string[],
     notes: '',
-    googleBusinessProfileId: ''
+    googleBusinessProfileId: 'none'
   })
   const [newTag, setNewTag] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -81,7 +81,7 @@ export default function NewClientPage() {
         status: formData.status,
         tags: formData.tags,
         notes: formData.notes || undefined,
-        googleBusinessProfileId: formData.googleBusinessProfileId || undefined,
+        googleBusinessProfileId: formData.googleBusinessProfileId === 'none' ? undefined : formData.googleBusinessProfileId,
         activeProjects: 0,
         lastActivity: new Date().toISOString(),
         totalRevenue: 0,
@@ -103,7 +103,7 @@ export default function NewClientPage() {
     return <div className="min-h-screen bg-gray-50" />
   }
 
-  const selectedProfile = profiles.find(p => p.id === formData.googleBusinessProfileId)
+  const selectedProfile = formData.googleBusinessProfileId === 'none' ? null : profiles.find(p => p.id === formData.googleBusinessProfileId)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -214,7 +214,7 @@ export default function NewClientPage() {
                       <SelectValue placeholder="Choose a Google Business Profile (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Google Business Profile</SelectItem>
+                      <SelectItem value="none">No Google Business Profile</SelectItem>
                       {profiles.map((profile) => (
                         <SelectItem key={profile.id} value={profile.id}>
                           <div className="flex items-center space-x-2">
