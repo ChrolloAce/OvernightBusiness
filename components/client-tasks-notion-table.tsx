@@ -133,15 +133,32 @@ export function ClientTasksNotionTable({ clientId, clientName }: ClientTasksNoti
         return <CheckCircle className="h-4 w-4 text-green-500" />
       case 'in_progress':
         return <Clock className="h-4 w-4 text-blue-500" />
+      case 'cancelled':
+        return <AlertCircle className="h-4 w-4 text-red-500" />
       default:
         return <AlertCircle className="h-4 w-4 text-gray-400" />
     }
   }
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 border-red-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high':
+      case 'urgent':
         return 'bg-red-100 text-red-800 border-red-200'
+      case 'high':
+        return 'bg-orange-100 text-orange-800 border-orange-200'
       case 'medium':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200'
       case 'low':
@@ -177,14 +194,20 @@ export function ClientTasksNotionTable({ clientId, clientName }: ClientTasksNoti
             {/* Header Row */}
             <div className="bg-gray-50 border-b border-gray-200 flex text-xs font-medium text-gray-500 uppercase tracking-wider">
               <div 
-                className="w-60 px-4 py-3 cursor-pointer hover:bg-gray-100 flex items-center space-x-1 border-r border-gray-200"
+                className="flex-1 min-w-[300px] px-4 py-3 cursor-pointer hover:bg-gray-100 flex items-center space-x-1 border-r border-gray-200"
                 onClick={() => handleSort('title')}
               >
                 <span>Task</span>
                 <ArrowUpDown className="h-3 w-3" />
               </div>
-              <div className="w-32 px-4 py-3 border-r border-gray-200">Status</div>
-              <div className="w-32 px-4 py-3 border-r border-gray-200">Priority</div>
+              <div className="w-32 px-4 py-3 cursor-pointer hover:bg-gray-100 flex items-center space-x-1 border-r border-gray-200">
+                <span>Status</span>
+                <ArrowUpDown className="h-3 w-3" />
+              </div>
+              <div className="w-32 px-4 py-3 cursor-pointer hover:bg-gray-100 flex items-center space-x-1 border-r border-gray-200">
+                <span>Priority</span>
+                <ArrowUpDown className="h-3 w-3" />
+              </div>
               <div 
                 className="w-40 px-4 py-3 cursor-pointer hover:bg-gray-100 flex items-center space-x-1 border-r border-gray-200"
                 onClick={() => handleSort('assignee')}
@@ -227,82 +250,57 @@ export function ClientTasksNotionTable({ clientId, clientName }: ClientTasksNoti
                     className="flex hover:bg-gray-50/50 transition-colors group"
                   >
                     {/* Task Title */}
-                    <div className="w-60 px-4 py-3 border-r border-gray-200">
-                      {editingCell?.taskId === task.id && editingCell?.field === 'title' ? (
-                        <Input
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onKeyDown={handleKeyPress}
-                          onBlur={handleCellSave}
-                          autoFocus
-                          className="h-8 text-sm border-blue-200 focus:border-blue-400"
-                        />
-                      ) : (
-                        <div 
-                          className="cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors"
-                          onClick={() => handleCellEdit(task.id, 'title', task.title)}
-                        >
-                          <span className="text-sm font-medium text-gray-900">{task.title}</span>
+                    <div className="flex-1 min-w-[300px] px-4 py-3 border-r border-gray-200">
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(task.status)}
+                        <div className="min-w-0 flex-1">
+                          {editingCell?.taskId === task.id && editingCell?.field === 'title' ? (
+                            <Input
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={handleKeyPress}
+                              onBlur={handleCellSave}
+                              autoFocus
+                              className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full"
+                            />
+                          ) : (
+                            <div 
+                              className="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer p-1 rounded hover:bg-blue-50 transition-colors truncate"
+                              onClick={() => handleCellEdit(task.id, 'title', task.title)}
+                              title={task.title}
+                            >
+                              {task.title}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
 
                     {/* Status */}
                     <div className="w-32 px-4 py-3 border-r border-gray-200">
-                      <Select value={task.status} onValueChange={(value) => handleStatusChange(task.id, value)}>
-                        <SelectTrigger className="h-8 text-sm border-none shadow-none hover:bg-gray-100">
-                          <div className="flex items-center space-x-2">
-                            {getStatusIcon(task.status)}
-                            <SelectValue />
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="todo">
-                            <div className="flex items-center space-x-2">
-                              <AlertCircle className="h-4 w-4 text-gray-400" />
-                              <span>To Do</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="in_progress">
-                            <div className="flex items-center space-x-2">
-                              <Clock className="h-4 w-4 text-blue-500" />
-                              <span>In Progress</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="completed">
-                            <div className="flex items-center space-x-2">
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                              <span>Completed</span>
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Badge 
+                        className={`${getStatusColor(task.status)} cursor-pointer hover:opacity-80 transition-opacity w-full justify-center`}
+                        variant="outline"
+                        onClick={() => handleStatusChange(task.id, task.status === 'completed' ? 'todo' : 'completed')}
+                      >
+                        {task.status.replace('_', ' ')}
+                      </Badge>
                     </div>
 
                     {/* Priority */}
                     <div className="w-32 px-4 py-3 border-r border-gray-200">
-                      <Select value={task.priority} onValueChange={(value) => handlePriorityChange(task.id, value)}>
-                        <SelectTrigger className="h-8 text-sm border-none shadow-none hover:bg-gray-100">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">
-                            <Badge className="bg-green-100 text-green-800 border-green-200" variant="outline">
-                              Low
-                            </Badge>
-                          </SelectItem>
-                          <SelectItem value="medium">
-                            <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200" variant="outline">
-                              Medium
-                            </Badge>
-                          </SelectItem>
-                          <SelectItem value="high">
-                            <Badge className="bg-red-100 text-red-800 border-red-200" variant="outline">
-                              High
-                            </Badge>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Badge 
+                        className={`${getPriorityColor(task.priority)} cursor-pointer hover:opacity-80 transition-opacity w-full justify-center`}
+                        variant="outline"
+                        onClick={() => {
+                          const priorities = ['low', 'medium', 'high', 'urgent']
+                          const currentIndex = priorities.indexOf(task.priority)
+                          const nextPriority = priorities[(currentIndex + 1) % priorities.length]
+                          handlePriorityChange(task.id, nextPriority)
+                        }}
+                      >
+                        {task.priority}
+                      </Badge>
                     </div>
 
                     {/* Assignee */}
@@ -314,15 +312,16 @@ export function ClientTasksNotionTable({ clientId, clientName }: ClientTasksNoti
                           onKeyDown={handleKeyPress}
                           onBlur={handleCellSave}
                           autoFocus
-                          className="h-8 text-sm border-blue-200 focus:border-blue-400"
+                          className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full"
                         />
                       ) : (
                         <div 
-                          className="cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors flex items-center space-x-2"
+                          className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors w-full"
                           onClick={() => handleCellEdit(task.id, 'assignee', task.assignee)}
+                          title={task.assignee}
                         >
-                          <User className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm text-gray-700">{task.assignee}</span>
+                          <User className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span className="truncate">{task.assignee}</span>
                         </div>
                       )}
                     </div>
@@ -337,31 +336,44 @@ export function ClientTasksNotionTable({ clientId, clientName }: ClientTasksNoti
                           onKeyDown={handleKeyPress}
                           onBlur={handleCellSave}
                           autoFocus
-                          className="h-8 text-sm border-blue-200 focus:border-blue-400"
+                          className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full"
                         />
                       ) : (
                         <div 
-                          className="cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors flex items-center space-x-2"
+                          className={`text-sm cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors w-full truncate ${
+                            task.dueDate && new Date(task.dueDate) < new Date() ? 'text-red-600 font-medium' : 'text-gray-600'
+                          }`}
                           onClick={() => handleCellEdit(task.id, 'dueDate', task.dueDate || new Date().toISOString().split('T')[0])}
+                          title={task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Add date...'}
                         >
-                          <Calendar className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm text-gray-700">
-                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
-                          </span>
+                          {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Add date...'}
                         </div>
                       )}
                     </div>
 
                     {/* Actions */}
                     <div className="w-20 px-4 py-3">
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                      <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity space-x-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 hover:bg-red-100 hover:text-red-600"
-                          onClick={() => deleteTask(task.id)}
+                          onClick={() => handleStatusChange(task.id, task.status === 'completed' ? 'todo' : 'completed')}
+                          className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                          title={task.status === 'completed' ? 'Mark as incomplete' : 'Mark as complete'}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            if (confirm(`Delete "${task.title}"?`)) {
+                              deleteTask(task.id)
+                            }
+                          }}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -370,13 +382,16 @@ export function ClientTasksNotionTable({ clientId, clientName }: ClientTasksNoti
               )}
             </div>
 
-            {/* Add Task Row */}
-            <div className="border-t-2 border-dashed border-gray-200 hover:border-gray-300 transition-colors">
+            {/* Add New Row */}
+            <div 
+              className="flex hover:bg-blue-50/50 transition-colors cursor-pointer border-t border-gray-100"
+              onClick={handleCreateTask}
+            >
               <div 
-                className="flex items-center px-4 py-3 text-gray-500 hover:text-gray-700 cursor-pointer hover:bg-gray-50/50 transition-colors"
-                onClick={handleCreateTask}
+                className="flex items-center space-x-2 text-gray-500 hover:text-blue-600 py-3 px-4"
+                style={{ width: '100%' }}
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" />
                 <span className="text-sm">New task</span>
               </div>
             </div>
