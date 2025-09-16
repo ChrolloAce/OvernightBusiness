@@ -37,6 +37,7 @@ import { ClientPhoneManager } from '@/components/client-phone-manager'
 import { useClients } from '@/contexts/client-context'
 import { useTasks } from '@/contexts/task-context'
 import { ClientAnalytics } from '@/components/client-analytics'
+import { SavedBusinessProfile } from '@/lib/business-profiles-storage'
 
 // Mock client data
 interface ClientData {
@@ -50,15 +51,7 @@ interface ClientData {
   notes: string
   avatar: string
   createdAt: string
-  googleBusinessProfile?: {
-    id: string
-    name: string
-    rating: number
-    reviewCount: number
-    isConnected: boolean
-    address: string
-    category: string
-  }
+  googleBusinessProfile?: SavedBusinessProfile
 }
 
 // No mock client data - will show empty state if no real client found
@@ -151,15 +144,7 @@ export default function ClientDetailPage() {
       }
       
       if (realClient.googleBusinessProfile) {
-        newClientData.googleBusinessProfile = {
-          id: realClient.googleBusinessProfile.id,
-          name: realClient.googleBusinessProfile.name,
-          rating: realClient.googleBusinessProfile.rating || 0,
-          reviewCount: realClient.googleBusinessProfile.reviewCount || 0,
-          isConnected: !!realClient.googleBusinessProfileId,
-          address: realClient.googleBusinessProfile.address || '',
-          category: realClient.googleBusinessProfile.category || ''
-        }
+        newClientData.googleBusinessProfile = realClient.googleBusinessProfile
       }
       
       setClient(newClientData)
