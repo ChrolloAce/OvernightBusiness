@@ -206,7 +206,7 @@ export default function ClientDetailPage() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
                 <div className="flex items-center space-x-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center text-white text-xl font-bold">
-                    {mockClient.avatar}
+                    {client.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
                   </div>
                   <div>
                     <h1 className="text-2xl font-bold text-gray-900">{client.name}</h1>
