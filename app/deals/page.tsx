@@ -3,20 +3,23 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
-  Star, 
   Plus, 
   DollarSign,
   Calendar,
   User,
   Building2,
   MoreHorizontal,
-  TrendingUp,
-  Target,
-  GripVertical
+  GripVertical,
+  Settings,
+  Edit,
+  Trash2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useClients } from '@/contexts/client-context'
 import {
   DndContext,
   DragEndEvent,
@@ -40,12 +43,29 @@ interface Deal {
   id: string
   title: string
   value: number
-  client: string
-  clientAvatar: string
+  clientId: string
+  clientName: string
   probability: number
   expectedCloseDate: string
   owner: string
   stage: string
+  pipelineId: string
+}
+
+// Pipeline interface
+interface Pipeline {
+  id: string
+  name: string
+  stages: PipelineStage[]
+  isDefault: boolean
+}
+
+// Pipeline Stage interface
+interface PipelineStage {
+  id: string
+  name: string
+  color: string
+  order: number
 }
 
 // Empty deals - start with clean slate
@@ -58,14 +78,6 @@ const initialDeals: Record<string, Deal[]> = {
   closed_lost: []
 }
 
-const stageConfig = [
-  { key: 'lead', title: 'Lead', color: 'bg-gray-50 border-gray-200', textColor: 'text-gray-700' },
-  { key: 'qualified', title: 'Qualified', color: 'bg-blue-50 border-blue-200', textColor: 'text-blue-700' },
-  { key: 'proposal', title: 'Proposal', color: 'bg-purple-50 border-purple-200', textColor: 'text-purple-700' },
-  { key: 'negotiation', title: 'Negotiation', color: 'bg-orange-50 border-orange-200', textColor: 'text-orange-700' },
-  { key: 'closed_won', title: 'Closed Won', color: 'bg-green-50 border-green-200', textColor: 'text-green-700' },
-  { key: 'closed_lost', title: 'Closed Lost', color: 'bg-red-50 border-red-200', textColor: 'text-red-700' }
-]
 
 // Sortable Deal Card Component
 function SortableDealCard({ deal, isDragging }: { deal: Deal; isDragging?: boolean }) {
@@ -118,9 +130,9 @@ function SortableDealCard({ deal, isDragging }: { deal: Deal; isDragging?: boole
           
           <div className="flex items-center space-x-2">
             <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-              {deal.clientAvatar}
+              {deal.clientName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
             </div>
-            <span className="text-xs text-gray-600 truncate">{deal.client}</span>
+            <span className="text-xs text-gray-600 truncate">{deal.clientName}</span>
           </div>
 
           <div className="flex items-center justify-between">
@@ -167,9 +179,9 @@ function DealCardOverlay({ deal }: { deal: Deal }) {
             
             <div className="flex items-center space-x-2">
               <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                {deal.clientAvatar}
+                {deal.clientName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
               </div>
-              <span className="text-xs text-gray-600 truncate">{deal.client}</span>
+              <span className="text-xs text-gray-600 truncate">{deal.clientName}</span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -203,6 +215,81 @@ export default function DealsPage() {
   const [deals, setDeals] = useState(initialDeals)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null)
+  const [pipelines, setPipelines] = useState<Pipeline[]>([
+    {
+      id: 'default',
+      name: 'Sales Pipeline',
+      isDefault: true,
+      stages: [
+        { id: 'lead', name: 'Lead', color: 'bg-gray-50 border-gray-200', order: 1 },
+        { id: 'qualified', name: 'Qualified', color: 'bg-blue-50 border-blue-200', order: 2 },
+        { id: 'proposal', name: 'Proposal', color: 'bg-purple-50 border-purple-200', order: 3 },
+        { id: 'negotiation', name: 'Negotiation', color: 'bg-orange-50 border-orange-200', order: 4 },
+        { id: 'closed_won', name: 'Closed Won', color: 'bg-green-50 border-green-200', order: 5 },
+        { id: 'closed_lost', name: 'Closed Lost', color: 'bg-red-50 border-red-200', order: 6 }
+      ]
+    }
+  ])
+  const [selectedPipeline, setSelectedPipeline] = useState<Pipeline>(pipelines[0])
+  const [showPipelineSettings, setShowPipelineSettings] = useState(false)
+  const { clients } = useClients()
+
+  // Use stages from selected pipeline
+  const stageConfig = selectedPipeline.stages.map(stage => ({
+    key: stage.id,
+    title: stage.name,
+    color: stage.color,
+    textColor: stage.color.includes('gray') ? 'text-gray-700' :
+              stage.color.includes('blue') ? 'text-blue-700' :
+              stage.color.includes('purple') ? 'text-purple-700' :
+              stage.color.includes('orange') ? 'text-orange-700' :
+              stage.color.includes('green') ? 'text-green-700' :
+              stage.color.includes('red') ? 'text-red-700' : 'text-gray-700'
+  }))
+
+  const handleCreateDeal = () => {
+    if (clients.length === 0) {
+      alert('Please create a client first before adding deals')
+      return
+    }
+
+    const newDeal: Deal = {
+      id: `deal_${Date.now()}`,
+      title: 'Untitled Deal',
+      value: 0,
+      clientId: clients[0].id,
+      clientName: clients[0].name,
+      probability: 50,
+      expectedCloseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+      owner: 'Unassigned',
+      stage: selectedPipeline.stages[0].id,
+      pipelineId: selectedPipeline.id
+    }
+
+    setDeals(prev => ({
+      ...prev,
+      [newDeal.stage]: [...(prev[newDeal.stage] || []), newDeal]
+    }))
+
+    console.log('Deal created:', newDeal.title)
+  }
+
+  const handleCreatePipeline = () => {
+    const newPipeline: Pipeline = {
+      id: `pipeline_${Date.now()}`,
+      name: 'New Pipeline',
+      isDefault: false,
+      stages: [
+        { id: 'stage1', name: 'Stage 1', color: 'bg-gray-50 border-gray-200', order: 1 },
+        { id: 'stage2', name: 'Stage 2', color: 'bg-blue-50 border-blue-200', order: 2 },
+        { id: 'stage3', name: 'Stage 3', color: 'bg-green-50 border-green-200', order: 3 }
+      ]
+    }
+
+    setPipelines(prev => [...prev, newPipeline])
+    setSelectedPipeline(newPipeline)
+    console.log('Pipeline created:', newPipeline.name)
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -306,98 +393,62 @@ export default function DealsPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                <Star className="mr-3 h-8 w-8 text-blue-600" />
-                Sales Pipeline
+                <Building2 className="mr-3 h-8 w-8 text-blue-600" />
+                Deals & Pipelines
               </h1>
-              <p className="text-gray-600 mt-1">Track deals and opportunities across all clients</p>
+              <p className="text-gray-600 mt-1">Manage sales pipelines and track deals across all clients</p>
             </div>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={handleCreateDeal}
+            >
               <Plus className="mr-2 h-4 w-4" />
               New Deal
             </Button>
           </div>
 
-          {/* Metrics Row - 5 tiles with responsive grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card className="bg-white shadow-sm border-gray-200 h-full">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-blue-50 rounded-lg">
-                    <Target className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Pipeline</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      ${getAllDeals().reduce((sum, deal) => sum + deal.value, 0).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white shadow-sm border-gray-200 h-full">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-green-50 rounded-lg">
-                    <DollarSign className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Weighted Pipeline</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      ${getAllDeals().reduce((sum, deal) => sum + (deal.value * deal.probability / 100), 0).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white shadow-sm border-gray-200 h-full">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-purple-50 rounded-lg">
-                    <TrendingUp className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Avg Deal Size</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      ${Math.round(getAllDeals().reduce((sum, deal) => sum + deal.value, 0) / getAllDeals().length).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white shadow-sm border-gray-200 h-full">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-orange-50 rounded-lg">
-                    <Calendar className="h-5 w-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">This Month</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      ${getTotalValue(deals.closed_won).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white shadow-sm border-gray-200 h-full">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-red-50 rounded-lg">
-                    <Building2 className="h-5 w-5 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Win Rate</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {Math.round((deals.closed_won.length / getAllDeals().length) * 100)}%
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Pipeline Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Select value={selectedPipeline.id} onValueChange={(value) => {
+                const pipeline = pipelines.find(p => p.id === value)
+                if (pipeline) setSelectedPipeline(pipeline)
+              }}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelines.map((pipeline) => (
+                    <SelectItem key={pipeline.id} value={pipeline.id}>
+                      {pipeline.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowPipelineSettings(true)}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Manage Pipelines
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleCreatePipeline}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                New Pipeline
+              </Button>
+            </div>
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={handleCreateDeal}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Deal
+            </Button>
           </div>
 
           {/* Kanban Board */}
