@@ -35,12 +35,12 @@ export function ClientInitializer() {
 
       // Fetch fresh profiles from Google
       const googleAPI = new GoogleBusinessAPI()
-      const accounts = await googleAPI.listAccounts()
+      const accounts = await googleAPI.getAccounts()
       
       if (accounts && accounts.length > 0) {
         for (const account of accounts) {
           try {
-            const locations = await googleAPI.listLocations(account.name)
+            const locations = await googleAPI.getLocations(account.name)
             
             if (locations && locations.length > 0) {
               for (const location of locations) {
