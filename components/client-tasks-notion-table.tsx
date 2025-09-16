@@ -35,7 +35,7 @@ export function ClientTasksNotionTable({ clientId, clientName }: ClientTasksNoti
   const [editValue, setEditValue] = useState('')
   
   const { tasks, createTask, updateTask, deleteTask } = useTasks()
-  const { clients, getClientById } = useClients()
+  const { clients } = useClients()
 
   useEffect(() => {
     setMounted(true)
