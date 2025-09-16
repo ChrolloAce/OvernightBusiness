@@ -35,7 +35,6 @@ import Link from 'next/link'
 import { ClientPhoneManager } from '@/components/client-phone-manager'
 import { useClients } from '@/contexts/client-context'
 import { useTasks } from '@/contexts/task-context'
-import { TaskCreationModal } from '@/components/task-creation-modal'
 
 // Mock client data
 interface ClientData {
@@ -109,12 +108,11 @@ export default function ClientDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { clients, loadClients } = useClients()
-  const { getTasksByClient, getClientTaskStats } = useTasks()
+  const { getTasksByClient, getClientTaskStats, createTask } = useTasks()
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [client, setClient] = useState<ClientData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showTaskModal, setShowTaskModal] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -175,6 +173,24 @@ export default function ClientDetailPage() {
       setTimeout(() => setLoading(false), 2000)
     }
   }, [params.id, clients, mounted])
+
+  const handleCreateClientTask = () => {
+    if (!client) return
+    
+    // Create a new task instantly for this client
+    const newTask = createTask({
+      title: 'Untitled Task',
+      description: '',
+      status: 'todo',
+      priority: 'medium',
+      assignee: 'Unassigned',
+      clientId: client.id,
+      clientName: client.name,
+      tags: []
+    })
+    
+    console.log('Task created for client:', client.name)
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -551,10 +567,10 @@ export default function ClientDetailPage() {
                 </div>
                 <Button 
                   className="bg-blue-600 hover:bg-blue-700"
-                  onClick={() => setShowTaskModal(true)}
+                  onClick={handleCreateClientTask}
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Assign Task
+                  Add Task
                 </Button>
               </div>
 
@@ -573,7 +589,7 @@ export default function ClientDetailPage() {
                         </p>
                         <Button 
                           className="bg-blue-600 hover:bg-blue-700"
-                          onClick={() => setShowTaskModal(true)}
+                          onClick={handleCreateClientTask}
                         >
                           <Plus className="mr-2 h-4 w-4" />
                           Create First Task
@@ -674,13 +690,6 @@ export default function ClientDetailPage() {
           </Tabs>
         </motion.div>
       </main>
-
-      {/* Task Creation Modal */}
-      <TaskCreationModal 
-        isOpen={showTaskModal}
-        onClose={() => setShowTaskModal(false)}
-        preselectedClientId={client.id}
-      />
     </div>
   )
 }

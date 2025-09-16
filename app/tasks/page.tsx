@@ -24,7 +24,6 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useTasks } from '@/contexts/task-context'
 import { useClients } from '@/contexts/client-context'
-import { TaskCreationModal } from '@/components/task-creation-modal'
 
 export default function TasksPage() {
   const [mounted, setMounted] = useState(false)
@@ -34,10 +33,9 @@ export default function TasksPage() {
   const [clientFilter, setClientFilter] = useState('all')
   const [sortBy, setSortBy] = useState('dueDate')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-  const [showTaskModal, setShowTaskModal] = useState(false)
   const [editingCell, setEditingCell] = useState<{taskId: string, field: string} | null>(null)
   const [editValue, setEditValue] = useState('')
-  const { tasks, loadTasks, getTaskStats, deleteTask, updateTask } = useTasks()
+  const { tasks, loadTasks, getTaskStats, deleteTask, updateTask, createTask } = useTasks()
   const { clients } = useClients()
 
   useEffect(() => {
@@ -65,6 +63,31 @@ export default function TasksPage() {
       setEditingCell(null)
       setEditValue('')
     }
+  }
+
+  const handleCreateTask = () => {
+    if (clients.length === 0) {
+      alert('Please create a client first before adding tasks')
+      return
+    }
+    
+    // Create a new task instantly with default values
+    const newTask = createTask({
+      title: 'Untitled Task',
+      description: '',
+      status: 'todo',
+      priority: 'medium',
+      assignee: 'Unassigned',
+      clientId: clients[0].id, // Default to first client
+      clientName: clients[0].name,
+      tags: []
+    })
+    
+    // Immediately start editing the title
+    setTimeout(() => {
+      setEditingCell({ taskId: newTask.id, field: 'title' })
+      setEditValue('Untitled Task')
+    }, 100)
   }
 
   const handleCellCancel = () => {
@@ -192,7 +215,7 @@ export default function TasksPage() {
             </div>
             <Button 
               className="bg-blue-600 hover:bg-blue-700 shadow-sm"
-              onClick={() => setShowTaskModal(true)}
+              onClick={handleCreateTask}
             >
               <Plus className="mr-2 h-4 w-4" />
               New
@@ -289,7 +312,7 @@ export default function TasksPage() {
               {tasks.length === 0 && (
                 <Button 
                   className="bg-blue-600 hover:bg-blue-700"
-                  onClick={() => setShowTaskModal(true)}
+                  onClick={handleCreateTask}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   New Task
@@ -385,18 +408,72 @@ export default function TasksPage() {
                       </div>
                     </div>
 
-                    {/* Status Column */}
+                    {/* Status Column - Dropdown */}
                     <div className="col-span-1 flex items-center">
-                      <Badge className={getStatusColor(task.status)} variant="outline">
-                        {task.status.replace('_', ' ')}
-                      </Badge>
+                      {editingCell?.taskId === task.id && editingCell?.field === 'status' ? (
+                        <Select 
+                          value={editValue} 
+                          onValueChange={(value) => {
+                            updateTask(task.id, { status: value as any })
+                            setEditingCell(null)
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todo">To Do</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge 
+                          className={`${getStatusColor(task.status)} cursor-pointer hover:opacity-80 transition-opacity`}
+                          variant="outline"
+                          onClick={() => {
+                            setEditingCell({ taskId: task.id, field: 'status' })
+                            setEditValue(task.status)
+                          }}
+                        >
+                          {task.status.replace('_', ' ')}
+                        </Badge>
+                      )}
                     </div>
 
-                    {/* Priority Column */}
+                    {/* Priority Column - Dropdown */}
                     <div className="col-span-1 flex items-center">
-                      <Badge className={getPriorityColor(task.priority)} variant="outline">
-                        {task.priority}
-                      </Badge>
+                      {editingCell?.taskId === task.id && editingCell?.field === 'priority' ? (
+                        <Select 
+                          value={editValue} 
+                          onValueChange={(value) => {
+                            updateTask(task.id, { priority: value as any })
+                            setEditingCell(null)
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="urgent">Urgent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge 
+                          className={`${getPriorityColor(task.priority)} cursor-pointer hover:opacity-80 transition-opacity`}
+                          variant="outline"
+                          onClick={() => {
+                            setEditingCell({ taskId: task.id, field: 'priority' })
+                            setEditValue(task.priority)
+                          }}
+                        >
+                          {task.priority}
+                        </Badge>
+                      )}
                     </div>
 
                     {/* Assignee Column - Inline Editable */}
@@ -421,14 +498,52 @@ export default function TasksPage() {
                       )}
                     </div>
 
-                    {/* Client Column */}
+                    {/* Client Column - Dropdown */}
                     <div className="col-span-2 flex items-center">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-xs font-medium">
-                          {task.clientName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
+                      {editingCell?.taskId === task.id && editingCell?.field === 'client' ? (
+                        <Select 
+                          value={editValue} 
+                          onValueChange={(value) => {
+                            const selectedClient = clients.find(c => c.id === value)
+                            if (selectedClient) {
+                              updateTask(task.id, { 
+                                clientId: value, 
+                                clientName: selectedClient.name 
+                              })
+                            }
+                            setEditingCell(null)
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {clients.map((client) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-4 h-4 bg-gradient-to-br from-blue-500 to-purple-500 rounded flex items-center justify-center text-white text-xs">
+                                    {client.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
+                                  </div>
+                                  <span>{client.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div 
+                          className="flex items-center space-x-2 cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors w-full"
+                          onClick={() => {
+                            setEditingCell({ taskId: task.id, field: 'client' })
+                            setEditValue(task.clientId)
+                          }}
+                        >
+                          <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-xs font-medium">
+                            {task.clientName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
+                          </div>
+                          <span className="text-sm text-gray-700 truncate">{task.clientName}</span>
                         </div>
-                        <span className="text-sm text-gray-700 truncate">{task.clientName}</span>
-                      </div>
+                      )}
                     </div>
 
                     {/* Due Date Column - Inline Editable */}
@@ -479,7 +594,7 @@ export default function TasksPage() {
               {/* Add New Row */}
               <div 
                 className="grid grid-cols-12 gap-4 py-3 px-4 hover:bg-blue-50/50 transition-colors cursor-pointer border-t border-gray-100"
-                onClick={() => setShowTaskModal(true)}
+                onClick={handleCreateTask}
               >
                 <div className="col-span-12 flex items-center space-x-2 text-gray-500 hover:text-blue-600">
                   <Plus className="h-4 w-4" />
@@ -490,12 +605,6 @@ export default function TasksPage() {
           )}
         </div>
       </div>
-
-      {/* Task Creation Modal */}
-      <TaskCreationModal 
-        isOpen={showTaskModal}
-        onClose={() => setShowTaskModal(false)}
-      />
     </div>
   )
 }
