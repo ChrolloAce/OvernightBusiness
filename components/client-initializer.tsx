@@ -34,7 +34,7 @@ export function ClientInitializer() {
       console.log('[ClientInitializer] Found existing profiles:', existingProfiles.length)
 
       // Fetch fresh profiles from Google
-      const googleAPI = GoogleBusinessAPI.getInstance()
+      const googleAPI = new GoogleBusinessAPI()
       const accounts = await googleAPI.listAccounts()
       
       if (accounts && accounts.length > 0) {
