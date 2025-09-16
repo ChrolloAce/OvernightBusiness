@@ -1,0 +1,153 @@
+/* UI Fixes for Button Text Wrapping and Tab Transitions */
+
+/* 1. Prevent button text from wrapping to multiple lines */
+.single-line-button {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: fit-content;
+  flex-shrink: 0;
+}
+
+/* Button text should never wrap */
+button span,
+button .button-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+/* Ensure buttons have consistent sizing */
+.pill-button {
+  min-width: 120px;
+  height: 44px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 22px;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+/* For equal width buttons in a container */
+.equal-width-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.equal-width-buttons > button {
+  flex: 1;
+  min-width: 0; /* Allow flex shrinking */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 2. Instant tab transitions - remove all animations */
+.instant-tabs {
+  transition: none !important;
+  animation: none !important;
+}
+
+.instant-tabs * {
+  transition: none !important;
+  animation: none !important;
+  transform: none !important;
+}
+
+/* Override Radix UI tab animations */
+[data-radix-tabs-content] {
+  animation: none !important;
+  transition: none !important;
+}
+
+[data-radix-tabs-trigger] {
+  transition: color 0.1s ease, background-color 0.1s ease !important;
+}
+
+/* Disable slide/fade animations on tab content */
+.tab-content-instant {
+  animation: none !important;
+  transition: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* 3. Responsive button text - hide text on small screens, show icons only */
+@media (max-width: 640px) {
+  .responsive-button-text {
+    display: none;
+  }
+  
+  .responsive-button-icon {
+    display: flex;
+  }
+  
+  .pill-button {
+    min-width: 44px;
+    padding: 0 12px;
+  }
+}
+
+@media (min-width: 641px) {
+  .responsive-button-text {
+    display: inline;
+  }
+  
+  .responsive-button-icon {
+    display: flex;
+  }
+}
+
+/* 4. Fix for specific button layouts */
+.action-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+.action-buttons button {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 5. Tab list improvements */
+.smooth-tabs {
+  position: relative;
+}
+
+.smooth-tabs .tab-indicator {
+  transition: transform 0.15s ease-out, width 0.15s ease-out;
+}
+
+/* Remove default tab animations but keep hover effects */
+.tab-trigger {
+  transition: color 0.1s ease, background-color 0.1s ease, border-color 0.1s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ensure tab content appears instantly */
+.tab-content {
+  display: none;
+}
+
+.tab-content[data-state="active"] {
+  display: block !important;
+  animation: none !important;
+  transition: none !important;
+}
