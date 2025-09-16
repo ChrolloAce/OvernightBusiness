@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { ProfileProvider } from '@/contexts/profile-context'
 import { ClientProvider } from '@/contexts/client-context'
+import { TaskProvider } from '@/contexts/task-context'
 import { ConditionalLayout } from '@/components/conditional-layout'
 import { ClientInitializer } from '@/components/client-initializer'
 import { ClientDataInitializer } from '@/components/client-data-initializer'
@@ -27,16 +28,18 @@ export default function RootLayout({
       <body className={`${inter.className} bg-gray-50`}>
         <ProfileProvider>
           <ClientProvider>
-            <AutoLogin>
-              <div className="min-h-screen bg-gray-50">
-                <ConditionalLayout>
-                  {children}
-                </ConditionalLayout>
-              </div>
-            </AutoLogin>
-            
-            <ClientInitializer />
-            <ClientDataInitializer />
+            <TaskProvider>
+              <AutoLogin>
+                <div className="min-h-screen bg-gray-50">
+                  <ConditionalLayout>
+                    {children}
+                  </ConditionalLayout>
+                </div>
+              </AutoLogin>
+              
+              <ClientInitializer />
+              <ClientDataInitializer />
+            </TaskProvider>
           </ClientProvider>
         </ProfileProvider>
       </body>

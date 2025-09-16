@@ -21,68 +21,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useTasks } from '@/contexts/task-context'
+import { useClients } from '@/contexts/client-context'
+import { TaskCreationModal } from '@/components/task-creation-modal'
 
-// Mock tasks data
-const mockTasks = [
-  {
-    id: '1',
-    title: 'Update BMW website content',
-    description: 'Update the homepage with new vehicle models',
-    status: 'in_progress',
-    priority: 'high',
-    dueDate: '2024-01-25',
-    assignee: 'John Doe',
-    client: 'BMW Company',
-    clientAvatar: 'BC',
-    createdAt: '2024-01-20'
-  },
-  {
-    id: '2',
-    title: 'Respond to Samsung reviews',
-    description: 'Reply to recent Google Business Profile reviews',
-    status: 'todo',
-    priority: 'medium',
-    dueDate: '2024-01-28',
-    assignee: 'Jane Smith',
-    client: 'Samsung Company',
-    clientAvatar: 'SC',
-    createdAt: '2024-01-22'
-  },
-  {
-    id: '3',
-    title: 'Create social media posts for Tinder',
-    description: 'Generate AI content for social media campaign',
-    status: 'completed',
-    priority: 'low',
-    dueDate: '2024-01-20',
-    assignee: 'Mike Johnson',
-    client: 'Tinder Company',
-    clientAvatar: 'TC',
-    createdAt: '2024-01-18'
-  },
-  {
-    id: '4',
-    title: 'Set up FedEx ad tracking',
-    description: 'Configure conversion tracking for Google Ads',
-    status: 'todo',
-    priority: 'urgent',
-    dueDate: '2024-01-24',
-    assignee: 'Sarah Wilson',
-    client: 'Fed Ex Company',
-    clientAvatar: 'FE',
-    createdAt: '2024-01-23'
-  }
-]
+// Empty tasks - will use real data from context
 
 export default function TasksPage() {
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
-  const [tasks, setTasks] = useState(mockTasks)
+  const [showTaskModal, setShowTaskModal] = useState(false)
+  const { tasks, loadTasks, getTaskStats, deleteTask } = useTasks()
+  const { clients } = useClients()
 
   useEffect(() => {
     setMounted(true)
+    loadTasks()
   }, [])
 
   const getStatusColor = (status: string) => {
@@ -116,8 +72,9 @@ export default function TasksPage() {
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         task.client.toLowerCase().includes(searchQuery.toLowerCase())
+                         (task.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         task.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         task.assignee.toLowerCase().includes(searchQuery.toLowerCase())
     
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter
     const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter
@@ -125,9 +82,11 @@ export default function TasksPage() {
     return matchesSearch && matchesStatus && matchesPriority
   })
 
-  const isOverdue = (dueDate: string) => {
-    return new Date(dueDate) < new Date() && !['completed', 'cancelled'].includes(mockTasks.find(t => t.dueDate === dueDate)?.status || '')
+  const isOverdue = (task: any) => {
+    return task.dueDate && new Date(task.dueDate) < new Date() && !['completed', 'cancelled'].includes(task.status)
   }
+
+  const taskStats = getTaskStats()
 
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50" />
@@ -150,7 +109,10 @@ export default function TasksPage() {
               </h1>
               <p className="text-gray-600 mt-1">Manage tasks and assignments across all clients</p>
             </div>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => setShowTaskModal(true)}
+            >
               <Plus className="mr-2 h-4 w-4" />
               New Task
             </Button>
@@ -197,8 +159,29 @@ export default function TasksPage() {
           </Card>
 
           {/* Tasks Grid */}
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-            {filteredTasks.map((task, index) => (
+          {filteredTasks.length === 0 ? (
+            <Card className="bg-white shadow-sm border-gray-200">
+              <CardContent className="p-12 text-center">
+                <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {tasks.length === 0 ? 'No tasks yet' : 'No tasks match your filters'}
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {tasks.length === 0 
+                    ? 'Create and assign tasks to team members'
+                    : 'Try adjusting your search or filters'}
+                </p>
+                {tasks.length === 0 && (
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Your First Task
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+              {filteredTasks.map((task, index) => (
               <motion.div
                 key={task.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -224,15 +207,15 @@ export default function TasksPage() {
                       {/* Task Content */}
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1">{task.title}</h3>
-                        <p className="text-sm text-gray-600 line-clamp-2">{task.description}</p>
+                        <p className="text-sm text-gray-600 line-clamp-2">{task.description || 'No description'}</p>
                       </div>
 
                       {/* Client Info */}
                       <div className="flex items-center space-x-2">
                         <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                          {task.clientAvatar}
+                          {task.clientName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
                         </div>
-                        <span className="text-sm text-gray-600">{task.client}</span>
+                        <span className="text-sm text-gray-600">{task.clientName}</span>
                       </div>
 
                       {/* Task Footer */}
@@ -241,12 +224,14 @@ export default function TasksPage() {
                           <User className="h-3 w-3 text-gray-400" />
                           <span className="text-xs text-gray-500">{task.assignee}</span>
                         </div>
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="h-3 w-3 text-gray-400" />
-                          <span className={`text-xs ${isOverdue(task.dueDate) ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                            {new Date(task.dueDate).toLocaleDateString()}
-                          </span>
-                        </div>
+                        {task.dueDate && (
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3 text-gray-400" />
+                            <span className={`text-xs ${isOverdue(task) ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+                              {new Date(task.dueDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Status Badge */}
@@ -258,35 +243,16 @@ export default function TasksPage() {
                 </Card>
               </motion.div>
             ))}
-          </div>
-
-          {/* Empty State */}
-          {filteredTasks.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center py-12"
-            >
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardContent className="py-12">
-                  <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No tasks found</h3>
-                  <p className="text-gray-600 mb-6">
-                    {searchQuery || statusFilter !== 'all' || priorityFilter !== 'all'
-                      ? 'Try adjusting your search or filters'
-                      : 'Create your first task to get started'
-                    }
-                  </p>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create First Task
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
+            </div>
           )}
         </motion.div>
       </main>
+
+      {/* Task Creation Modal */}
+      <TaskCreationModal 
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+      />
     </div>
   )
 }

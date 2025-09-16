@@ -34,6 +34,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Link from 'next/link'
 import { ClientPhoneManager } from '@/components/client-phone-manager'
 import { useClients } from '@/contexts/client-context'
+import { useTasks } from '@/contexts/task-context'
+import { TaskCreationModal } from '@/components/task-creation-modal'
 
 // Mock client data
 interface ClientData {
@@ -107,10 +109,12 @@ export default function ClientDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { clients, loadClients } = useClients()
+  const { getTasksByClient, getClientTaskStats } = useTasks()
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [client, setClient] = useState<ClientData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showTaskModal, setShowTaskModal] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -286,15 +290,13 @@ export default function ClientDetailPage() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8 bg-white border border-gray-200 rounded-lg">
+            <TabsList className="grid w-full grid-cols-6 bg-white border border-gray-200 rounded-lg">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="phone">Phone</TabsTrigger>
               <TabsTrigger value="access">Access</TabsTrigger>
               <TabsTrigger value="website">Website</TabsTrigger>
               <TabsTrigger value="files">Files</TabsTrigger>
-              <TabsTrigger value="ads">Ads</TabsTrigger>
-              <TabsTrigger value="invoices">Invoices</TabsTrigger>
-              <TabsTrigger value="finance">Finance</TabsTrigger>
+              <TabsTrigger value="tasks">Tasks</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
@@ -540,26 +542,103 @@ export default function ClientDetailPage() {
               </Card>
             </TabsContent>
 
-            {/* Ads Tab */}
-            <TabsContent value="ads" className="space-y-6">
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold">Ad Accounts & Setup</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <BarChart3 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No ad accounts configured</h3>
-                    <p className="text-gray-600 mb-4">
-                      Set up Meta, Google, or TikTok ad accounts for this client
-                    </p>
-                    <Button className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Ad Account
-                    </Button>
+            {/* Tasks Tab */}
+            <TabsContent value="tasks" className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Client Tasks</h2>
+                  <p className="text-gray-600">Tasks assigned to this client</p>
+                </div>
+                <Button 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => setShowTaskModal(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Assign Task
+                </Button>
+              </div>
+
+              {(() => {
+                const clientTasks = getTasksByClient(client.id)
+                const taskStats = getClientTaskStats(client.id)
+                
+                return clientTasks.length === 0 ? (
+                  <Card className="bg-white shadow-sm border-gray-200">
+                    <CardContent className="p-6">
+                      <div className="text-center py-8">
+                        <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No tasks assigned</h3>
+                        <p className="text-gray-600 mb-4">
+                          Create and assign tasks to team members for this client
+                        </p>
+                        <Button 
+                          className="bg-blue-600 hover:bg-blue-700"
+                          onClick={() => setShowTaskModal(true)}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create First Task
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Task Stats */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <p className="text-2xl font-bold text-blue-600">{taskStats.total}</p>
+                        <p className="text-sm text-gray-600">Total Tasks</p>
+                      </div>
+                      <div className="bg-yellow-50 p-4 rounded-lg">
+                        <p className="text-2xl font-bold text-yellow-600">{taskStats.todo}</p>
+                        <p className="text-sm text-gray-600">To Do</p>
+                      </div>
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <p className="text-2xl font-bold text-green-600">{taskStats.inProgress}</p>
+                        <p className="text-sm text-gray-600">In Progress</p>
+                      </div>
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <p className="text-2xl font-bold text-purple-600">{taskStats.completed}</p>
+                        <p className="text-sm text-gray-600">Completed</p>
+                      </div>
+                    </div>
+
+                    {/* Tasks List */}
+                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                      {clientTasks.map((task) => (
+                        <Card key={task.id} className="bg-white shadow-sm border-gray-200">
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                                  <p className="text-sm text-gray-600 mt-1">{task.description || 'No description'}</p>
+                                </div>
+                                <Badge 
+                                  className={
+                                    task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                    task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }
+                                  variant="outline"
+                                >
+                                  {task.status.replace('_', ' ')}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center justify-between text-sm text-gray-500">
+                                <span>Assignee: {task.assignee}</span>
+                                {task.dueDate && (
+                                  <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                )
+              })()}
             </TabsContent>
 
             {/* Invoices Tab */}
@@ -592,36 +671,16 @@ export default function ClientDetailPage() {
               </Card>
             </TabsContent>
 
-            {/* Finance Tab */}
-            <TabsContent value="finance" className="space-y-6">
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold">Financial Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <DollarSign className="mx-auto h-8 w-8 text-green-600 mb-2" />
-                      <p className="text-2xl font-bold text-gray-900">$12,400</p>
-                      <p className="text-sm text-gray-600">Total Paid</p>
-                    </div>
-                    <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                      <Clock className="mx-auto h-8 w-8 text-yellow-600 mb-2" />
-                      <p className="text-2xl font-bold text-gray-900">$3,200</p>
-                      <p className="text-sm text-gray-600">Outstanding</p>
-                    </div>
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <BarChart3 className="mx-auto h-8 w-8 text-blue-600 mb-2" />
-                      <p className="text-2xl font-bold text-gray-900">$2,100</p>
-                      <p className="text-sm text-gray-600">Monthly Average</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         </motion.div>
       </main>
+
+      {/* Task Creation Modal */}
+      <TaskCreationModal 
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        preselectedClientId={client.id}
+      />
     </div>
   )
 }
