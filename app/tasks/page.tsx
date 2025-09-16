@@ -35,6 +35,15 @@ export default function TasksPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [editingCell, setEditingCell] = useState<{taskId: string, field: string} | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [columnWidths, setColumnWidths] = useState({
+    task: 300,
+    status: 120,
+    priority: 100,
+    assignee: 180,
+    client: 200,
+    dueDate: 150,
+    actions: 80
+  })
   const { tasks, loadTasks, getTaskStats, deleteTask, updateTask, createTask } = useTasks()
   const { clients } = useClients()
 
@@ -53,6 +62,12 @@ export default function TasksPage() {
   }
 
   const handleCellEdit = (taskId: string, field: string, currentValue: string) => {
+    setEditingCell({ taskId, field })
+    setEditValue(currentValue || '')
+  }
+
+  const handleDropdownEdit = (taskId: string, field: string, currentValue: string) => {
+    // For dropdowns, we set the editing state and immediately show the dropdown
     setEditingCell({ taskId, field })
     setEditValue(currentValue || '')
   }
@@ -297,7 +312,7 @@ export default function TasksPage() {
         </div>
 
         {/* Notion-like Database Table */}
-        <div className="px-6">
+        <div className="px-6 overflow-x-auto">
           {filteredAndSortedTasks.length === 0 ? (
             <div className="py-20 text-center">
               <Calendar className="mx-auto h-16 w-16 text-gray-300 mb-4" />
@@ -320,52 +335,63 @@ export default function TasksPage() {
               )}
             </div>
           ) : (
-            <div className="notion-table">
+            <div className="notion-table min-w-[1130px]">
               {/* Table Header */}
-              <div className="grid grid-cols-12 gap-4 py-3 px-4 border-b border-gray-100 bg-gray-50/30 sticky top-0">
+              <div className="flex border-b border-gray-100 bg-gray-50/30 sticky top-0">
                 <button 
-                  className="col-span-3 flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors py-3 px-4 border-r border-gray-100"
+                  style={{ width: columnWidths.task }}
                   onClick={() => handleSort('title')}
                 >
                   <span>Task</span>
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
                 <button 
-                  className="col-span-1 flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors py-3 px-4 border-r border-gray-100"
+                  style={{ width: columnWidths.status }}
                   onClick={() => handleSort('status')}
                 >
                   <span>Status</span>
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
                 <button 
-                  className="col-span-1 flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors py-3 px-4 border-r border-gray-100"
+                  style={{ width: columnWidths.priority }}
                   onClick={() => handleSort('priority')}
                 >
                   <span>Priority</span>
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
                 <button 
-                  className="col-span-2 flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors py-3 px-4 border-r border-gray-100"
+                  style={{ width: columnWidths.assignee }}
                   onClick={() => handleSort('assignee')}
                 >
                   <span>Assignee</span>
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
                 <button 
-                  className="col-span-2 flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors py-3 px-4 border-r border-gray-100"
+                  style={{ width: columnWidths.client }}
                   onClick={() => handleSort('client')}
                 >
                   <span>Client</span>
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
                 <button 
-                  className="col-span-2 flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors py-3 px-4 border-r border-gray-100"
+                  style={{ width: columnWidths.dueDate }}
                   onClick={() => handleSort('dueDate')}
                 >
                   <span>Due Date</span>
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
-                <div className="col-span-1 text-sm font-medium text-gray-600 text-center">Actions</div>
+                <div 
+                  className="text-sm font-medium text-gray-600 text-center py-3 px-4"
+                  style={{ width: columnWidths.actions }}
+                >
+                  Actions
+                </div>
               </div>
 
               {/* Table Body */}
@@ -376,10 +402,13 @@ export default function TasksPage() {
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.03 }}
-                    className="grid grid-cols-12 gap-4 py-3 px-4 hover:bg-gray-50/50 transition-colors group"
+                    className="flex hover:bg-gray-50/50 transition-colors group"
                   >
                     {/* Task Column */}
-                    <div className="col-span-3 flex items-center space-x-2">
+                    <div 
+                      className="flex items-center space-x-2 py-3 px-4 border-r border-gray-100"
+                      style={{ width: columnWidths.task }}
+                    >
                       {getStatusIcon(task.status)}
                       <div className="min-w-0 flex-1">
                         {editingCell?.taskId === task.id && editingCell?.field === 'title' ? (
@@ -389,7 +418,7 @@ export default function TasksPage() {
                             onKeyDown={handleKeyPress}
                             onBlur={handleCellSave}
                             autoFocus
-                            className="h-8 text-sm border-blue-200 focus:border-blue-400"
+                            className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full"
                           />
                         ) : (
                           <div 
@@ -409,7 +438,10 @@ export default function TasksPage() {
                     </div>
 
                     {/* Status Column - Dropdown */}
-                    <div className="col-span-1 flex items-center">
+                    <div 
+                      className="flex items-center py-3 px-4 border-r border-gray-100"
+                      style={{ width: columnWidths.status }}
+                    >
                       {editingCell?.taskId === task.id && editingCell?.field === 'status' ? (
                         <Select 
                           value={editValue} 
@@ -417,8 +449,9 @@ export default function TasksPage() {
                             updateTask(task.id, { status: value as any })
                             setEditingCell(null)
                           }}
+                          open={true}
                         >
-                          <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400">
+                          <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -430,12 +463,9 @@ export default function TasksPage() {
                         </Select>
                       ) : (
                         <Badge 
-                          className={`${getStatusColor(task.status)} cursor-pointer hover:opacity-80 transition-opacity`}
+                          className={`${getStatusColor(task.status)} cursor-pointer hover:opacity-80 transition-opacity w-full justify-center`}
                           variant="outline"
-                          onClick={() => {
-                            setEditingCell({ taskId: task.id, field: 'status' })
-                            setEditValue(task.status)
-                          }}
+                          onClick={() => handleDropdownEdit(task.id, 'status', task.status)}
                         >
                           {task.status.replace('_', ' ')}
                         </Badge>
@@ -443,7 +473,10 @@ export default function TasksPage() {
                     </div>
 
                     {/* Priority Column - Dropdown */}
-                    <div className="col-span-1 flex items-center">
+                    <div 
+                      className="flex items-center py-3 px-4 border-r border-gray-100"
+                      style={{ width: columnWidths.priority }}
+                    >
                       {editingCell?.taskId === task.id && editingCell?.field === 'priority' ? (
                         <Select 
                           value={editValue} 
@@ -451,8 +484,9 @@ export default function TasksPage() {
                             updateTask(task.id, { priority: value as any })
                             setEditingCell(null)
                           }}
+                          open={true}
                         >
-                          <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400">
+                          <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -464,12 +498,9 @@ export default function TasksPage() {
                         </Select>
                       ) : (
                         <Badge 
-                          className={`${getPriorityColor(task.priority)} cursor-pointer hover:opacity-80 transition-opacity`}
+                          className={`${getPriorityColor(task.priority)} cursor-pointer hover:opacity-80 transition-opacity w-full justify-center`}
                           variant="outline"
-                          onClick={() => {
-                            setEditingCell({ taskId: task.id, field: 'priority' })
-                            setEditValue(task.priority)
-                          }}
+                          onClick={() => handleDropdownEdit(task.id, 'priority', task.priority)}
                         >
                           {task.priority}
                         </Badge>
@@ -477,7 +508,10 @@ export default function TasksPage() {
                     </div>
 
                     {/* Assignee Column - Inline Editable */}
-                    <div className="col-span-2 flex items-center">
+                    <div 
+                      className="flex items-center py-3 px-4 border-r border-gray-100"
+                      style={{ width: columnWidths.assignee }}
+                    >
                       {editingCell?.taskId === task.id && editingCell?.field === 'assignee' ? (
                         <Input
                           value={editValue}
@@ -485,21 +519,25 @@ export default function TasksPage() {
                           onKeyDown={handleKeyPress}
                           onBlur={handleCellSave}
                           autoFocus
-                          className="h-8 text-sm border-blue-200 focus:border-blue-400"
+                          className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full"
                         />
                       ) : (
                         <div 
                           className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors w-full"
                           onClick={() => handleCellEdit(task.id, 'assignee', task.assignee)}
+                          title={task.assignee}
                         >
-                          <User className="h-4 w-4 text-gray-400" />
+                          <User className="h-4 w-4 text-gray-400 flex-shrink-0" />
                           <span className="truncate">{task.assignee}</span>
                         </div>
                       )}
                     </div>
 
                     {/* Client Column - Dropdown */}
-                    <div className="col-span-2 flex items-center">
+                    <div 
+                      className="flex items-center py-3 px-4 border-r border-gray-100"
+                      style={{ width: columnWidths.client }}
+                    >
                       {editingCell?.taskId === task.id && editingCell?.field === 'client' ? (
                         <Select 
                           value={editValue} 
@@ -513,8 +551,9 @@ export default function TasksPage() {
                             }
                             setEditingCell(null)
                           }}
+                          open={true}
                         >
-                          <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400">
+                          <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -533,12 +572,10 @@ export default function TasksPage() {
                       ) : (
                         <div 
                           className="flex items-center space-x-2 cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors w-full"
-                          onClick={() => {
-                            setEditingCell({ taskId: task.id, field: 'client' })
-                            setEditValue(task.clientId)
-                          }}
+                          onClick={() => handleDropdownEdit(task.id, 'client', task.clientId)}
+                          title={task.clientName}
                         >
-                          <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-xs font-medium">
+                          <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
                             {task.clientName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
                           </div>
                           <span className="text-sm text-gray-700 truncate">{task.clientName}</span>
@@ -546,8 +583,11 @@ export default function TasksPage() {
                       )}
                     </div>
 
-                    {/* Due Date Column - Inline Editable */}
-                    <div className="col-span-2 flex items-center">
+                    {/* Due Date Column - Calendar */}
+                    <div 
+                      className="flex items-center py-3 px-4 border-r border-gray-100"
+                      style={{ width: columnWidths.dueDate }}
+                    >
                       {editingCell?.taskId === task.id && editingCell?.field === 'dueDate' ? (
                         <Input
                           type="date"
@@ -556,14 +596,15 @@ export default function TasksPage() {
                           onKeyDown={handleKeyPress}
                           onBlur={handleCellSave}
                           autoFocus
-                          className="h-8 text-sm border-blue-200 focus:border-blue-400"
+                          className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full"
                         />
                       ) : (
                         <div 
-                          className={`text-sm cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors w-full ${
+                          className={`text-sm cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors w-full truncate ${
                             isOverdue(task) ? 'text-red-600 font-medium' : 'text-gray-600'
                           }`}
                           onClick={() => handleCellEdit(task.id, 'dueDate', task.dueDate || '')}
+                          title={task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Add date...'}
                         >
                           {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Add date...'}
                         </div>
@@ -571,21 +612,22 @@ export default function TasksPage() {
                     </div>
 
                     {/* Actions Column */}
-                    <div className="col-span-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="flex items-center space-x-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => {
-                            if (confirm(`Delete "${task.title}"?`)) {
-                              deleteTask(task.id)
-                            }
-                          }}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                    <div 
+                      className="flex items-center justify-center py-3 px-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ width: columnWidths.actions }}
+                    >
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`Delete "${task.title}"?`)) {
+                            deleteTask(task.id)
+                          }
+                        }}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </motion.div>
                 ))}
@@ -593,10 +635,13 @@ export default function TasksPage() {
 
               {/* Add New Row */}
               <div 
-                className="grid grid-cols-12 gap-4 py-3 px-4 hover:bg-blue-50/50 transition-colors cursor-pointer border-t border-gray-100"
+                className="flex hover:bg-blue-50/50 transition-colors cursor-pointer border-t border-gray-100"
                 onClick={handleCreateTask}
               >
-                <div className="col-span-12 flex items-center space-x-2 text-gray-500 hover:text-blue-600">
+                <div 
+                  className="flex items-center space-x-2 text-gray-500 hover:text-blue-600 py-3 px-4"
+                  style={{ width: '100%' }}
+                >
                   <Plus className="h-4 w-4" />
                   <span className="text-sm">New task</span>
                 </div>

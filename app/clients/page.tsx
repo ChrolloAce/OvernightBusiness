@@ -34,6 +34,15 @@ export default function ClientsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [editingCell, setEditingCell] = useState<{clientId: string, field: string} | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [columnWidths, setColumnWidths] = useState({
+    name: 300,
+    email: 200,
+    status: 120,
+    phone: 180,
+    business: 220,
+    projects: 100,
+    actions: 100
+  })
   const { clients, loadClients, deleteClient, updateClient, createClient } = useClients()
   const { profiles } = useProfile()
 
@@ -54,6 +63,18 @@ export default function ClientsPage() {
   const handleCellEdit = (clientId: string, field: string, currentValue: string) => {
     setEditingCell({ clientId, field })
     setEditValue(currentValue || '')
+  }
+
+  const handleDropdownEdit = (clientId: string, field: string, currentValue: string) => {
+    // For dropdowns, we set the editing state and immediately show the dropdown
+    setEditingCell({ clientId, field })
+    setEditValue(currentValue || '')
+    
+    // Force the dropdown to open by triggering a click after state update
+    setTimeout(() => {
+      const trigger = document.querySelector(`[data-dropdown="${clientId}-${field}"]`) as HTMLElement
+      trigger?.click()
+    }, 50)
   }
 
   const handleCellSave = () => {
@@ -215,7 +236,7 @@ export default function ClientsPage() {
         </div>
 
         {/* Notion-like Database Table */}
-        <div className="px-6">
+        <div className="px-6 overflow-x-auto">
           {filteredAndSortedClients.length === 0 ? (
             <div className="py-20 text-center">
               <Users className="mx-auto h-16 w-16 text-gray-300 mb-4" />
@@ -238,34 +259,57 @@ export default function ClientsPage() {
                )}
             </div>
           ) : (
-            <div className="notion-table">
+            <div className="notion-table min-w-[1200px]">
               {/* Table Header */}
-              <div className="grid grid-cols-12 gap-4 py-3 px-4 border-b border-gray-100 bg-gray-50/30 sticky top-0">
+              <div className="flex border-b border-gray-100 bg-gray-50/30 sticky top-0">
                 <button 
-                  className="col-span-3 flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors py-3 px-4 border-r border-gray-100"
+                  style={{ width: columnWidths.name }}
                   onClick={() => handleSort('name')}
                 >
                   <span>Name</span>
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
                 <button 
-                  className="col-span-2 flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors py-3 px-4 border-r border-gray-100"
+                  style={{ width: columnWidths.email }}
                   onClick={() => handleSort('email')}
                 >
                   <span>Email</span>
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
                 <button 
-                  className="col-span-1 flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center space-x-1 text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors py-3 px-4 border-r border-gray-100"
+                  style={{ width: columnWidths.status }}
                   onClick={() => handleSort('status')}
                 >
                   <span>Status</span>
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
-                <div className="col-span-2 text-sm font-medium text-gray-600">Phone</div>
-                <div className="col-span-2 text-sm font-medium text-gray-600">Google Business</div>
-                <div className="col-span-1 text-sm font-medium text-gray-600 text-center">Projects</div>
-                <div className="col-span-1 text-sm font-medium text-gray-600 text-center">Actions</div>
+                <div 
+                  className="text-sm font-medium text-gray-600 py-3 px-4 border-r border-gray-100"
+                  style={{ width: columnWidths.phone }}
+                >
+                  Phone
+                </div>
+                <div 
+                  className="text-sm font-medium text-gray-600 py-3 px-4 border-r border-gray-100"
+                  style={{ width: columnWidths.business }}
+                >
+                  Google Business
+                </div>
+                <div 
+                  className="text-sm font-medium text-gray-600 py-3 px-4 border-r border-gray-100 text-center"
+                  style={{ width: columnWidths.projects }}
+                >
+                  Projects
+                </div>
+                <div 
+                  className="text-sm font-medium text-gray-600 py-3 px-4 text-center"
+                  style={{ width: columnWidths.actions }}
+                >
+                  Actions
+                </div>
               </div>
 
               {/* Table Body */}
@@ -276,52 +320,57 @@ export default function ClientsPage() {
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="grid grid-cols-12 gap-4 py-3 px-4 hover:bg-gray-50/50 transition-colors group"
+                    className="flex hover:bg-gray-50/50 transition-colors group"
                   >
                      {/* Name Column */}
-                     <div className="col-span-3 flex items-center space-x-3">
-                       <div className="flex items-center space-x-3 w-full">
-                         <Link href={`/clients/${client.id}`}>
-                           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-sm font-medium hover:opacity-80 transition-opacity">
-                             {client.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
+                     <div 
+                       className="flex items-center space-x-3 py-3 px-4 border-r border-gray-100"
+                       style={{ width: columnWidths.name }}
+                     >
+                       <Link href={`/clients/${client.id}`}>
+                         <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-sm font-medium hover:opacity-80 transition-opacity">
+                           {client.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
+                         </div>
+                       </Link>
+                       <div className="flex-1 min-w-0">
+                         {editingCell?.clientId === client.id && editingCell?.field === 'name' ? (
+                           <Input
+                             value={editValue}
+                             onChange={(e) => setEditValue(e.target.value)}
+                             onKeyDown={handleKeyPress}
+                             onBlur={handleCellSave}
+                             autoFocus
+                             className="h-8 text-sm border-blue-200 focus:border-blue-400 font-medium"
+                           />
+                         ) : (
+                           <div 
+                             className="font-medium text-gray-900 hover:text-blue-600 cursor-pointer p-1 rounded hover:bg-blue-50 transition-colors truncate"
+                             onClick={() => handleCellEdit(client.id, 'name', client.name)}
+                             title={client.name}
+                           >
+                             {client.name}
                            </div>
-                         </Link>
-                         <div className="flex-1 min-w-0">
-                           {editingCell?.clientId === client.id && editingCell?.field === 'name' ? (
-                             <Input
-                               value={editValue}
-                               onChange={(e) => setEditValue(e.target.value)}
-                               onKeyDown={handleKeyPress}
-                               onBlur={handleCellSave}
-                               autoFocus
-                               className="h-8 text-sm border-blue-200 focus:border-blue-400 font-medium"
-                             />
-                           ) : (
-                             <div 
-                               className="font-medium text-gray-900 hover:text-blue-600 cursor-pointer p-1 rounded hover:bg-blue-50 transition-colors"
-                               onClick={() => handleCellEdit(client.id, 'name', client.name)}
-                             >
-                               {client.name}
-                             </div>
+                         )}
+                         <div className="flex flex-wrap gap-1 mt-1">
+                           {client.tags.slice(0, 2).map((tag) => (
+                             <Badge key={tag} variant="secondary" className="text-xs px-2 py-0.5">
+                               {tag}
+                             </Badge>
+                           ))}
+                           {client.tags.length > 2 && (
+                             <Badge variant="outline" className="text-xs px-2 py-0.5">
+                               +{client.tags.length - 2}
+                             </Badge>
                            )}
-                           <div className="flex flex-wrap gap-1 mt-1">
-                             {client.tags.slice(0, 2).map((tag) => (
-                               <Badge key={tag} variant="secondary" className="text-xs px-2 py-0.5">
-                                 {tag}
-                               </Badge>
-                             ))}
-                             {client.tags.length > 2 && (
-                               <Badge variant="outline" className="text-xs px-2 py-0.5">
-                                 +{client.tags.length - 2}
-                               </Badge>
-                             )}
-                           </div>
                          </div>
                        </div>
                      </div>
 
                     {/* Email Column - Inline Editable */}
-                    <div className="col-span-2 flex items-center">
+                    <div 
+                      className="flex items-center py-3 px-4 border-r border-gray-100"
+                      style={{ width: columnWidths.email }}
+                    >
                       {editingCell?.clientId === client.id && editingCell?.field === 'email' ? (
                         <Input
                           value={editValue}
@@ -329,12 +378,13 @@ export default function ClientsPage() {
                           onKeyDown={handleKeyPress}
                           onBlur={handleCellSave}
                           autoFocus
-                          className="h-8 text-sm border-blue-200 focus:border-blue-400"
+                          className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full"
                         />
                       ) : (
                         <div 
-                          className="text-sm text-gray-600 hover:text-gray-900 cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors w-full"
+                          className="text-sm text-gray-600 hover:text-gray-900 cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors w-full truncate"
                           onClick={() => handleCellEdit(client.id, 'email', client.email || '')}
+                          title={client.email || 'Add email...'}
                         >
                           {client.email || 'Add email...'}
                         </div>
@@ -342,7 +392,10 @@ export default function ClientsPage() {
                     </div>
 
                      {/* Status Column - Dropdown */}
-                     <div className="col-span-1 flex items-center">
+                     <div 
+                       className="flex items-center py-3 px-4 border-r border-gray-100"
+                       style={{ width: columnWidths.status }}
+                     >
                        {editingCell?.clientId === client.id && editingCell?.field === 'status' ? (
                          <Select 
                            value={editValue} 
@@ -350,8 +403,9 @@ export default function ClientsPage() {
                              updateClient(client.id, { status: value as any })
                              setEditingCell(null)
                            }}
+                           open={true}
                          >
-                           <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400">
+                           <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full">
                              <SelectValue />
                            </SelectTrigger>
                            <SelectContent>
@@ -363,12 +417,9 @@ export default function ClientsPage() {
                          </Select>
                        ) : (
                          <Badge 
-                           className={`${getStatusColor(client.status)} cursor-pointer hover:opacity-80 transition-opacity`}
+                           className={`${getStatusColor(client.status)} cursor-pointer hover:opacity-80 transition-opacity w-full justify-center`}
                            variant="outline"
-                           onClick={() => {
-                             setEditingCell({ clientId: client.id, field: 'status' })
-                             setEditValue(client.status)
-                           }}
+                           onClick={() => handleDropdownEdit(client.id, 'status', client.status)}
                          >
                            {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
                          </Badge>
@@ -376,7 +427,10 @@ export default function ClientsPage() {
                      </div>
 
                     {/* Phone Column - Inline Editable */}
-                    <div className="col-span-2 flex items-center">
+                    <div 
+                      className="flex items-center py-3 px-4 border-r border-gray-100"
+                      style={{ width: columnWidths.phone }}
+                    >
                       {editingCell?.clientId === client.id && editingCell?.field === 'phone' ? (
                         <Input
                           value={editValue}
@@ -384,77 +438,138 @@ export default function ClientsPage() {
                           onKeyDown={handleKeyPress}
                           onBlur={handleCellSave}
                           autoFocus
-                          className="h-8 text-sm border-blue-200 focus:border-blue-400"
+                          className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full"
                         />
                       ) : (
                         <div 
-                          className="text-sm text-gray-600 hover:text-gray-900 cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors w-full"
+                          className="text-sm text-gray-600 hover:text-gray-900 cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors w-full truncate"
                           onClick={() => handleCellEdit(client.id, 'phone', client.phone || '')}
+                          title={client.phone || 'Add phone...'}
                         >
                           {client.phone || 'Add phone...'}
                         </div>
                       )}
                     </div>
 
-                    {/* Google Business Column */}
-                    <div className="col-span-2 flex items-center">
-                      {client.googleBusinessProfile ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                          <span className="text-sm text-gray-700 truncate">
-                            {client.googleBusinessProfile.name}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 rounded-full bg-gray-300" />
-                          <span className="text-sm text-gray-400">Not connected</span>
-                        </div>
-                      )}
-                    </div>
+                     {/* Google Business Column - Dropdown */}
+                     <div 
+                       className="flex items-center py-3 px-4 border-r border-gray-100"
+                       style={{ width: columnWidths.business }}
+                     >
+                       {editingCell?.clientId === client.id && editingCell?.field === 'googleBusiness' ? (
+                         <Select 
+                           value={editValue} 
+                           onValueChange={(value) => {
+                             if (value === 'none') {
+                               updateClient(client.id, { 
+                                 googleBusinessProfileId: undefined,
+                                 googleBusinessProfile: undefined 
+                               })
+                             } else {
+                               const selectedProfile = profiles.find(p => p.id === value)
+                               if (selectedProfile) {
+                                 updateClient(client.id, { 
+                                   googleBusinessProfileId: value,
+                                   googleBusinessProfile: selectedProfile 
+                                 })
+                               }
+                             }
+                             setEditingCell(null)
+                           }}
+                           open={true}
+                         >
+                           <SelectTrigger 
+                             className="h-8 text-sm border-blue-200 focus:border-blue-400 w-full"
+                             data-dropdown={`${client.id}-googleBusiness`}
+                           >
+                             <SelectValue />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="none">No Profile</SelectItem>
+                             {profiles.map((profile) => (
+                               <SelectItem key={profile.id} value={profile.id}>
+                                 <div className="flex items-center space-x-2">
+                                   <Building2 className="h-4 w-4" />
+                                   <span className="truncate">{profile.name}</span>
+                                 </div>
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                       ) : (
+                         <div 
+                           className="flex items-center space-x-2 cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors w-full"
+                           onClick={() => handleDropdownEdit(client.id, 'googleBusiness', client.googleBusinessProfileId || 'none')}
+                           title={client.googleBusinessProfile?.name || 'Assign Google Business Profile'}
+                         >
+                           {client.googleBusinessProfile ? (
+                             <>
+                               <div className="w-2 h-2 rounded-full bg-green-500" />
+                               <span className="text-sm text-gray-700 truncate">
+                                 {client.googleBusinessProfile.name}
+                               </span>
+                             </>
+                           ) : (
+                             <>
+                               <div className="w-2 h-2 rounded-full bg-gray-300" />
+                               <span className="text-sm text-gray-400">Assign profile...</span>
+                             </>
+                           )}
+                         </div>
+                       )}
+                     </div>
 
-                    {/* Projects Column */}
-                    <div className="col-span-1 flex items-center justify-center">
-                      <span className="text-sm font-medium text-gray-700">
-                        {client.activeProjects || 0}
-                      </span>
-                    </div>
+                     {/* Projects Column */}
+                     <div 
+                       className="flex items-center justify-center py-3 px-4 border-r border-gray-100"
+                       style={{ width: columnWidths.projects }}
+                     >
+                       <span className="text-sm font-medium text-gray-700">
+                         {client.activeProjects || 0}
+                       </span>
+                     </div>
 
-                    {/* Actions Column */}
-                    <div className="col-span-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="flex items-center space-x-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => window.location.href = `/clients/${client.id}`}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => {
-                            if (confirm(`Delete "${client.name}"?`)) {
-                              deleteClient(client.id)
-                            }
-                          }}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
+                     {/* Actions Column */}
+                     <div 
+                       className="flex items-center justify-center py-3 px-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                       style={{ width: columnWidths.actions }}
+                     >
+                       <div className="flex items-center space-x-1">
+                         <Button 
+                           variant="ghost" 
+                           size="sm"
+                           onClick={() => window.location.href = `/clients/${client.id}`}
+                           className="h-8 w-8 p-0"
+                         >
+                           <Eye className="h-4 w-4" />
+                         </Button>
+                         <Button 
+                           variant="ghost" 
+                           size="sm"
+                           onClick={() => {
+                             if (confirm(`Delete "${client.name}"?`)) {
+                               deleteClient(client.id)
+                             }
+                           }}
+                           className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                         >
+                           <Trash2 className="h-4 w-4" />
+                         </Button>
+                       </div>
+                     </div>
                   </motion.div>
                 ))}
               </div>
 
                {/* Add New Row */}
                <div 
-                 className="grid grid-cols-12 gap-4 py-3 px-4 hover:bg-blue-50/50 transition-colors cursor-pointer border-t border-gray-100"
+                 className="flex hover:bg-blue-50/50 transition-colors cursor-pointer border-t border-gray-100"
                  onClick={handleCreateClient}
                >
-                 <div className="col-span-12 flex items-center space-x-2 text-gray-500 hover:text-blue-600">
+                 <div 
+                   className="flex items-center space-x-2 text-gray-500 hover:text-blue-600 py-3 px-4"
+                   style={{ width: '100%' }}
+                 >
                    <Plus className="h-4 w-4" />
                    <span className="text-sm">New client</span>
                  </div>
