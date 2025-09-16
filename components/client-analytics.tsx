@@ -114,7 +114,17 @@ export function ClientAnalytics({ clientId, clientName, googleBusinessProfile }:
         googleBusinessId: googleBusinessProfile.googleBusinessId
       })
       
+      // Calculate date range based on timeRange selection
+      const endDate = new Date().toISOString().split('T')[0]
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - parseInt(timeRange))
+      const startDateStr = startDate.toISOString().split('T')[0]
+
+      console.log(`[ClientAnalytics] Loading analytics for ${timeRange} days: ${startDateStr} to ${endDate}`)
+
       const result = await CentralizedDataLoader.loadAnalytics(googleBusinessProfile, {
+        startDate: startDateStr,
+        endDate: endDate,
         enabledMetrics: {
           'BUSINESS_IMPRESSIONS_DESKTOP_MAPS': true,
           'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH': true,

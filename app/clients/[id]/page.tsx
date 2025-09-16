@@ -39,6 +39,7 @@ import { useTasks } from '@/contexts/task-context'
 import { ClientAnalytics } from '@/components/client-analytics'
 import { SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { ClientAvatar } from '@/components/client-avatar'
+import { ClientTasksNotionTable } from '@/components/client-tasks-notion-table'
 
 // Mock client data
 interface ClientData {
@@ -668,101 +669,7 @@ export default function ClientDetailPage() {
 
             {/* Tasks Tab */}
             <TabsContent value="tasks" className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Client Tasks</h2>
-                  <p className="text-gray-600">Tasks assigned to this client</p>
-                </div>
-                <Button 
-                  className="bg-blue-600 hover:bg-blue-700"
-                  onClick={handleCreateClientTask}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Task
-                </Button>
-              </div>
-
-              {(() => {
-                const clientTasks = getTasksByClient(client.id)
-                const taskStats = getClientTaskStats(client.id)
-                
-                return clientTasks.length === 0 ? (
-                  <Card className="bg-white shadow-sm border-gray-200">
-                    <CardContent className="p-6">
-                      <div className="text-center py-8">
-                        <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No tasks assigned</h3>
-                        <p className="text-gray-600 mb-4">
-                          Create and assign tasks to team members for this client
-                        </p>
-                        <Button 
-                          className="bg-blue-600 hover:bg-blue-700"
-                          onClick={handleCreateClientTask}
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          Create First Task
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Task Stats */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <p className="text-2xl font-bold text-blue-600">{taskStats.total}</p>
-                        <p className="text-sm text-gray-600">Total Tasks</p>
-                      </div>
-                      <div className="bg-yellow-50 p-4 rounded-lg">
-                        <p className="text-2xl font-bold text-yellow-600">{taskStats.todo}</p>
-                        <p className="text-sm text-gray-600">To Do</p>
-                      </div>
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <p className="text-2xl font-bold text-green-600">{taskStats.inProgress}</p>
-                        <p className="text-sm text-gray-600">In Progress</p>
-                      </div>
-                      <div className="bg-purple-50 p-4 rounded-lg">
-                        <p className="text-2xl font-bold text-purple-600">{taskStats.completed}</p>
-                        <p className="text-sm text-gray-600">Completed</p>
-                      </div>
-                    </div>
-
-                    {/* Tasks List */}
-                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                      {clientTasks.map((task) => (
-                        <Card key={task.id} className="bg-white shadow-sm border-gray-200">
-                          <CardContent className="p-4">
-                            <div className="space-y-3">
-                              <div className="flex items-start justify-between">
-                                <div>
-                                  <h4 className="font-semibold text-gray-900">{task.title}</h4>
-                                  <p className="text-sm text-gray-600 mt-1">{task.description || 'No description'}</p>
-                                </div>
-                                <Badge 
-                                  className={
-                                    task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                    task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  }
-                                  variant="outline"
-                                >
-                                  {task.status.replace('_', ' ')}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center justify-between text-sm text-gray-500">
-                                <span>Assignee: {task.assignee}</span>
-                                {task.dueDate && (
-                                  <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
-                                )}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })()}
+              <ClientTasksNotionTable clientId={client.id} clientName={client.name} />
             </TabsContent>
 
             {/* Invoices Tab */}
