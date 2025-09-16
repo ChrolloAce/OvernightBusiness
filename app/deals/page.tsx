@@ -79,8 +79,16 @@ const initialDeals: Record<string, Deal[]> = {
 }
 
 
-// Sortable Deal Card Component
-function SortableDealCard({ deal, isDragging }: { deal: Deal; isDragging?: boolean }) {
+// Sortable Deal Card Component with Inline Editing
+function SortableDealCard({ deal, isDragging, clients, onUpdateDeal }: { 
+  deal: Deal; 
+  isDragging?: boolean;
+  clients: any[];
+  onUpdateDeal: (dealId: string, updates: Partial<Deal>) => void;
+}) {
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  
   const {
     attributes,
     listeners,
@@ -96,6 +104,35 @@ function SortableDealCard({ deal, isDragging }: { deal: Deal; isDragging?: boole
     opacity: isSortableDragging ? 0.5 : 1
   }
 
+  const handleFieldEdit = (field: string, currentValue: string | number) => {
+    setEditingField(field)
+    setEditValue(String(currentValue))
+  }
+
+  const handleFieldSave = () => {
+    if (editingField && editValue !== undefined) {
+      let value: any = editValue
+      
+      // Convert value based on field type
+      if (editingField === 'value' || editingField === 'probability') {
+        value = parseFloat(editValue) || 0
+      }
+      
+      onUpdateDeal(deal.id, { [editingField]: value })
+      setEditingField(null)
+      setEditValue('')
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleFieldSave()
+    } else if (e.key === 'Escape') {
+      setEditingField(null)
+      setEditValue('')
+    }
+  }
+
   if (isDragging) {
     return (
       <div className="h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg" />
@@ -106,52 +143,172 @@ function SortableDealCard({ deal, isDragging }: { deal: Deal; isDragging?: boole
     <Card 
       ref={setNodeRef}
       style={style}
-      className="shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-      {...attributes}
+      className="shadow-sm hover:shadow-md transition-shadow"
     >
       <CardContent className="p-4">
         <div className="space-y-3">
+          {/* Deal Title - Editable */}
           <div className="flex items-start justify-between">
-            <h4 className="font-semibold text-gray-900 text-sm line-clamp-2 flex-1">
-              {deal.title}
-            </h4>
+            {editingField === 'title' ? (
+              <Input
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleKeyPress}
+                onBlur={handleFieldSave}
+                autoFocus
+                className="h-7 text-sm font-semibold border-blue-200 focus:border-blue-400"
+              />
+            ) : (
+              <h4 
+                className="font-semibold text-gray-900 text-sm line-clamp-2 flex-1 cursor-pointer hover:text-blue-600 p-1 rounded hover:bg-blue-50 transition-colors"
+                onClick={() => handleFieldEdit('title', deal.title)}
+              >
+                {deal.title}
+              </h4>
+            )}
             <div className="flex items-center space-x-1 ml-2">
               <div
                 {...listeners}
+                {...attributes}
                 className="p-1 hover:bg-gray-100 rounded cursor-grab active:cursor-grabbing"
               >
-                <GripVertical className="h-3 w-3 text-gray-400" />
+                <GripVertical className="h-4 w-4 text-gray-400" />
               </div>
-              <Button variant="ghost" size="sm" className="w-6 h-6 p-0">
-                <MoreHorizontal className="h-3 w-3" />
-              </Button>
             </div>
           </div>
           
+          {/* Client Assignment - Dropdown */}
           <div className="flex items-center space-x-2">
-            <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-              {deal.clientName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
-            </div>
-            <span className="text-xs text-gray-600 truncate">{deal.clientName}</span>
+            {editingField === 'client' ? (
+              <Select 
+                value={deal.clientId} 
+                onValueChange={(value) => {
+                  const selectedClient = clients.find(c => c.id === value)
+                  if (selectedClient) {
+                    onUpdateDeal(deal.id, { 
+                      clientId: value, 
+                      clientName: selectedClient.name 
+                    })
+                  }
+                  setEditingField(null)
+                }}
+                open={true}
+              >
+                <SelectTrigger className="h-6 text-xs border-blue-200 focus:border-blue-400">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 bg-gradient-to-br from-blue-500 to-purple-500 rounded flex items-center justify-center text-white text-xs">
+                          {client.name.split(' ').map((word: string) => word[0]).join('').toUpperCase().slice(0, 2)}
+                        </div>
+                        <span>{client.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div 
+                className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors w-full"
+                onClick={() => setEditingField('client')}
+              >
+                <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                  {deal.clientName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
+                </div>
+                <span className="text-xs text-gray-600 truncate">{deal.clientName}</span>
+              </div>
+            )}
           </div>
 
+          {/* Value and Probability */}
           <div className="flex items-center justify-between">
-            <span className="font-bold text-green-600 text-sm">
-              ${deal.value.toLocaleString()}
-            </span>
-            <Badge variant="outline" className="text-xs">
-              {deal.probability}%
-            </Badge>
+            {editingField === 'value' ? (
+              <Input
+                type="number"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleKeyPress}
+                onBlur={handleFieldSave}
+                autoFocus
+                className="h-6 text-sm font-bold text-green-600 border-blue-200 focus:border-blue-400 w-20"
+              />
+            ) : (
+              <span 
+                className="font-bold text-green-600 text-sm cursor-pointer hover:bg-green-50 p-1 rounded transition-colors"
+                onClick={() => handleFieldEdit('value', deal.value)}
+              >
+                ${deal.value.toLocaleString()}
+              </span>
+            )}
+            
+            {editingField === 'probability' ? (
+              <Input
+                type="number"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleKeyPress}
+                onBlur={handleFieldSave}
+                autoFocus
+                className="h-6 text-xs border-blue-200 focus:border-blue-400 w-16"
+                min="0"
+                max="100"
+              />
+            ) : (
+              <Badge 
+                variant="outline" 
+                className="text-xs cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => handleFieldEdit('probability', deal.probability)}
+              >
+                {deal.probability}%
+              </Badge>
+            )}
           </div>
 
+          {/* Owner and Date */}
           <div className="flex items-center justify-between text-xs text-gray-500">
             <div className="flex items-center space-x-1">
               <User className="h-3 w-3" />
-              <span className="truncate">{deal.owner}</span>
+              {editingField === 'owner' ? (
+                <Input
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  onBlur={handleFieldSave}
+                  autoFocus
+                  className="h-5 text-xs border-blue-200 focus:border-blue-400 w-20"
+                />
+              ) : (
+                <span 
+                  className="truncate cursor-pointer hover:text-gray-700 transition-colors"
+                  onClick={() => handleFieldEdit('owner', deal.owner)}
+                >
+                  {deal.owner}
+                </span>
+              )}
             </div>
             <div className="flex items-center space-x-1">
               <Calendar className="h-3 w-3" />
-              <span>{new Date(deal.expectedCloseDate).toLocaleDateString()}</span>
+              {editingField === 'expectedCloseDate' ? (
+                <Input
+                  type="date"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  onBlur={handleFieldSave}
+                  autoFocus
+                  className="h-5 text-xs border-blue-200 focus:border-blue-400 w-24"
+                />
+              ) : (
+                <span 
+                  className="cursor-pointer hover:text-gray-700 transition-colors"
+                  onClick={() => handleFieldEdit('expectedCloseDate', deal.expectedCloseDate)}
+                >
+                  {new Date(deal.expectedCloseDate).toLocaleDateString()}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -247,11 +404,13 @@ export default function DealsPage() {
               stage.color.includes('red') ? 'text-red-700' : 'text-gray-700'
   }))
 
-  const handleCreateDeal = () => {
+  const handleCreateDeal = (stageId?: string) => {
     if (clients.length === 0) {
       alert('Please create a client first before adding deals')
       return
     }
+
+    const targetStage = stageId || selectedPipeline.stages[0].id
 
     const newDeal: Deal = {
       id: `deal_${Date.now()}`,
@@ -260,18 +419,18 @@ export default function DealsPage() {
       clientId: clients[0].id,
       clientName: clients[0].name,
       probability: 50,
-      expectedCloseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+      expectedCloseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       owner: 'Unassigned',
-      stage: selectedPipeline.stages[0].id,
+      stage: targetStage,
       pipelineId: selectedPipeline.id
     }
 
     setDeals(prev => ({
       ...prev,
-      [newDeal.stage]: [...(prev[newDeal.stage] || []), newDeal]
+      [targetStage]: [...(prev[targetStage] || []), newDeal]
     }))
 
-    console.log('Deal created:', newDeal.title)
+    console.log('Deal created in stage:', targetStage)
   }
 
   const handleCreatePipeline = () => {
@@ -289,6 +448,23 @@ export default function DealsPage() {
     setPipelines(prev => [...prev, newPipeline])
     setSelectedPipeline(newPipeline)
     console.log('Pipeline created:', newPipeline.name)
+  }
+
+  const handleUpdateDeal = (dealId: string, updates: Partial<Deal>) => {
+    setDeals(prev => {
+      const newDeals = { ...prev }
+      
+      // Find the deal in all stages
+      for (const stageKey in newDeals) {
+        const dealIndex = newDeals[stageKey].findIndex(d => d.id === dealId)
+        if (dealIndex >= 0) {
+          newDeals[stageKey][dealIndex] = { ...newDeals[stageKey][dealIndex], ...updates }
+          break
+        }
+      }
+      
+      return newDeals
+    })
   }
 
   const sensors = useSensors(
@@ -490,18 +666,22 @@ export default function DealsPage() {
                                   key={deal.id}
                                   deal={deal}
                                   isDragging={activeId === deal.id}
+                                  clients={clients}
+                                  onUpdateDeal={handleUpdateDeal}
                                 />
                               ))}
                             </div>
                           </SortableContext>
 
-                          <Button 
-                            variant="outline" 
-                            className="w-full mt-4 border-2 border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-50"
+                          <div 
+                            className="w-full mt-4 p-2 border-2 border-dashed border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/30 transition-colors cursor-pointer text-center"
+                            onClick={() => handleCreateDeal(stage.key)}
                           >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Deal
-                          </Button>
+                            <div className="flex items-center justify-center space-x-2 text-gray-500 hover:text-blue-600">
+                              <Plus className="h-4 w-4" />
+                              <span className="text-sm">Add deal</span>
+                            </div>
+                          </div>
                         </CardContent>
                       </Card>
                     </article>
@@ -512,7 +692,14 @@ export default function DealsPage() {
               {/* Drag Overlay Portal */}
               <DragOverlay>
                 {activeId && activeDeal ? (
-                  <DealCardOverlay deal={activeDeal} />
+                  <div className="pointer-events-none">
+                    <SortableDealCard 
+                      deal={activeDeal} 
+                      isDragging={true}
+                      clients={clients}
+                      onUpdateDeal={() => {}} // No-op during drag
+                    />
+                  </div>
                 ) : null}
               </DragOverlay>
             </DndContext>
