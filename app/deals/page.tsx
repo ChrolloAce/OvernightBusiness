@@ -324,6 +324,8 @@ function SortableDealCard({ deal, isDragging, clients, onUpdateDeal }: {
 
 // Drag Overlay Component
 function DealCardOverlay({ deal }: { deal: Deal }) {
+  const { clients } = useClients()
+  
   return (
     <div className="pointer-events-none">
       <Card className="shadow-xl ring-1 ring-black/5 scale-[1.02] origin-center w-[320px]">
