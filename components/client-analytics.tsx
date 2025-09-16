@@ -368,7 +368,7 @@ export function ClientAnalytics({ clientId, clientName, googleBusinessProfile }:
                         analyticsData?.impressions.trend === 'up' ? 'text-green-600' : 
                         analyticsData?.impressions.trend === 'down' ? 'text-red-600' : 'text-gray-500'
                       }`}>
-                        {analyticsData?.impressions.change > 0 ? '+' : ''}{analyticsData?.impressions.change}%
+                        {(analyticsData?.impressions.change || 0) > 0 ? '+' : ''}{analyticsData?.impressions.change || 0}%
                       </span>
                     </div>
                   </div>
@@ -398,7 +398,7 @@ export function ClientAnalytics({ clientId, clientName, googleBusinessProfile }:
                         analyticsData?.actions.trend === 'up' ? 'text-green-600' : 
                         analyticsData?.actions.trend === 'down' ? 'text-red-600' : 'text-gray-500'
                       }`}>
-                        {analyticsData?.actions.change > 0 ? '+' : ''}{analyticsData?.actions.change}%
+                        {(analyticsData?.actions.change || 0) > 0 ? '+' : ''}{analyticsData?.actions.change || 0}%
                       </span>
                     </div>
                   </div>
