@@ -576,7 +576,7 @@ export default function DealsPage() {
             </div>
             <Button 
               className="bg-blue-600 hover:bg-blue-700"
-              onClick={handleCreateDeal}
+              onClick={() => handleCreateDeal()}
             >
               <Plus className="mr-2 h-4 w-4" />
               New Deal
@@ -620,7 +620,7 @@ export default function DealsPage() {
             </div>
             <Button 
               className="bg-blue-600 hover:bg-blue-700"
-              onClick={handleCreateDeal}
+              onClick={() => handleCreateDeal()}
             >
               <Plus className="mr-2 h-4 w-4" />
               New Deal
