@@ -342,11 +342,11 @@ export function ClientTasksNotionTable({ clientId, clientName }: ClientTasksNoti
                       ) : (
                         <div 
                           className="cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors flex items-center space-x-2"
-                          onClick={() => handleCellEdit(task.id, 'dueDate', task.dueDate)}
+                          onClick={() => handleCellEdit(task.id, 'dueDate', task.dueDate || new Date().toISOString().split('T')[0])}
                         >
                           <Calendar className="h-4 w-4 text-gray-400" />
                           <span className="text-sm text-gray-700">
-                            {new Date(task.dueDate).toLocaleDateString()}
+                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
                           </span>
                         </div>
                       )}
