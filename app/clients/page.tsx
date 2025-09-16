@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useClients } from '@/contexts/client-context'
 import { useProfile } from '@/contexts/profile-context'
+import { ClientAvatar } from '@/components/client-avatar'
 
 export default function ClientsPage() {
   const [mounted, setMounted] = useState(false)
@@ -328,9 +329,12 @@ export default function ClientsPage() {
                        style={{ width: columnWidths.name }}
                      >
                        <Link href={`/clients/${client.id}`}>
-                         <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-sm font-medium hover:opacity-80 transition-opacity">
-                           {client.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
-                         </div>
+                         <ClientAvatar 
+                           clientName={client.name}
+                           googleBusinessProfile={client.googleBusinessProfile}
+                           size="md"
+                           className="hover:opacity-80 transition-opacity"
+                         />
                        </Link>
                        <div className="flex-1 min-w-0">
                          {editingCell?.clientId === client.id && editingCell?.field === 'name' ? (

@@ -38,6 +38,7 @@ import { useClients } from '@/contexts/client-context'
 import { useTasks } from '@/contexts/task-context'
 import { ClientAnalytics } from '@/components/client-analytics'
 import { SavedBusinessProfile } from '@/lib/business-profiles-storage'
+import { ClientAvatar } from '@/components/client-avatar'
 
 // Mock client data
 interface ClientData {
@@ -270,9 +271,11 @@ export default function ClientDetailPage() {
             <CardContent className="p-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
                 <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center text-white text-xl font-bold">
-                    {client.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
-                  </div>
+                  <ClientAvatar 
+                    clientName={client.name}
+                    googleBusinessProfile={client.googleBusinessProfile}
+                    size="xl"
+                  />
                   <div className="flex-1">
                     {/* Editable Client Name */}
                     {editingField === 'name' ? (

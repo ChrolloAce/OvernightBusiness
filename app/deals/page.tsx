@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useClients } from '@/contexts/client-context'
+import { ClientAvatar } from '@/components/client-avatar'
 import {
   DndContext,
   DragEndEvent,
@@ -201,9 +202,11 @@ function SortableDealCard({ deal, isDragging, clients, onUpdateDeal }: {
                   {clients.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
                       <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 bg-gradient-to-br from-blue-500 to-purple-500 rounded flex items-center justify-center text-white text-xs">
-                          {client.name.split(' ').map((word: string) => word[0]).join('').toUpperCase().slice(0, 2)}
-                        </div>
+                        <ClientAvatar 
+                          clientName={client.name}
+                          googleBusinessProfile={client.googleBusinessProfile}
+                          size="sm"
+                        />
                         <span>{client.name}</span>
                       </div>
                     </SelectItem>
@@ -215,9 +218,11 @@ function SortableDealCard({ deal, isDragging, clients, onUpdateDeal }: {
                 className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors w-full"
                 onClick={() => setEditingField('client')}
               >
-                <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                  {deal.clientName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
-                </div>
+                <ClientAvatar 
+                  clientName={deal.clientName}
+                  googleBusinessProfile={clients.find(c => c.id === deal.clientId)?.googleBusinessProfile}
+                  size="sm"
+                />
                 <span className="text-xs text-gray-600 truncate">{deal.clientName}</span>
               </div>
             )}
@@ -335,9 +340,11 @@ function DealCardOverlay({ deal }: { deal: Deal }) {
             </div>
             
             <div className="flex items-center space-x-2">
-              <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                {deal.clientName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
-              </div>
+              <ClientAvatar 
+                clientName={deal.clientName}
+                googleBusinessProfile={clients.find(c => c.id === deal.clientId)?.googleBusinessProfile}
+                size="sm"
+              />
               <span className="text-xs text-gray-600 truncate">{deal.clientName}</span>
             </div>
 

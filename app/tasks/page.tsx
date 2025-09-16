@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useTasks } from '@/contexts/task-context'
 import { useClients } from '@/contexts/client-context'
+import { ClientAvatar } from '@/components/client-avatar'
 
 export default function TasksPage() {
   const [mounted, setMounted] = useState(false)
@@ -560,9 +561,11 @@ export default function TasksPage() {
                             {clients.map((client) => (
                               <SelectItem key={client.id} value={client.id}>
                                 <div className="flex items-center space-x-2">
-                                  <div className="w-4 h-4 bg-gradient-to-br from-blue-500 to-purple-500 rounded flex items-center justify-center text-white text-xs">
-                                    {client.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
-                                  </div>
+                                  <ClientAvatar 
+                                    clientName={client.name}
+                                    googleBusinessProfile={client.googleBusinessProfile}
+                                    size="sm"
+                                  />
                                   <span>{client.name}</span>
                                 </div>
                               </SelectItem>
@@ -575,9 +578,12 @@ export default function TasksPage() {
                           onClick={() => handleDropdownEdit(task.id, 'client', task.clientId)}
                           title={task.clientName}
                         >
-                          <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
-                            {task.clientName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
-                          </div>
+                          <ClientAvatar 
+                            clientName={task.clientName}
+                            googleBusinessProfile={clients.find(c => c.id === task.clientId)?.googleBusinessProfile}
+                            size="sm"
+                            className="flex-shrink-0"
+                          />
                           <span className="text-sm text-gray-700 truncate">{task.clientName}</span>
                         </div>
                       )}
