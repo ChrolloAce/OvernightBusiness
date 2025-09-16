@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronUp, Building2, MapPin, Check } from 'lucide-react'
+import { ChevronUp, Building2, MapPin, Check, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { CentralizedDataLoader } from '@/lib/centralized-data-loader'
@@ -86,6 +86,7 @@ interface FloatingProfileSelectorProps {
 export default function FloatingProfileSelector({ selectedProfile, onProfileSelect }: FloatingProfileSelectorProps) {
   const [profiles, setProfiles] = useState<SavedBusinessProfile[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const { getClientByGoogleBusinessProfileId } = useClients()
 
   useEffect(() => {
@@ -95,6 +96,41 @@ export default function FloatingProfileSelector({ selectedProfile, onProfileSele
     }
     loadProfiles()
   }, [])
+
+  const handleRefreshProfiles = async () => {
+    setIsRefreshing(true)
+    try {
+      console.log('[FloatingProfileSelector] Refreshing Google Business Profiles...')
+      
+      // Import required services
+      const { GoogleAuthService } = await import('@/lib/google-auth')
+      
+      // Check if user is authenticated with Google
+      const googleAuth = GoogleAuthService.getInstance()
+      if (!googleAuth.isAuthenticated()) {
+        console.log('[FloatingProfileSelector] User not authenticated with Google')
+        return
+      }
+
+      // Get access token and fetch fresh profiles
+      const accessToken = await googleAuth.getValidAccessToken()
+      const result = await CentralizedDataLoader.addGoogleProfile(accessToken)
+      
+      if (result.success && result.profiles) {
+        console.log(`[FloatingProfileSelector] Successfully refreshed ${result.profiles.length} profiles`)
+        
+        // Reload profiles from storage
+        const updatedProfiles = CentralizedDataLoader.loadProfiles()
+        setProfiles(updatedProfiles)
+      } else {
+        console.log('[FloatingProfileSelector] Failed to refresh profiles:', result.error)
+      }
+    } catch (error) {
+      console.error('[FloatingProfileSelector] Error refreshing profiles:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   if (profiles.length === 0) {
     return null // Don't show if no profiles
@@ -127,8 +163,19 @@ export default function FloatingProfileSelector({ selectedProfile, onProfileSele
             <Card className="bg-white/95 dark:bg-black/95 backdrop-blur-xl border border-white/30 dark:border-white/20 shadow-2xl">
               <CardContent className="p-3">
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-gray-900 dark:text-white mb-3 px-2">
-                    Select Business Profile
+                  <div className="flex items-center justify-between mb-3 px-2">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      Select Business Profile
+                    </div>
+                    <Button
+                      onClick={handleRefreshProfiles}
+                      disabled={isRefreshing}
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    </Button>
                   </div>
                   
                   {profiles.map((profile) => (

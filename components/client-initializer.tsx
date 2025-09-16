@@ -19,34 +19,47 @@ export function ClientInitializer() {
     try {
       console.log('[ClientInitializer] Auto-importing Google Business Profiles...')
       
+      // Import required services
+      const { GoogleAuthService } = await import('@/lib/google-auth')
+      const { CentralizedDataLoader } = await import('@/lib/centralized-data-loader')
+      
+      // Check if user is authenticated with Google
+      const googleAuth = GoogleAuthService.getInstance()
+      if (!googleAuth.isAuthenticated()) {
+        console.log('[ClientInitializer] User not authenticated with Google, skipping auto-import')
+        return
+      }
+
       // Check if we already have profiles
       const existingProfiles = BusinessProfilesStorage.getAllProfiles()
       console.log('[ClientInitializer] Found existing profiles:', existingProfiles.length)
 
-      // If we already have profiles, skip auto-import
-      if (existingProfiles.length > 0) {
-        console.log('[ClientInitializer] Profiles already exist, skipping auto-import')
-        return
-      }
-
-      // Try to load profiles from Google (simplified approach)
+      // Always try to fetch fresh profiles from Google to ensure we have the latest
       try {
-        // Import the CentralizedDataLoader which handles Google profile loading
-        const { CentralizedDataLoader } = await import('@/lib/centralized-data-loader')
-        const profiles = CentralizedDataLoader.loadProfiles()
+        console.log('[ClientInitializer] Fetching fresh Google Business Profiles...')
         
-        if (profiles.length === 0) {
-          console.log('[ClientInitializer] No Google profiles found to auto-import')
-          console.log('[ClientInitializer] Users can manually connect Google Business Profiles when needed')
+        // Get access token for API calls
+        const accessToken = await googleAuth.getValidAccessToken()
+        
+        // Use CentralizedDataLoader to add Google profiles
+        const result = await CentralizedDataLoader.addGoogleProfile(accessToken)
+        
+        if (result.success && result.profiles) {
+          console.log(`[ClientInitializer] Successfully imported ${result.profiles.length} Google Business Profiles`)
+          
+          // Get updated profile count
+          const updatedProfiles = BusinessProfilesStorage.getAllProfiles()
+          console.log(`[ClientInitializer] Total profiles now available: ${updatedProfiles.length}`)
         } else {
-          console.log('[ClientInitializer] Auto-imported profiles:', profiles.length)
+          console.log('[ClientInitializer] Failed to import Google profiles:', result.error)
         }
       } catch (error) {
-        console.log('[ClientInitializer] Auto-import not available, manual connection required:', error)
+        console.error('[ClientInitializer] Error fetching Google profiles:', error)
+        console.log('[ClientInitializer] Users can manually connect Google Business Profiles when needed')
       }
       
     } catch (error) {
-      console.error('[ClientInitializer] Failed to auto-import Google profiles:', error)
+      console.error('[ClientInitializer] Error during auto-import:', error)
     }
   }
 
