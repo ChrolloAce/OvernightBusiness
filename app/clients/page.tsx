@@ -33,13 +33,37 @@ export default function ClientsPage() {
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const { clients, loadClients } = useClients()
+  const [deletingClientId, setDeletingClientId] = useState<string | null>(null)
+  const { clients, loadClients, deleteClient } = useClients()
   const { profiles } = useProfile()
 
   useEffect(() => {
     setMounted(true)
     loadClients()
   }, [])
+
+  const handleDeleteClient = async (clientId: string, clientName: string) => {
+    if (confirm(`Are you sure you want to delete "${clientName}"? This action cannot be undone.`)) {
+      setDeletingClientId(clientId)
+      try {
+        const success = deleteClient(clientId)
+        if (success) {
+          console.log(`Client "${clientName}" deleted successfully`)
+        } else {
+          alert('Failed to delete client. Please try again.')
+        }
+      } catch (error) {
+        console.error('Error deleting client:', error)
+        alert('Failed to delete client. Please try again.')
+      } finally {
+        setDeletingClientId(null)
+      }
+    }
+  }
+
+  const handleClientClick = (clientId: string) => {
+    window.location.href = `/clients/${clientId}`
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -170,7 +194,7 @@ export default function ClientsPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
                         className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => window.location.href = `/clients/${client.id}`}
+                        onClick={() => handleClientClick(client.id)}
                       >
                         <td className="py-4 px-4">
                           <div className="flex items-center space-x-3">
@@ -191,8 +215,8 @@ export default function ClientsPage() {
                         </td>
                         <td className="py-4 px-4">
                           <div className="space-y-1">
-                            <p className="text-sm text-gray-900">{client.email}</p>
-                            <p className="text-sm text-gray-600">{client.phone}</p>
+                            <p className="text-sm text-gray-900">{client.email || 'No email'}</p>
+                            <p className="text-sm text-gray-600">{client.phone || 'No phone'}</p>
                           </div>
                         </td>
                         <td className="py-4 px-4">
@@ -212,9 +236,14 @@ export default function ClientsPage() {
                               <div className="flex items-center space-x-1">
                                 <Star className="h-3 w-3 text-yellow-400 fill-current" />
                                 <span className="text-xs text-gray-600">
-                                  {client.googleBusinessProfile.rating} ({client.googleBusinessProfile.reviewCount} reviews)
+                                  {client.googleBusinessProfile.rating || 'N/A'} ({client.googleBusinessProfile.reviewCount || 0} reviews)
                                 </span>
                               </div>
+                            </div>
+                          ) : client.googleBusinessProfileId ? (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                              <span className="text-sm text-gray-600">Profile ID: {client.googleBusinessProfileId}</span>
                             </div>
                           ) : (
                             <div className="flex items-center space-x-2">
@@ -224,11 +253,13 @@ export default function ClientsPage() {
                           )}
                         </td>
                         <td className="py-4 px-4">
-                          <span className="text-sm font-medium text-gray-900">{client.activeProjects}</span>
+                          <span className="text-sm font-medium text-gray-900">{client.activeProjects || 0}</span>
                           <span className="text-xs text-gray-500 ml-1">active</span>
                         </td>
                         <td className="py-4 px-4">
-                          <span className="text-sm text-gray-600">{client.lastActivity}</span>
+                          <span className="text-sm text-gray-600">
+                            {client.lastActivity || new Date(client.updatedAt).toLocaleDateString()}
+                          </span>
                         </td>
                         <td className="py-4 px-4 text-right">
                           <div className="flex items-center justify-end space-x-1">
@@ -237,43 +268,39 @@ export default function ClientsPage() {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                // Handle upload action
+                                handleClientClick(client.id)
                               }}
-                              title="Upload Files"
+                              title="View Client"
                             >
-                              <Upload className="h-4 w-4" />
+                              <Eye className="h-4 w-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                // Handle new task action
+                                window.location.href = `/clients/${client.id}?tab=overview`
                               }}
-                              title="New Task"
+                              title="Edit Client"
                             >
-                              <Calendar className="h-4 w-4" />
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                // Handle new invoice action
+                                handleDeleteClient(client.id, client.name)
                               }}
-                              title="New Invoice"
+                              title="Delete Client"
+                              disabled={deletingClientId === client.id}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
-                              <CreditCard className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                // Handle more actions
-                              }}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
+                              {deletingClientId === client.id ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
                             </Button>
                           </div>
                         </td>

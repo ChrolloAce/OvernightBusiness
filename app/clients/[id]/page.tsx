@@ -149,8 +149,12 @@ export default function ClientDetailPage() {
       console.log('[ClientDetail] Loaded real client data:', realClient.name)
     } else {
       console.log('[ClientDetail] No client found with ID:', clientId)
-      // Redirect to clients page if client not found
-      router.push('/clients')
+      // Set a timeout before redirecting to allow for loading
+      setTimeout(() => {
+        if (!realClient) {
+          router.push('/clients')
+        }
+      }, 1000)
     }
   }, [params.id, clients])
 
