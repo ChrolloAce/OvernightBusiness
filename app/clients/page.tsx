@@ -28,72 +28,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useClients } from '@/contexts/client-context'
 import { useProfile } from '@/contexts/profile-context'
 
-// Mock client data for fallback
-const mockClients = [
-  {
-    id: '1',
-    name: 'BMW Company',
-    email: 'contact@bmw.com',
-    phone: '(840) 574-8039',
-    website: 'https://bmw.com',
-    status: 'active',
-    tags: ['automotive', 'premium'],
-    activeProjects: 3,
-    lastActivity: '2 hours ago',
-    googleBusinessProfile: {
-      id: 'bmw-downtown',
-      name: 'BMW Downtown',
-      rating: 4.8,
-      reviewCount: 127
-    }
-  },
-  {
-    id: '2',
-    name: 'Samsung Company',
-    email: 'hello@samsung.com',
-    phone: '(840) 574-8039',
-    website: 'https://samsung.com',
-    status: 'active',
-    tags: ['technology', 'electronics'],
-    activeProjects: 2,
-    lastActivity: '1 day ago',
-    googleBusinessProfile: {
-      id: 'samsung-store',
-      name: 'Samsung Store',
-      rating: 4.6,
-      reviewCount: 89
-    }
-  },
-  {
-    id: '3',
-    name: 'Tinder Company',
-    email: 'support@tinder.com',
-    phone: '(840) 574-8039',
-    website: 'https://tinder.com',
-    status: 'prospect',
-    tags: ['social', 'app'],
-    activeProjects: 1,
-    lastActivity: '3 days ago',
-    googleBusinessProfile: null
-  },
-  {
-    id: '4',
-    name: 'Fed Ex Company',
-    email: 'info@fedex.com',
-    phone: '(840) 574-8039',
-    website: 'https://fedex.com',
-    status: 'active',
-    tags: ['logistics', 'shipping'],
-    activeProjects: 4,
-    lastActivity: '5 hours ago',
-    googleBusinessProfile: {
-      id: 'fedex-center',
-      name: 'FedEx Center',
-      rating: 4.2,
-      reviewCount: 203
-    }
-  }
-]
 
 export default function ClientsPage() {
   const [mounted, setMounted] = useState(false)
@@ -117,10 +51,8 @@ export default function ClientsPage() {
     }
   }
 
-  // Use real clients if available, otherwise fall back to mock data
-  const clientsToDisplay = clients.length > 0 ? clients : mockClients
-  
-  const filteredClients = clientsToDisplay.filter(client => {
+  // Use only real clients
+  const filteredClients = clients.filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          client.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          client.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -196,21 +128,42 @@ export default function ClientsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Client</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Contact</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Google Business</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Projects</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Last Activity</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-600">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredClients.map((client, index) => (
+              {filteredClients.length === 0 ? (
+                <div className="p-12 text-center">
+                  <Building2 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {clients.length === 0 ? 'No clients yet' : 'No clients match your filters'}
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    {clients.length === 0 
+                      ? 'Get started by creating your first client'
+                      : 'Try adjusting your search or filters'}
+                  </p>
+                  {clients.length === 0 && (
+                    <Link href="/clients/new">
+                      <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Your First Client
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Client</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Contact</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Google Business</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Projects</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Last Activity</th>
+                        <th className="text-right py-3 px-4 font-medium text-gray-600">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredClients.map((client, index) => (
                       <motion.tr
                         key={client.id}
                         initial={{ opacity: 0, y: 10 }}
@@ -329,36 +282,10 @@ export default function ClientsPage() {
                   </tbody>
                 </table>
               </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Empty State */}
-          {filteredClients.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center py-12"
-            >
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardContent className="py-12">
-                  <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No clients found</h3>
-                  <p className="text-gray-600 mb-6">
-                    {searchQuery || statusFilter !== 'all' 
-                      ? 'Try adjusting your search or filters'
-                      : 'Get started by adding your first client'
-                    }
-                  </p>
-                  <Link href="/clients/new">
-                    <Button className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add First Client
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
         </motion.div>
       </main>
     </div>
