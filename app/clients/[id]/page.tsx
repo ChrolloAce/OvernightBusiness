@@ -493,11 +493,9 @@ export default function ClientDetailPage() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <div className={`w-3 h-3 rounded-full ${client.googleBusinessProfile.isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <div className="w-3 h-3 rounded-full bg-green-500" />
                         <div>
-                          <p className="font-semibold text-gray-900">
-                            {client.googleBusinessProfile.isConnected ? 'Connected' : 'Disconnected'}
-                          </p>
+                          <p className="font-semibold text-gray-900">Connected</p>
                           <p className="text-sm text-gray-600">Sync status</p>
                         </div>
                       </div>
