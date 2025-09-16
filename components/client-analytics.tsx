@@ -175,69 +175,78 @@ export function ClientAnalytics({ clientId, clientName, googleBusinessProfile }:
       dailyData: []
     }
 
-    // Process the data similar to the main analytics page
-    const dailyData = rawData.multiDailyMetricTimeSeries || []
+    // Process the new API response structure
+    const multiDailyMetricTimeSeries = rawData.multiDailyMetricTimeSeries || []
     const dailyDataMap = new Map()
 
-    dailyData.forEach((series: any) => {
-      const metricType = series.metric
-      const dataPoints = series.timeSeries?.datedValues || series.dailyBreakdowns || []
+    console.log(`[ClientAnalytics] Processing ${multiDailyMetricTimeSeries.length} metric series`)
 
-      dataPoints.forEach((dataPoint: any) => {
-        const date = dataPoint.date || dataPoint.day
-        let dateKey = ''
+    multiDailyMetricTimeSeries.forEach((metricGroup: any) => {
+      const dailyMetricTimeSeries = metricGroup.dailyMetricTimeSeries || []
+      
+      dailyMetricTimeSeries.forEach((series: any) => {
+        const metricType = series.dailyMetric
+        const timeSeries = series.timeSeries || {}
+        const dataPoints = timeSeries.datedValues || []
 
-        if (date && typeof date === 'object') {
-          dateKey = `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`
-        } else if (typeof date === 'string') {
-          dateKey = date
-        } else {
-          return
-        }
+        console.log(`[ClientAnalytics] Processing metric: ${metricType} with ${dataPoints.length} data points`)
 
-        if (!dailyDataMap.has(dateKey)) {
-          dailyDataMap.set(dateKey, {
-            date: dateKey,
-            impressions: 0,
-            calls: 0,
-            directions: 0,
-            website_clicks: 0
-          })
-        }
+        dataPoints.forEach((dataPoint: any) => {
+          const date = dataPoint.date
+          let dateKey = ''
 
-        const dayData = dailyDataMap.get(dateKey)
-        const value = parseInt(dataPoint.value || dataPoint.count || '0')
+          if (date && typeof date === 'object') {
+            dateKey = `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`
+          } else {
+            return
+          }
 
-        switch (metricType) {
-          case 'BUSINESS_IMPRESSIONS_DESKTOP_MAPS':
-            data.impressions.desktop_maps += value
-            dayData.impressions += value
-            break
-          case 'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH':
-            data.impressions.desktop_search += value
-            dayData.impressions += value
-            break
-          case 'BUSINESS_IMPRESSIONS_MOBILE_MAPS':
-            data.impressions.mobile_maps += value
-            dayData.impressions += value
-            break
-          case 'BUSINESS_IMPRESSIONS_MOBILE_SEARCH':
-            data.impressions.mobile_search += value
-            dayData.impressions += value
-            break
-          case 'CALL_CLICKS':
-            data.actions.calls += value
-            dayData.calls += value
-            break
-          case 'WEBSITE_CLICKS':
-            data.actions.website_clicks += value
-            dayData.website_clicks += value
-            break
-          case 'BUSINESS_DIRECTION_REQUESTS':
-            data.actions.directions += value
-            dayData.directions += value
-            break
-        }
+          if (!dailyDataMap.has(dateKey)) {
+            dailyDataMap.set(dateKey, {
+              date: dateKey,
+              impressions: 0,
+              calls: 0,
+              directions: 0,
+              website_clicks: 0
+            })
+          }
+
+          const dayData = dailyDataMap.get(dateKey)
+          const value = parseInt(dataPoint.value || '0')
+
+          console.log(`[ClientAnalytics] Processing ${metricType} for ${dateKey}: ${value}`)
+
+          switch (metricType) {
+            case 'BUSINESS_IMPRESSIONS_DESKTOP_MAPS':
+              data.impressions.desktop_maps += value
+              dayData.impressions += value
+              break
+            case 'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH':
+              data.impressions.desktop_search += value
+              dayData.impressions += value
+              break
+            case 'BUSINESS_IMPRESSIONS_MOBILE_MAPS':
+              data.impressions.mobile_maps += value
+              dayData.impressions += value
+              break
+            case 'BUSINESS_IMPRESSIONS_MOBILE_SEARCH':
+              data.impressions.mobile_search += value
+              dayData.impressions += value
+              break
+            case 'CALL_CLICKS':
+              data.actions.calls += value
+              dayData.calls += value
+              break
+            case 'WEBSITE_CLICKS':
+              data.actions.website_clicks += value
+              dayData.website_clicks += value
+              break
+            case 'BUSINESS_DIRECTION_REQUESTS':
+              data.actions.directions += value
+              dayData.directions += value
+              break
+          }
+        })
       })
     })
 
@@ -246,15 +255,40 @@ export function ClientAnalytics({ clientId, clientName, googleBusinessProfile }:
                             data.impressions.mobile_maps + data.impressions.mobile_search
     data.actions.total = data.actions.calls + data.actions.directions + data.actions.website_clicks
 
-    // Set trends (mock for now)
-    data.impressions.change = Math.floor(Math.random() * 20) - 10
-    data.impressions.trend = data.impressions.change > 0 ? 'up' : data.impressions.change < 0 ? 'down' : 'neutral'
-    data.actions.change = Math.floor(Math.random() * 15) - 7
-    data.actions.trend = data.actions.change > 0 ? 'up' : data.actions.change < 0 ? 'down' : 'neutral'
+    console.log(`[ClientAnalytics] Calculated totals - Impressions: ${data.impressions.total}, Actions: ${data.actions.total}`)
+
+    // Calculate trends based on recent vs older data
+    const sortedDates = Array.from(dailyDataMap.keys()).sort()
+    const halfPoint = Math.floor(sortedDates.length / 2)
+    
+    if (sortedDates.length > 1) {
+      const recentDates = sortedDates.slice(halfPoint)
+      const olderDates = sortedDates.slice(0, halfPoint)
+      
+      const recentImpressions = recentDates.reduce((sum, date) => sum + dailyDataMap.get(date).impressions, 0)
+      const olderImpressions = olderDates.reduce((sum, date) => sum + dailyDataMap.get(date).impressions, 0)
+      
+      const recentActions = recentDates.reduce((sum, date) => {
+        const dayData = dailyDataMap.get(date)
+        return sum + dayData.calls + dayData.directions + dayData.website_clicks
+      }, 0)
+      const olderActions = olderDates.reduce((sum, date) => {
+        const dayData = dailyDataMap.get(date)
+        return sum + dayData.calls + dayData.directions + dayData.website_clicks
+      }, 0)
+
+      // Calculate percentage change
+      data.impressions.change = olderImpressions > 0 ? ((recentImpressions - olderImpressions) / olderImpressions) * 100 : 0
+      data.impressions.trend = data.impressions.change > 5 ? 'up' : data.impressions.change < -5 ? 'down' : 'neutral'
+      
+      data.actions.change = olderActions > 0 ? ((recentActions - olderActions) / olderActions) * 100 : 0
+      data.actions.trend = data.actions.change > 5 ? 'up' : data.actions.change < -5 ? 'down' : 'neutral'
+    }
 
     // Convert daily data map to array and sort by date
     data.dailyData = Array.from(dailyDataMap.values()).sort((a, b) => a.date.localeCompare(b.date))
 
+    console.log(`[ClientAnalytics] Final processed data:`, data)
     return data
   }
 
