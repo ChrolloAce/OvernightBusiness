@@ -22,7 +22,8 @@ export function ClientInitializer() {
       console.log('[ClientInitializer] Auto-importing Google Business Profiles...')
       
       // Check if user is authenticated
-      const isAuthenticated = GoogleAuthService.isAuthenticated()
+      const authService = GoogleAuthService.getInstance()
+      const isAuthenticated = authService.isAuthenticated()
       if (!isAuthenticated) {
         console.log('[ClientInitializer] User not authenticated, skipping profile import')
         return
