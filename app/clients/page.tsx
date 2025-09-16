@@ -34,7 +34,7 @@ export default function ClientsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [editingCell, setEditingCell] = useState<{clientId: string, field: string} | null>(null)
   const [editValue, setEditValue] = useState('')
-  const { clients, loadClients, deleteClient, updateClient } = useClients()
+  const { clients, loadClients, deleteClient, updateClient, createClient } = useClients()
   const { profiles } = useProfile()
 
   useEffect(() => {
@@ -75,6 +75,32 @@ export default function ClientsPage() {
     } else if (e.key === 'Escape') {
       handleCellCancel()
     }
+  }
+
+  const handleCreateClient = () => {
+    // Create a new client instantly with default values
+    const newClient = createClient({
+      name: 'Untitled Client',
+      email: undefined,
+      phone: undefined,
+      website: undefined,
+      status: 'prospect',
+      tags: [],
+      notes: undefined,
+      googleBusinessProfileId: undefined,
+      activeProjects: 0,
+      lastActivity: new Date().toISOString(),
+      totalRevenue: 0,
+      outstandingInvoices: 0
+    })
+    
+    // Immediately start editing the name
+    setTimeout(() => {
+      setEditingCell({ clientId: newClient.id, field: 'name' })
+      setEditValue('Untitled Client')
+    }, 100)
+    
+    console.log('Client created instantly:', newClient.name)
   }
 
   const getStatusColor = (status: string) => {
@@ -150,12 +176,13 @@ export default function ClientsPage() {
                 <p className="text-sm text-gray-500">{filteredAndSortedClients.length} clients</p>
               </div>
             </div>
-            <Link href="/clients/new">
-              <Button className="bg-blue-600 hover:bg-blue-700 shadow-sm">
-                <Plus className="mr-2 h-4 w-4" />
-                New
-              </Button>
-            </Link>
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700 shadow-sm"
+              onClick={handleCreateClient}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New
+            </Button>
           </div>
         </div>
 
@@ -200,14 +227,15 @@ export default function ClientsPage() {
                   ? 'Create your first client to get started'
                   : 'Try adjusting your search or filters'}
               </p>
-              {clients.length === 0 && (
-                <Link href="/clients/new">
-                  <Button className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Client
-                  </Button>
-                </Link>
-              )}
+               {clients.length === 0 && (
+                 <Button 
+                   className="bg-blue-600 hover:bg-blue-700"
+                   onClick={handleCreateClient}
+                 >
+                   <Plus className="mr-2 h-4 w-4" />
+                   New Client
+                 </Button>
+               )}
             </div>
           ) : (
             <div className="notion-table">
@@ -250,29 +278,47 @@ export default function ClientsPage() {
                     transition={{ delay: index * 0.05 }}
                     className="grid grid-cols-12 gap-4 py-3 px-4 hover:bg-gray-50/50 transition-colors group"
                   >
-                    {/* Name Column */}
-                    <div className="col-span-3 flex items-center space-x-3">
-                      <Link href={`/clients/${client.id}`} className="flex items-center space-x-3 hover:text-blue-600 transition-colors">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-sm font-medium">
-                          {client.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{client.name}</p>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {client.tags.slice(0, 2).map((tag) => (
-                              <Badge key={tag} variant="secondary" className="text-xs px-2 py-0.5">
-                                {tag}
-                              </Badge>
-                            ))}
-                            {client.tags.length > 2 && (
-                              <Badge variant="outline" className="text-xs px-2 py-0.5">
-                                +{client.tags.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </Link>
-                    </div>
+                     {/* Name Column */}
+                     <div className="col-span-3 flex items-center space-x-3">
+                       <div className="flex items-center space-x-3 w-full">
+                         <Link href={`/clients/${client.id}`}>
+                           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-sm font-medium hover:opacity-80 transition-opacity">
+                             {client.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
+                           </div>
+                         </Link>
+                         <div className="flex-1 min-w-0">
+                           {editingCell?.clientId === client.id && editingCell?.field === 'name' ? (
+                             <Input
+                               value={editValue}
+                               onChange={(e) => setEditValue(e.target.value)}
+                               onKeyDown={handleKeyPress}
+                               onBlur={handleCellSave}
+                               autoFocus
+                               className="h-8 text-sm border-blue-200 focus:border-blue-400 font-medium"
+                             />
+                           ) : (
+                             <div 
+                               className="font-medium text-gray-900 hover:text-blue-600 cursor-pointer p-1 rounded hover:bg-blue-50 transition-colors"
+                               onClick={() => handleCellEdit(client.id, 'name', client.name)}
+                             >
+                               {client.name}
+                             </div>
+                           )}
+                           <div className="flex flex-wrap gap-1 mt-1">
+                             {client.tags.slice(0, 2).map((tag) => (
+                               <Badge key={tag} variant="secondary" className="text-xs px-2 py-0.5">
+                                 {tag}
+                               </Badge>
+                             ))}
+                             {client.tags.length > 2 && (
+                               <Badge variant="outline" className="text-xs px-2 py-0.5">
+                                 +{client.tags.length - 2}
+                               </Badge>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+                     </div>
 
                     {/* Email Column - Inline Editable */}
                     <div className="col-span-2 flex items-center">
@@ -295,12 +341,39 @@ export default function ClientsPage() {
                       )}
                     </div>
 
-                    {/* Status Column */}
-                    <div className="col-span-1 flex items-center">
-                      <Badge className={getStatusColor(client.status)} variant="outline">
-                        {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
-                      </Badge>
-                    </div>
+                     {/* Status Column - Dropdown */}
+                     <div className="col-span-1 flex items-center">
+                       {editingCell?.clientId === client.id && editingCell?.field === 'status' ? (
+                         <Select 
+                           value={editValue} 
+                           onValueChange={(value) => {
+                             updateClient(client.id, { status: value as any })
+                             setEditingCell(null)
+                           }}
+                         >
+                           <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400">
+                             <SelectValue />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="prospect">Prospect</SelectItem>
+                             <SelectItem value="active">Active</SelectItem>
+                             <SelectItem value="inactive">Inactive</SelectItem>
+                             <SelectItem value="archived">Archived</SelectItem>
+                           </SelectContent>
+                         </Select>
+                       ) : (
+                         <Badge 
+                           className={`${getStatusColor(client.status)} cursor-pointer hover:opacity-80 transition-opacity`}
+                           variant="outline"
+                           onClick={() => {
+                             setEditingCell({ clientId: client.id, field: 'status' })
+                             setEditValue(client.status)
+                           }}
+                         >
+                           {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
+                         </Badge>
+                       )}
+                     </div>
 
                     {/* Phone Column - Inline Editable */}
                     <div className="col-span-2 flex items-center">
@@ -376,15 +449,16 @@ export default function ClientsPage() {
                 ))}
               </div>
 
-              {/* Add New Row */}
-              <Link href="/clients/new">
-                <div className="grid grid-cols-12 gap-4 py-3 px-4 hover:bg-blue-50/50 transition-colors cursor-pointer border-t border-gray-100">
-                  <div className="col-span-12 flex items-center space-x-2 text-gray-500 hover:text-blue-600">
-                    <Plus className="h-4 w-4" />
-                    <span className="text-sm">New client</span>
-                  </div>
-                </div>
-              </Link>
+               {/* Add New Row */}
+               <div 
+                 className="grid grid-cols-12 gap-4 py-3 px-4 hover:bg-blue-50/50 transition-colors cursor-pointer border-t border-gray-100"
+                 onClick={handleCreateClient}
+               >
+                 <div className="col-span-12 flex items-center space-x-2 text-gray-500 hover:text-blue-600">
+                   <Plus className="h-4 w-4" />
+                   <span className="text-sm">New client</span>
+                 </div>
+               </div>
             </div>
           )}
         </div>
