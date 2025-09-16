@@ -60,6 +60,8 @@ export function ClientInitializer() {
                     reviewCount: 0,
                     status: 'active' as const,
                     lastUpdated: new Date().toISOString(),
+                    lastSynced: new Date().toISOString(),
+                    createdAt: new Date().toISOString(),
                     googleBusinessId: location.name,
                     googleData: location
                   }
