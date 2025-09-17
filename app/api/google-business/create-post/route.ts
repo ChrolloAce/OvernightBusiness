@@ -62,6 +62,9 @@ export async function POST(request: NextRequest) {
       accountId = 'accounts/100474937961057265076'
     }
 
+    // Initialize empty media items array
+    let mediaItems = []
+
     // Use the access token directly for this request
     const postData = {
       topicType: 'STANDARD',
@@ -93,7 +96,6 @@ export async function POST(request: NextRequest) {
     }
     
     // Get a random image from the business profile
-    let mediaItems = []
     try {
       console.log('[Google Business Post API] Fetching business media...')
       const mediaResponse = await fetch(`https://mybusiness.googleapis.com/v4/${fullLocationPath}/media`, {
