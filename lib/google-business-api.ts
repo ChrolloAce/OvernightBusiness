@@ -433,7 +433,7 @@ export class GoogleBusinessAPI {
     return data.accounts || []
   }
 
-  // Get all locations for an account using the correct endpoint
+  // Get all locations for an account using the correct endpoint with pagination
   async getLocations(accountName: string): Promise<BusinessLocation[]> {
     const accessToken = await this.authService.getValidAccessToken()
     
@@ -442,16 +442,47 @@ export class GoogleBusinessAPI {
     // The API requires a read_mask parameter - use comprehensive fields
     const readMask = 'name,title,storefrontAddress,websiteUri,primaryPhone,primaryCategory,regularHours,metadata,openInfo,locationState'
     
-    // Use the business information API for locations
-    const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
+    const allLocations: BusinessLocation[] = []
+    let nextPageToken: string | undefined
+    let pageCount = 0
+    
+    do {
+      pageCount++
+      console.log(`[Google Business API] Fetching locations page ${pageCount}${nextPageToken ? ` with token: ${nextPageToken.substring(0, 20)}...` : ''}`)
+      
+      // Build URL with pagination token if available
+      let url = `${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}&pageSize=100`
+      if (nextPageToken) {
+        url += `&pageToken=${encodeURIComponent(nextPageToken)}`
+      }
+      
+      // Use the business information API for locations
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
 
-    const data = await this.handleApiResponse(response, 'Fetch Locations')
-    return data.locations || []
+      const data = await this.handleApiResponse(response, `Fetch Locations Page ${pageCount}`)
+      
+      if (data.locations && data.locations.length > 0) {
+        allLocations.push(...data.locations)
+        console.log(`[Google Business API] Page ${pageCount}: Found ${data.locations.length} locations (total: ${allLocations.length})`)
+      }
+      
+      nextPageToken = data.nextPageToken
+      
+      // Safety break to prevent infinite loops
+      if (pageCount > 10) {
+        console.warn('[Google Business API] Reached maximum page limit (10), stopping pagination')
+        break
+      }
+      
+    } while (nextPageToken)
+    
+    console.log(`[Google Business API] Completed pagination: ${allLocations.length} total locations found across ${pageCount} pages`)
+    return allLocations
   }
 
   // Alternative method to get locations with different parameters
@@ -856,15 +887,46 @@ export class GoogleBusinessAPI {
     // Use only basic, commonly available fields from the official API documentation
     const readMask = 'name,title,storefrontAddress,websiteUri,phoneNumbers,categories,regularHours'
     
-    const response = await fetch(`${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
+    const allLocations: BusinessLocation[] = []
+    let nextPageToken: string | undefined
+    let pageCount = 0
+    
+    do {
+      pageCount++
+      console.log(`[Google Business API] Fetching complete details page ${pageCount}${nextPageToken ? ` with token: ${nextPageToken.substring(0, 20)}...` : ''}`)
+      
+      // Build URL with pagination token if available
+      let url = `${this.businessInfoBaseUrl}/${accountName}/locations?readMask=${readMask}&pageSize=100`
+      if (nextPageToken) {
+        url += `&pageToken=${encodeURIComponent(nextPageToken)}`
+      }
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
 
-    const data = await this.handleApiResponse(response, 'Fetch Locations with Complete Details')
-    return data.locations || []
+      const data = await this.handleApiResponse(response, `Fetch Locations with Complete Details Page ${pageCount}`)
+      
+      if (data.locations && data.locations.length > 0) {
+        allLocations.push(...data.locations)
+        console.log(`[Google Business API] Page ${pageCount}: Found ${data.locations.length} locations (total: ${allLocations.length})`)
+      }
+      
+      nextPageToken = data.nextPageToken
+      
+      // Safety break to prevent infinite loops
+      if (pageCount > 10) {
+        console.warn('[Google Business API] Reached maximum page limit (10), stopping pagination')
+        break
+      }
+      
+    } while (nextPageToken)
+    
+    console.log(`[Google Business API] Completed complete details pagination: ${allLocations.length} total locations found across ${pageCount} pages`)
+    return allLocations
   }
 
   // Get complete location details with all available information
