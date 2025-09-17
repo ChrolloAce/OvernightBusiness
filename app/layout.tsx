@@ -8,6 +8,7 @@ import { ConditionalLayout } from '@/components/conditional-layout'
 import { ClientInitializer } from '@/components/client-initializer'
 import { ClientDataInitializer } from '@/components/client-data-initializer'
 import { AutomationInitializer } from '@/components/automation-initializer'
+import { CronInitializer } from '@/components/cron-initializer'
 import { AutoLogin } from '@/components/auto-login'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -41,6 +42,7 @@ export default function RootLayout({
               <ClientInitializer />
               <ClientDataInitializer />
               <AutomationInitializer />
+              <CronInitializer />
             </TaskProvider>
           </ClientProvider>
         </ProfileProvider>

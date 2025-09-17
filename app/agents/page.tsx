@@ -31,6 +31,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { useProfile } from '@/contexts/profile-context'
 import { GoogleAuthButton } from '@/components/google-auth-button'
+import { CronJobManager } from '@/components/cron-job-manager'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface Automation {
   id: string
@@ -220,7 +222,7 @@ export default function AgentDashboardPage() {
             <Sparkles className="mr-3 h-8 w-8 text-purple-600" />
             Agent Dashboard
           </h1>
-          <p className="text-gray-600 mt-1">AI-powered automations for your business</p>
+          <p className="text-gray-600 mt-1">AI-powered automations and scheduled jobs for your business</p>
         </div>
         <div className="flex items-center space-x-3">
           <GoogleAuthButton 
@@ -262,8 +264,15 @@ export default function AgentDashboardPage() {
         </Card>
       )}
 
-      {/* Stats Overview */}
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-4">
+      <Tabs defaultValue="agents" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="agents">Automation Agents</TabsTrigger>
+          <TabsTrigger value="cron">Scheduled Jobs</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="agents" className="space-y-6">
+          {/* Stats Overview */}
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-4">
         <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -677,6 +686,12 @@ export default function AgentDashboardPage() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="cron" className="space-y-6">
+          <CronJobManager automations={automations} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
