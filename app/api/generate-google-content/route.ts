@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
+  const body = await request.json()
+  const { profileId, businessInfo, contentType, tone } = body
+  
   try {
-    const body = await request.json()
-    const { profileId, businessInfo, contentType, tone } = body
     
     if (!profileId || !businessInfo) {
       return NextResponse.json(
