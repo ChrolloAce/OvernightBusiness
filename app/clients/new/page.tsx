@@ -25,7 +25,7 @@ import { useClients } from '@/contexts/client-context'
 export default function NewClientPage() {
   const router = useRouter()
   const { profiles } = useProfile()
-  const { createClient } = useClients()
+  const { createClient, connectGoogleBusinessProfile } = useClients()
   const [mounted, setMounted] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -81,7 +81,6 @@ export default function NewClientPage() {
         status: formData.status,
         tags: formData.tags,
         notes: formData.notes || undefined,
-        googleBusinessProfileId: formData.googleBusinessProfileId === 'none' ? undefined : formData.googleBusinessProfileId,
         activeProjects: 0,
         lastActivity: new Date().toISOString(),
         totalRevenue: 0,
@@ -89,6 +88,12 @@ export default function NewClientPage() {
       })
       
       console.log('Client created successfully:', newClient)
+      
+      // Connect Google Business Profile with auto-assignment if selected
+      if (formData.googleBusinessProfileId && formData.googleBusinessProfileId !== 'none') {
+        console.log('Connecting Google Business Profile with auto-assignment:', formData.googleBusinessProfileId)
+        connectGoogleBusinessProfile(newClient.id, formData.googleBusinessProfileId, true)
+      }
       
       // Redirect to client detail page
       router.push(`/clients/${newClient.id}`)

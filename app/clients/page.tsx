@@ -44,7 +44,7 @@ export default function ClientsPage() {
     projects: 100,
     actions: 100
   })
-  const { clients, loadClients, deleteClient, updateClient, createClient } = useClients()
+  const { clients, loadClients, deleteClient, updateClient, createClient, connectGoogleBusinessProfile } = useClients()
   const { profiles } = useProfile()
 
   useEffect(() => {
@@ -470,13 +470,8 @@ export default function ClientsPage() {
                                  googleBusinessProfile: undefined 
                                })
                              } else {
-                               const selectedProfile = profiles.find(p => p.id === value)
-                               if (selectedProfile) {
-                                 updateClient(client.id, { 
-                                   googleBusinessProfileId: value,
-                                   googleBusinessProfile: selectedProfile 
-                                 })
-                               }
+                               // Use connectGoogleBusinessProfile with auto-assignment
+                               connectGoogleBusinessProfile(client.id, value, true)
                              }
                              setEditingCell(null)
                            }}
