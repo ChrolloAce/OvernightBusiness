@@ -191,6 +191,18 @@ export class AutomationService {
     try {
       console.log(`[AutomationService] Posting to Google Business Profile: ${profile.name}`)
       
+      // Get access token from client-side storage
+      let accessToken = ''
+      try {
+        // Try to get token from GoogleAuthService
+        const { GoogleAuthService } = await import('./google-auth')
+        const googleAuth = GoogleAuthService.getInstance()
+        accessToken = await googleAuth.getValidAccessToken()
+      } catch (error) {
+        console.error('[AutomationService] Error getting access token:', error)
+        throw new Error('No tokens available. Please authenticate first.')
+      }
+      
       // Use server-side API to avoid CORS issues
       const response = await fetch('/api/google-business/create-post', {
         method: 'POST',
@@ -204,7 +216,8 @@ export class AutomationService {
             name: profile.name,
             website: profile.website,
             category: profile.category
-          }
+          },
+          accessToken: accessToken
         })
       })
 
