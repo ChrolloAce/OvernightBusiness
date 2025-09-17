@@ -25,6 +25,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -189,11 +190,11 @@ export default function ClientDetailPage() {
   }
 
   const handleFieldSave = () => {
-    if (editingField && client) {
-      // Update client data
-      const { updateClient } = require('@/contexts/client-context')
-      // Note: In a real implementation, you'd get updateClient from context
-      // For now, we'll update the local state
+    if (editingField && client && editValue !== undefined) {
+      // Update client data using context
+      updateClient(client.id, { [editingField]: editValue })
+      
+      // Update local state immediately for UI responsiveness
       setClient({
         ...client,
         [editingField]: editValue
@@ -446,15 +447,33 @@ export default function ClientDetailPage() {
                           </div>
                         )}
                       </div>
-                      <a
-                        href={client.website?.startsWith('http') ? client.website : `https://${client.website || 'maktubtechnologies.com'}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-sm text-gray-600 hover:text-blue-600 transition-colors"
-                      >
-                        <ExternalLink className="mr-1 h-4 w-4" />
-                        Visit Website
-                      </a>
+                      <div className="flex items-center space-x-3">
+                        <a
+                          href={client.website?.startsWith('http') ? client.website : `https://${client.website || 'maktubtechnologies.com'}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                        >
+                          <ExternalLink className="mr-1 h-4 w-4" />
+                          Visit Website
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            // Force reload the screenshot by updating the key
+                            const screenshotComponent = document.querySelector('[data-screenshot-key]')
+                            if (screenshotComponent) {
+                              screenshotComponent.setAttribute('data-screenshot-key', Date.now().toString())
+                            }
+                            window.location.reload() // Simple reload for now
+                          }}
+                          className="h-6 text-sm text-gray-600 hover:text-blue-600"
+                        >
+                          <RefreshCw className="mr-1 h-3 w-3" />
+                          Reload
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
