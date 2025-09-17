@@ -105,7 +105,7 @@ const mockAccessItems = [
 export default function ClientDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { clients, loadClients } = useClients()
+  const { clients, loadClients, updateClient } = useClients()
   const { getTasksByClient, getClientTaskStats, createTask } = useTasks()
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
