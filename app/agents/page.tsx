@@ -100,13 +100,10 @@ export default function AgentDashboardPage() {
     setAuthLoading(true)
     try {
       const googleAuth = GoogleAuthService.getInstance()
-      await googleAuth.signIn()
+      const authUrl = googleAuth.getAuthUrl()
       
-      // Check authentication after login attempt
-      setTimeout(() => {
-        checkAuthenticationStatus()
-        setAuthLoading(false)
-      }, 2000)
+      // Redirect to Google OAuth
+      window.location.href = authUrl
     } catch (error) {
       console.error('[AgentDashboard] Error during Google login:', error)
       setAuthLoading(false)
