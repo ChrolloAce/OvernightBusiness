@@ -53,6 +53,13 @@ const navigation = [
     description: 'Sales Pipeline'
   },
   {
+    name: 'Phone Numbers',
+    href: '/phone-numbers',
+    icon: PhoneCall,
+    gradient: 'from-emerald-500 to-teal-500',
+    description: 'Twilio Numbers'
+  },
+  {
     name: 'Reports',
     href: '/reports',
     icon: PenTool,
