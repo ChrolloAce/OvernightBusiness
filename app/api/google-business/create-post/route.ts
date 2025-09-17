@@ -21,6 +21,8 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[Google Business Post API] Creating post for profile: ${profileId}`)
+    console.log(`[Google Business Post API] Business info:`, businessInfo)
+    console.log(`[Google Business Post API] Content:`, content)
 
     // Use the access token directly for this request
     const postData = {
@@ -36,8 +38,12 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Google Business Post API] Post data:`, postData)
 
-    // Make direct API call to Google Business Profile
-    const response = await fetch(`https://mybusiness.googleapis.com/v4/${profileId}/localPosts`, {
+    // Make direct API call to Google Business Profile using the same endpoint as existing API
+    const apiUrl = `https://mybusiness.googleapis.com/v4/${profileId}/localPosts`
+    console.log(`[Google Business Post API] API call to: ${apiUrl}`)
+    console.log(`[Google Business Post API] Profile ID format: ${profileId}`)
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -45,6 +51,8 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify(postData)
     })
+
+    console.log(`[Google Business Post API] Response status: ${response.status}`)
 
     if (!response.ok) {
       const errorText = await response.text()
