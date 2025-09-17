@@ -19,46 +19,31 @@ export async function POST(request: NextRequest) {
       direction
     })
 
-    // Find which client this phone number belongs to
-    // In a real implementation, you'd query the database
-    const clientPhoneNumbers = [
-      { clientId: 'client-1', twilioNumber: process.env.TWILIO_PHONE_NUMBER, clientNumber: '+1234567890' },
-      { clientId: 'client-2', twilioNumber: process.env.TWILIO_PHONE_NUMBER, clientNumber: '+1987654321' }
-    ]
-
-    const phoneMapping = clientPhoneNumbers.find(pn => pn.twilioNumber === to)
+    // Forward all incoming calls to the main number: 7866411493
+    const forwardToNumber = '+17866411493'
     
-    if (!phoneMapping) {
-      console.log('[Twilio Webhook] No client mapping found for number:', to)
-      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?>
-        <Response>
-          <Say>Sorry, this number is not configured for forwarding.</Say>
-        </Response>`, {
-        headers: { 'Content-Type': 'text/xml' }
-      })
-    }
+    console.log(`[Twilio Webhook] Forwarding call from ${from} to ${forwardToNumber}`)
 
     // Create TwiML response to forward the call
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
       <Response>
         <Say>Please hold while we connect your call.</Say>
         <Dial record="true" recordingStatusCallback="/api/twilio/recording-status">
-          <Number>${phoneMapping.clientNumber}</Number>
+          <Number>${forwardToNumber}</Number>
         </Dial>
         <Say>Sorry, the call could not be completed. Please try again later.</Say>
       </Response>`
 
     // Log the call attempt
-    console.log('[Twilio Webhook] Forwarding call to client:', phoneMapping.clientId)
+    console.log('[Twilio Webhook] Forwarding call to main number:', forwardToNumber)
 
     // In a real implementation, you'd save this to the database
     // For now, we'll just log it
     const callRecord = {
-      clientId: phoneMapping.clientId,
       twilioCallSid: callSid,
       fromNumber: from,
       toNumber: to,
-      forwardedToNumber: phoneMapping.clientNumber,
+      forwardedToNumber: forwardToNumber,
       status: callStatus,
       direction: direction as 'inbound' | 'outbound',
       startTime: new Date().toISOString()
