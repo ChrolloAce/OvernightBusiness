@@ -523,6 +523,30 @@ export default function AgentDashboardPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={async () => {
+                          try {
+                            const { AutomationService } = await import('@/lib/automation-service')
+                            const service = AutomationService.getInstance()
+                            const success = await service.executeAutomationNow(automation.id)
+                            if (success) {
+                              alert('Automation executed successfully! Check your Google Business Profiles.')
+                              loadAutomations() // Refresh to show updated stats
+                            } else {
+                              alert('Failed to execute automation. Check console for details.')
+                            }
+                          } catch (error) {
+                            console.error('Error running automation:', error)
+                            alert('Error running automation. Check console for details.')
+                          }
+                        }}
+                        className="text-purple-600 hover:text-purple-700"
+                        title="Run automation now"
+                      >
+                        <Zap className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => toggleAutomationStatus(automation.id)}
                         className={automation.status === 'active' ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'}
                       >

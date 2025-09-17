@@ -7,6 +7,7 @@ import { TaskProvider } from '@/contexts/task-context'
 import { ConditionalLayout } from '@/components/conditional-layout'
 import { ClientInitializer } from '@/components/client-initializer'
 import { ClientDataInitializer } from '@/components/client-data-initializer'
+import { AutomationInitializer } from '@/components/automation-initializer'
 import { AutoLogin } from '@/components/auto-login'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -39,6 +40,7 @@ export default function RootLayout({
               
               <ClientInitializer />
               <ClientDataInitializer />
+              <AutomationInitializer />
             </TaskProvider>
           </ClientProvider>
         </ProfileProvider>
