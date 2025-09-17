@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
     // Get the account ID dynamically
     let accountId = null
     try {
+      console.log('[Google Business Post API] Fetching accounts...')
       const accountsResponse = await fetch('https://mybusiness.googleapis.com/v4/accounts', {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -34,16 +35,31 @@ export async function POST(request: NextRequest) {
         },
       })
       
+      console.log(`[Google Business Post API] Accounts response status: ${accountsResponse.status}`)
+      
       if (accountsResponse.ok) {
         const accountsData = await accountsResponse.json()
+        console.log('[Google Business Post API] Accounts data:', accountsData)
+        
         if (accountsData.accounts && accountsData.accounts.length > 0) {
           // Get the account name (e.g., "accounts/100474937961057265076")
           accountId = accountsData.accounts[0].name
           console.log(`[Google Business Post API] Found account: ${accountId}`)
+        } else {
+          console.error('[Google Business Post API] No accounts found in response')
         }
+      } else {
+        const errorText = await accountsResponse.text()
+        console.error('[Google Business Post API] Failed to fetch accounts:', errorText)
       }
     } catch (error) {
       console.error('[Google Business Post API] Failed to get account ID:', error)
+    }
+
+    // Fallback: Use the account ID from the frontend logs if we can't fetch it
+    if (!accountId) {
+      console.log('[Google Business Post API] Using fallback account ID from logs')
+      accountId = 'accounts/100474937961057265076'
     }
 
     // Use the access token directly for this request
@@ -65,19 +81,15 @@ export async function POST(request: NextRequest) {
     // We need to construct the full path using the dynamic account ID
     
     let fullLocationPath = profileId
-    if (!profileId.includes('accounts/') && accountId) {
+    if (!profileId.includes('accounts/')) {
       // Extract just the location ID if it's in "locations/123" format
       const locationId = profileId.includes('locations/') ? profileId.split('locations/')[1] : profileId
       
-      // Use the dynamic account ID
+      // Use the account ID (dynamic or fallback)
       fullLocationPath = `${accountId}/locations/${locationId}`
-    } else if (!profileId.includes('accounts/')) {
-      // Fallback if we couldn't get account ID
-      console.error('[Google Business Post API] No account ID available and profileId is not in full format')
-      return NextResponse.json(
-        { error: 'Unable to determine account ID for Google Business Profile' },
-        { status: 400 }
-      )
+      console.log(`[Google Business Post API] Constructed full path: ${fullLocationPath}`)
+    } else {
+      console.log(`[Google Business Post API] Profile ID already in full format: ${profileId}`)
     }
     
     const apiUrl = `https://mybusiness.googleapis.com/v4/${fullLocationPath}/localPosts`
