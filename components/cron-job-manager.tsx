@@ -622,7 +622,7 @@ function CronJobModal({ job, automations, profiles, onSave, onClose }: CronJobMo
                 <Switch
                   id="includeImages"
                   checked={formData.includeImages}
-                  onCheckedChange={(checked) => setFormData({ ...formData, includeImages: checked })}
+                  onCheckedChange={(checked: boolean) => setFormData({ ...formData, includeImages: checked })}
                 />
                 <Label htmlFor="includeImages">Include Images</Label>
               </div>
