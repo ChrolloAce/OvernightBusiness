@@ -1,5 +1,4 @@
 // Automation execution service for AI agents
-import { GoogleBusinessAPI } from './google-business-api'
 import { BusinessProfilesStorage, SavedBusinessProfile } from './business-profiles-storage'
 
 interface Automation {
@@ -30,11 +29,9 @@ interface Automation {
 
 export class AutomationService {
   private static instance: AutomationService
-  private googleAPI: GoogleBusinessAPI
   private isRunning: boolean = false
 
   constructor() {
-    this.googleAPI = new GoogleBusinessAPI()
     this.startScheduler()
   }
 
@@ -189,31 +186,35 @@ export class AutomationService {
     }
   }
 
-  // Post content to Google Business Profile
+  // Post content to Google Business Profile via server-side API
   private async postToGoogleProfile(profile: SavedBusinessProfile, content: any): Promise<boolean> {
     try {
       console.log(`[AutomationService] Posting to Google Business Profile: ${profile.name}`)
       
-      // Use the existing Google Business API to create a post
-      const postData = {
-        topicType: 'STANDARD',
-        languageCode: 'en-US',
-        summary: content.title,
-        callToAction: {
-          actionType: 'LEARN_MORE',
-          url: profile.website || 'https://maktubtechnologies.com'
+      // Use server-side API to avoid CORS issues
+      const response = await fetch('/api/google-business/create-post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         },
-        media: [] // Can add images later
-      }
+        body: JSON.stringify({
+          profileId: profile.googleBusinessId,
+          content: content,
+          businessInfo: {
+            name: profile.name,
+            website: profile.website,
+            category: profile.category
+          }
+        })
+      })
 
-      // Create the post using Google Business API
-      const result = await this.googleAPI.createPost(profile.googleBusinessId, postData)
+      const result = await response.json()
       
-      if (result) {
+      if (result.success) {
         console.log(`[AutomationService] Successfully posted to ${profile.name}`)
         return true
       } else {
-        console.error(`[AutomationService] Failed to post to ${profile.name}: No result returned`)
+        console.error(`[AutomationService] Failed to post to ${profile.name}:`, result.error)
         return false
       }
     } catch (error) {
