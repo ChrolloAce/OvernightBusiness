@@ -26,7 +26,7 @@ export async function POST(
 
     // Get client data to find their real phone number
     const clientManager = ClientManager.getInstance()
-    const client = clientManager.getClientById(clientId)
+    const client = clientManager.getClient(clientId)
     
     if (!client) {
       console.error(`[Client Webhook] Client not found: ${clientId}`)
