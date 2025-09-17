@@ -113,61 +113,47 @@ export function Sidebar({ onItemClick }: SidebarProps) {
                   <div 
                     onClick={onItemClick}
                     className={`
-                    group relative flex items-center space-x-3 px-4 py-3 rounded-2xl transition-all duration-300 cursor-pointer
+                    group relative flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 cursor-pointer
                     ${isActive 
-                      ? 'bg-white/80 dark:bg-black/40 shadow-lg border border-white/30 dark:border-white/20' 
-                      : 'hover:bg-white/50 dark:hover:bg-black/20 border border-transparent hover:border-white/20 dark:hover:border-white/10'
+                      ? 'bg-gray-100' 
+                      : 'hover:bg-gray-50'
                     }
                   `}>
                     {/* Active Indicator */}
                     {isActive && (
                       <motion.div
                         layoutId="activeTab"
-                        className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl"
+                        className="absolute inset-0 bg-gray-100 rounded-lg"
                         transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                       />
                     )}
                     
-                    {/* Icon with Gradient Background */}
+                    {/* Icon */}
                     <div className={`
-                      relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300
+                      relative w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300
                       ${isActive 
-                        ? `bg-gradient-to-br ${item.gradient} shadow-lg` 
-                        : 'bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-200 dark:group-hover:bg-gray-700'
+                        ? 'bg-white shadow-sm' 
+                        : 'group-hover:bg-gray-100'
                       }
                     `}>
-                      <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`} />
-                      
-                      {/* Glow Effect */}
-                      {isActive && (
-                        <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} rounded-xl blur-lg opacity-30 -z-10`} />
-                      )}
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-gray-700' : 'text-gray-500 group-hover:text-gray-700'}`} />
                     </div>
                     
                     {/* Text Content */}
                     <div className="flex-1 min-w-0">
                       <p className={`
-                        text-sm font-semibold transition-colors duration-300
+                        text-sm font-medium transition-colors duration-300
                         ${isActive 
-                          ? 'text-gray-900 dark:text-white' 
-                          : 'text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white'
+                          ? 'text-gray-900' 
+                          : 'text-gray-600 group-hover:text-gray-900'
                         }
                       `}>
                         {item.name}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <p className="text-xs text-gray-400 truncate">
                         {item.description}
                       </p>
                     </div>
-                    
-                    {/* Arrow Indicator */}
-                    <ChevronRight className={`
-                      w-4 h-4 transition-all duration-300
-                      ${isActive 
-                        ? 'text-gray-600 dark:text-gray-400 opacity-100' 
-                        : 'text-gray-400 dark:text-gray-600 opacity-0 group-hover:opacity-100'
-                      }
-                    `} />
                     
                     {/* Hover Effect */}
                     <AnimatePresence>
@@ -233,19 +219,6 @@ export function Sidebar({ onItemClick }: SidebarProps) {
             </div>
           </Link>
 
-          {/* Premium Badge */}
-          <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-4 text-center">
-            <div className="flex items-center justify-center space-x-2 mb-2">
-              <Zap className="w-5 h-5 text-white" />
-              <span className="text-white font-bold text-sm">Premium Plan</span>
-            </div>
-            <p className="text-white/80 text-xs mb-3">
-              Unlimited access to all features
-            </p>
-            <Button size="sm" className="w-full bg-white/20 hover:bg-white/30 text-white border-white/30">
-              Manage Plan
-            </Button>
-          </div>
         </div>
       </div>
     </div>

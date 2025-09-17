@@ -287,11 +287,11 @@ export function ClientAnalytics({ clientId, clientName, googleBusinessProfile }:
         return sum + dayData.calls + dayData.directions + dayData.website_clicks
       }, 0)
 
-      // Calculate percentage change
-      data.impressions.change = olderImpressions > 0 ? ((recentImpressions - olderImpressions) / olderImpressions) * 100 : 0
+      // Calculate percentage change and round to 1 decimal place
+      data.impressions.change = olderImpressions > 0 ? Math.round(((recentImpressions - olderImpressions) / olderImpressions) * 1000) / 10 : 0
       data.impressions.trend = data.impressions.change > 5 ? 'up' : data.impressions.change < -5 ? 'down' : 'neutral'
       
-      data.actions.change = olderActions > 0 ? ((recentActions - olderActions) / olderActions) * 100 : 0
+      data.actions.change = olderActions > 0 ? Math.round(((recentActions - olderActions) / olderActions) * 1000) / 10 : 0
       data.actions.trend = data.actions.change > 5 ? 'up' : data.actions.change < -5 ? 'down' : 'neutral'
     }
 

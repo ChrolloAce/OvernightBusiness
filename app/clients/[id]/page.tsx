@@ -39,6 +39,7 @@ import { SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { ClientAvatar } from '@/components/client-avatar'
 import { ClientTasksNotionTable } from '@/components/client-tasks-notion-table'
 import { WebsiteScreenshot } from '@/components/website-screenshot'
+import { ClientNotes } from '@/components/client-notes'
 
 // Mock client data
 interface ClientData {
@@ -407,10 +408,11 @@ export default function ClientDetailPage() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 bg-white border border-gray-200 rounded-lg">
+            <TabsList className="grid w-full grid-cols-6 bg-white border border-gray-200 rounded-lg">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
               <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="files">Files</TabsTrigger>
               <TabsTrigger value="access">Access</TabsTrigger>
             </TabsList>
@@ -679,6 +681,11 @@ export default function ClientDetailPage() {
             {/* Tasks Tab */}
             <TabsContent value="tasks" className="space-y-6">
               <ClientTasksNotionTable clientId={client.id} clientName={client.name} />
+            </TabsContent>
+
+            {/* Notes Tab */}
+            <TabsContent value="notes" className="space-y-6">
+              <ClientNotes clientId={client.id} clientName={client.name} />
             </TabsContent>
 
             {/* Invoices Tab */}
