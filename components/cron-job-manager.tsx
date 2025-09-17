@@ -336,7 +336,7 @@ function CronJobModal({ job, automations, profiles, onSave, onClose }: CronJobMo
     scheduleCron: job?.schedule.cron || '0 9 * * *',
     contentType: job?.settings.contentType || 'promotional',
     tone: job?.settings.tone || 'professional',
-    includeImages: job?.settings.includeImages || true,
+    includeImages: job?.settings.includeImages ?? true,
     maxPostsPerDay: job?.settings.maxPostsPerDay || 1
   })
 
