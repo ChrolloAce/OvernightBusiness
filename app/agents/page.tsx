@@ -41,9 +41,10 @@ interface Automation {
   status: 'active' | 'paused' | 'draft'
   assignedProfiles: string[]
   schedule: {
-    frequency: 'daily' | 'weekly' | 'monthly'
+    frequency: 'daily' | 'weekly' | 'monthly' | 'custom'
     time: string
-    days?: string[]
+    times?: string[] // Multiple times per day
+    days?: number[] // Days of week (0-6, 0=Sunday)
   }
   settings: {
     contentType: string
@@ -64,6 +65,7 @@ export default function AgentDashboardPage() {
   const [mounted, setMounted] = useState(false)
   const [automations, setAutomations] = useState<Automation[]>([])
   const [isCreating, setIsCreating] = useState(false)
+  const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [newAutomation, setNewAutomation] = useState({
     name: '',
@@ -71,6 +73,8 @@ export default function AgentDashboardPage() {
     assignedProfiles: [] as string[],
     frequency: 'weekly' as const,
     time: '09:00',
+    times: ['09:00'],
+    days: [1, 2, 3, 4, 5], // Monday to Friday by default
     contentType: 'business_updates',
     tone: 'professional'
   })
@@ -135,7 +139,8 @@ export default function AgentDashboardPage() {
       schedule: {
         frequency: newAutomation.frequency,
         time: newAutomation.time,
-        days: newAutomation.frequency === 'weekly' ? ['monday', 'wednesday', 'friday'] : undefined
+        times: newAutomation.times,
+        days: newAutomation.days
       },
       settings: {
         contentType: newAutomation.contentType,
@@ -163,6 +168,54 @@ export default function AgentDashboardPage() {
       assignedProfiles: [],
       frequency: 'weekly',
       time: '09:00',
+      times: ['09:00'],
+      days: [1, 2, 3, 4, 5],
+      contentType: 'business_updates',
+      tone: 'professional'
+    })
+  }
+
+  const handleUpdateAutomation = () => {
+    if (!editingAutomation || !newAutomation.name || newAutomation.assignedProfiles.length === 0) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    const updatedAutomation: Automation = {
+      ...editingAutomation,
+      name: newAutomation.name,
+      type: newAutomation.type,
+      assignedProfiles: newAutomation.assignedProfiles,
+      schedule: {
+        frequency: newAutomation.frequency,
+        time: newAutomation.time,
+        times: newAutomation.times,
+        days: newAutomation.days
+      },
+      settings: {
+        ...editingAutomation.settings,
+        contentType: newAutomation.contentType,
+        tone: newAutomation.tone
+      }
+    }
+
+    const updatedAutomations = automations.map(automation =>
+      automation.id === editingAutomation.id ? updatedAutomation : automation
+    )
+    setAutomations(updatedAutomations)
+    localStorage.setItem('ai_automations', JSON.stringify(updatedAutomations))
+    setIsCreating(false)
+    setEditingAutomation(null)
+    
+    // Reset form
+    setNewAutomation({
+      name: '',
+      type: 'google_posts',
+      assignedProfiles: [],
+      frequency: 'weekly',
+      time: '09:00',
+      times: ['09:00'],
+      days: [1, 2, 3, 4, 5],
       contentType: 'business_updates',
       tone: 'professional'
     })
@@ -351,8 +404,17 @@ export default function AgentDashboardPage() {
         <Card className="bg-white shadow-sm border-purple-200">
           <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center">
-              <Plus className="mr-2 h-5 w-5 text-purple-600" />
-              Create New Agent
+              {editingAutomation ? (
+                <>
+                  <Settings className="mr-2 h-5 w-5 text-blue-600" />
+                  Edit Agent
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-2 h-5 w-5 text-purple-600" />
+                  Create New Agent
+                </>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -421,7 +483,11 @@ export default function AgentDashboardPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+              {/* Flexible Scheduling Section */}
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium text-gray-900">Schedule Configuration</h3>
+                
+                {/* Frequency Selection */}
                 <div>
                   <label className="text-sm font-medium text-gray-700">Frequency</label>
                   <Select 
@@ -434,53 +500,174 @@ export default function AgentDashboardPage() {
                     <SelectContent>
                       <SelectItem value="daily">Daily</SelectItem>
                       <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="custom">Custom Days</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                
+
+                {/* Days of Week Selection (for weekly/custom) */}
+                {(newAutomation.frequency === 'weekly' || newAutomation.frequency === 'custom') && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-3 block">Days of Week</label>
+                    <div className="grid grid-cols-7 gap-2">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                        <label key={day} className="flex flex-col items-center space-y-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={newAutomation.days?.includes(index) || false}
+                            onChange={(e) => {
+                              const currentDays = newAutomation.days || []
+                              if (e.target.checked) {
+                                setNewAutomation({
+                                  ...newAutomation,
+                                  days: [...currentDays, index].sort()
+                                })
+                              } else {
+                                setNewAutomation({
+                                  ...newAutomation,
+                                  days: currentDays.filter(d => d !== index)
+                                })
+                              }
+                            }}
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                          <span className="text-xs font-medium text-gray-700">{day}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Multiple Times Selection */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Time</label>
-                  <Input
-                    type="time"
-                    value={newAutomation.time}
-                    onChange={(e) => setNewAutomation({ ...newAutomation, time: e.target.value })}
-                    className="mt-1"
-                  />
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-medium text-gray-700">Posting Times</label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const currentTimes = newAutomation.times || ['09:00']
+                        setNewAutomation({
+                          ...newAutomation,
+                          times: [...currentTimes, '12:00']
+                        })
+                      }}
+                      className="text-xs"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Time
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {(newAutomation.times || ['09:00']).map((time, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <Input
+                          type="time"
+                          value={time}
+                          onChange={(e) => {
+                            const newTimes = [...(newAutomation.times || ['09:00'])]
+                            newTimes[index] = e.target.value
+                            setNewAutomation({
+                              ...newAutomation,
+                              times: newTimes,
+                              time: newTimes[0] // Keep first time as primary
+                            })
+                          }}
+                          className="flex-1"
+                        />
+                        {(newAutomation.times || []).length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const newTimes = (newAutomation.times || []).filter((_, i) => i !== index)
+                              setNewAutomation({
+                                ...newAutomation,
+                                times: newTimes,
+                                time: newTimes[0] || '09:00'
+                              })
+                            }}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Content Tone</label>
-                  <Select 
-                    value={newAutomation.tone} 
-                    onValueChange={(value) => setNewAutomation({ ...newAutomation, tone: value })}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="professional">Professional</SelectItem>
-                      <SelectItem value="friendly">Friendly</SelectItem>
-                      <SelectItem value="casual">Casual</SelectItem>
-                      <SelectItem value="promotional">Promotional</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                {/* Content Settings */}
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Content Type</label>
+                    <Select 
+                      value={newAutomation.contentType} 
+                      onValueChange={(value) => setNewAutomation({ ...newAutomation, contentType: value })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="business_updates">Business Updates</SelectItem>
+                        <SelectItem value="promotional">Promotional</SelectItem>
+                        <SelectItem value="educational">Educational</SelectItem>
+                        <SelectItem value="behind_scenes">Behind the Scenes</SelectItem>
+                        <SelectItem value="customer_spotlight">Customer Spotlight</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Content Tone</label>
+                    <Select 
+                      value={newAutomation.tone} 
+                      onValueChange={(value) => setNewAutomation({ ...newAutomation, tone: value })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="professional">Professional</SelectItem>
+                        <SelectItem value="friendly">Friendly</SelectItem>
+                        <SelectItem value="casual">Casual</SelectItem>
+                        <SelectItem value="energetic">Energetic</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
               <div className="flex items-center justify-end space-x-2 pt-4 border-t border-gray-200">
                 <Button 
                   variant="ghost" 
-                  onClick={() => setIsCreating(false)}
+                  onClick={() => {
+                    setIsCreating(false)
+                    setEditingAutomation(null)
+                    setNewAutomation({
+                      name: '',
+                      type: 'google_posts' as const,
+                      assignedProfiles: [] as string[],
+                      frequency: 'weekly' as const,
+                      time: '09:00',
+                      times: ['09:00'],
+                      days: [1, 2, 3, 4, 5],
+                      contentType: 'business_updates',
+                      tone: 'professional'
+                    })
+                  }}
                 >
                   Cancel
                 </Button>
                 <Button 
-                  onClick={handleCreateAutomation}
+                  onClick={editingAutomation ? handleUpdateAutomation : handleCreateAutomation}
                   disabled={!newAutomation.name || newAutomation.assignedProfiles.length === 0}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
-                  Create Agent
+                  {editingAutomation ? 'Update Agent' : 'Create Agent'}
                 </Button>
               </div>
             </div>
@@ -617,7 +804,23 @@ export default function AgentDashboardPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => {
+                          setEditingAutomation(automation)
+                          setNewAutomation({
+                            name: automation.name,
+                            type: automation.type,
+                            assignedProfiles: automation.assignedProfiles,
+                            frequency: automation.schedule.frequency,
+                            time: automation.schedule.time,
+                            times: automation.schedule.times || [automation.schedule.time],
+                            days: automation.schedule.days || [1, 2, 3, 4, 5],
+                            contentType: automation.settings.contentType,
+                            tone: automation.settings.tone
+                          })
+                          setIsCreating(true)
+                        }}
                         className="text-blue-600 hover:text-blue-700"
+                        title="Edit automation"
                       >
                         <Settings className="h-4 w-4" />
                       </Button>
