@@ -19,15 +19,14 @@ export async function POST(request: NextRequest) {
       direction
     })
 
-    // Forward all incoming calls to the main number: 7866411493
-    const forwardToNumber = '+17866411493'
+    // Forward all incoming calls to the main number: 7862903664
+    const forwardToNumber = '+17862903664'
     
     console.log(`[Twilio Webhook] Forwarding call from ${from} to ${forwardToNumber}`)
 
-    // Create TwiML response to forward the call
+    // Create TwiML response to forward the call immediately (no greeting message)
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
       <Response>
-        <Say>Please hold while we connect your call.</Say>
         <Dial record="true" recordingStatusCallback="/api/twilio/recording-status">
           <Number>${forwardToNumber}</Number>
         </Dial>
