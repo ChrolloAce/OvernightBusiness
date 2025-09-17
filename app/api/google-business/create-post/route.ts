@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
         
         if (mediaData.mediaItems && mediaData.mediaItems.length > 0) {
           // Filter for photos only and get a random one
-          const photos = mediaData.mediaItems.filter(item => 
+          const photos = mediaData.mediaItems.filter((item: any) => 
             item.mediaFormat === 'PHOTO' && item.googleUrl
           )
           
