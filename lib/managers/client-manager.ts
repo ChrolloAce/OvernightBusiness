@@ -179,7 +179,6 @@ export class ClientManager {
       const possiblePhones = [
         profile.phone,
         profile.googleData?.phoneNumbers?.primaryPhone,
-        profile.googleData?.primaryPhone,
         profile.googleData?.adWordsLocationExtensions?.adPhone
       ].filter(Boolean)
       
