@@ -105,7 +105,7 @@ export default function ClientsPage() {
       name: 'Untitled Client',
       email: undefined,
       phone: undefined,
-      website: undefined,
+      website: 'maktubtechnologies.com',
       status: 'prospect',
       tags: [],
       notes: undefined,

@@ -40,6 +40,7 @@ import { ClientAnalytics } from '@/components/client-analytics'
 import { SavedBusinessProfile } from '@/lib/business-profiles-storage'
 import { ClientAvatar } from '@/components/client-avatar'
 import { ClientTasksNotionTable } from '@/components/client-tasks-notion-table'
+import { WebsiteScreenshot } from '@/components/website-screenshot'
 
 // Mock client data
 interface ClientData {
@@ -420,22 +421,133 @@ export default function ClientDetailPage() {
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-                {/* Recent Activity */}
+                {/* Website Screenshot */}
                 <Card className="bg-white shadow-sm border-gray-200">
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
+                    <CardTitle className="text-lg font-semibold flex items-center">
+                      <Globe className="mr-2 h-5 w-5 text-blue-600" />
+                      Website Preview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <WebsiteScreenshot 
+                      website={client.website || 'maktubtechnologies.com'}
+                      clientName={client.name}
+                      className="w-full h-64"
+                    />
+                    <div className="mt-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Website URL:</span>
+                        {editingField === 'website' ? (
+                          <Input
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            onBlur={handleFieldSave}
+                            autoFocus
+                            className="h-8 text-sm border-blue-200 focus:border-blue-400 flex-1 ml-2"
+                            placeholder="maktubtechnologies.com"
+                          />
+                        ) : (
+                          <div 
+                            className="text-sm text-blue-600 hover:text-blue-700 cursor-pointer hover:underline flex-1 ml-2 text-right"
+                            onClick={() => handleFieldEdit('website', client.website || 'maktubtechnologies.com')}
+                          >
+                            {client.website || 'maktubtechnologies.com'}
+                          </div>
+                        )}
+                      </div>
+                      <a
+                        href={client.website?.startsWith('http') ? client.website : `https://${client.website || 'maktubtechnologies.com'}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                      >
+                        <ExternalLink className="mr-1 h-4 w-4" />
+                        Visit Website
+                      </a>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Client Information */}
+                <Card className="bg-white shadow-sm border-gray-200">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold">Client Information</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {mockRecentActivity.map((activity, index) => (
-                        <div key={index} className="flex items-center space-x-3">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-900">{activity.action}</p>
-                            <p className="text-xs text-gray-500">{activity.time}</p>
+                      {/* Contact Details */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">Email:</span>
+                          {editingField === 'email' ? (
+                            <Input
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={handleKeyPress}
+                              onBlur={handleFieldSave}
+                              autoFocus
+                              className="h-8 text-sm border-blue-200 focus:border-blue-400 flex-1 ml-2"
+                              placeholder="client@example.com"
+                            />
+                          ) : (
+                            <div 
+                              className="text-sm text-gray-900 cursor-pointer hover:text-blue-600 flex-1 ml-2 text-right"
+                              onClick={() => handleFieldEdit('email', client.email || '')}
+                            >
+                              {client.email || 'Add email...'}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">Phone:</span>
+                          {editingField === 'phone' ? (
+                            <Input
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={handleKeyPress}
+                              onBlur={handleFieldSave}
+                              autoFocus
+                              className="h-8 text-sm border-blue-200 focus:border-blue-400 flex-1 ml-2"
+                              placeholder="+1 (555) 123-4567"
+                            />
+                          ) : (
+                            <div 
+                              className="text-sm text-gray-900 cursor-pointer hover:text-blue-600 flex-1 ml-2 text-right"
+                              onClick={() => handleFieldEdit('phone', client.phone || '')}
+                            >
+                              {client.phone || 'Add phone...'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Status and Tags */}
+                      <div className="pt-4 border-t border-gray-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-medium text-gray-700">Status:</span>
+                          <Badge className={getStatusColor(client.status)} variant="outline">
+                            {client.status}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">Tags:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {client.tags && client.tags.length > 0 ? (
+                              client.tags.map((tag, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-sm text-gray-500">No tags</span>
+                            )}
                           </div>
                         </div>
-                      ))}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
