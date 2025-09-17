@@ -16,6 +16,11 @@ export interface Client {
   googleBusinessProfileId?: string
   googleBusinessProfile?: SavedBusinessProfile
   
+  // Phone Tracking Integration
+  trackingPhoneNumber?: string // Twilio number assigned for tracking
+  trackingPhoneSid?: string // Twilio phone number SID
+  customWebhookUrl?: string // Custom webhook endpoint for this client
+  
   // Computed fields
   activeProjects?: number
   lastActivity?: string

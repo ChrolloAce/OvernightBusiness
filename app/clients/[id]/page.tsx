@@ -41,6 +41,8 @@ import { ClientAvatar } from '@/components/client-avatar'
 import { ClientTasksNotionTable } from '@/components/client-tasks-notion-table'
 import { WebsiteScreenshot } from '@/components/website-screenshot'
 import { ClientNotes } from '@/components/client-notes'
+import { ClientPhoneTracking } from '@/components/client-phone-tracking'
+import { ClientCallAnalytics } from '@/components/client-call-analytics'
 
 // Mock client data
 interface ClientData {
@@ -399,10 +401,11 @@ export default function ClientDetailPage() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6 bg-white border border-gray-200 rounded-lg">
+            <TabsList className="grid w-full grid-cols-7 bg-white border border-gray-200 rounded-lg">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
               <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              <TabsTrigger value="phone">Phone</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="files">Files</TabsTrigger>
               <TabsTrigger value="access">Access</TabsTrigger>
@@ -690,6 +693,28 @@ export default function ClientDetailPage() {
             {/* Tasks Tab */}
             <TabsContent value="tasks" className="space-y-6">
               <ClientTasksNotionTable clientId={client.id} clientName={client.name} />
+            </TabsContent>
+
+            {/* Phone Tab */}
+            <TabsContent value="phone" className="space-y-6">
+              <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+                <div>
+                  <ClientPhoneTracking 
+                    clientId={client.id}
+                    clientName={client.name}
+                    clientPhone={client.phone}
+                    trackingNumber={client.trackingPhoneNumber}
+                    trackingPhoneSid={client.trackingPhoneSid}
+                  />
+                </div>
+                <div>
+                  <ClientCallAnalytics 
+                    clientId={client.id}
+                    clientName={client.name}
+                    trackingNumber={client.trackingPhoneNumber}
+                  />
+                </div>
+              </div>
             </TabsContent>
 
             {/* Notes Tab */}
