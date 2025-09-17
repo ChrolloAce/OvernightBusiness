@@ -53,6 +53,13 @@ const navigation = [
     description: 'Twilio Numbers'
   },
   {
+    name: 'Agents',
+    href: '/agents',
+    icon: Sparkles,
+    gradient: 'from-violet-500 to-purple-500',
+    description: 'AI Automations'
+  },
+  {
     name: 'Reports',
     href: '/reports',
     icon: PenTool,
