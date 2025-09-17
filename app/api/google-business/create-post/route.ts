@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         actionType: 'LEARN_MORE',
         url: businessInfo?.website || 'https://maktubtechnologies.com'
       },
-      media: [] // Can add images later
+      media: mediaItems
     }
 
     console.log(`[Google Business Post API] Post data:`, postData)
@@ -92,10 +92,52 @@ export async function POST(request: NextRequest) {
       console.log(`[Google Business Post API] Profile ID already in full format: ${profileId}`)
     }
     
+    // Get a random image from the business profile
+    let mediaItems = []
+    try {
+      console.log('[Google Business Post API] Fetching business media...')
+      const mediaResponse = await fetch(`https://mybusiness.googleapis.com/v4/${fullLocationPath}/media`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (mediaResponse.ok) {
+        const mediaData = await mediaResponse.json()
+        console.log('[Google Business Post API] Media response:', mediaData)
+        
+        if (mediaData.mediaItems && mediaData.mediaItems.length > 0) {
+          // Filter for photos only and get a random one
+          const photos = mediaData.mediaItems.filter(item => 
+            item.mediaFormat === 'PHOTO' && item.googleUrl
+          )
+          
+          if (photos.length > 0) {
+            const randomPhoto = photos[Math.floor(Math.random() * photos.length)]
+            console.log('[Google Business Post API] Selected random photo:', randomPhoto.name)
+            
+            mediaItems = [{
+              mediaFormat: 'PHOTO',
+              sourceUrl: randomPhoto.googleUrl
+            }]
+          }
+        }
+      } else {
+        console.log('[Google Business Post API] Could not fetch media, proceeding without image')
+      }
+    } catch (error) {
+      console.log('[Google Business Post API] Error fetching media, proceeding without image:', error)
+    }
+
+    // Update post data with media
+    postData.media = mediaItems
+
     const apiUrl = `https://mybusiness.googleapis.com/v4/${fullLocationPath}/localPosts`
     console.log(`[Google Business Post API] API call to: ${apiUrl}`)
     console.log(`[Google Business Post API] Original profile ID: ${profileId}`)
     console.log(`[Google Business Post API] Full location path: ${fullLocationPath}`)
+    console.log(`[Google Business Post API] Media items:`, mediaItems)
     
     const response = await fetch(apiUrl, {
       method: 'POST',
