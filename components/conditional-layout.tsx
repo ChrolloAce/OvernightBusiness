@@ -35,8 +35,12 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-xs font-bold text-white">OB</span>
+              <div className="w-8 h-8 rounded-xl overflow-hidden shadow-lg">
+                <img 
+                  src="/innercircle.png" 
+                  alt="Overnight Business" 
+                  className="w-full h-full object-cover"
+                />
               </div>
               <span className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
                 OvernightBiz

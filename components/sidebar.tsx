@@ -83,8 +83,12 @@ export function Sidebar({ onItemClick }: SidebarProps) {
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center space-x-3">
           <div className="relative">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-              <Sparkles className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg">
+              <img 
+                src="/innercircle.png" 
+                alt="Overnight Business" 
+                className="w-full h-full object-cover"
+              />
             </div>
             <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse" />
           </div>
