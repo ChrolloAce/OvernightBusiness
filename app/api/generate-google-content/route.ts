@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     console.log(`[Google Content Generator] Content generated successfully for ${profileId}`)
 
     // Parse the generated content to extract title and description
-    const contentLines = generatedContent.trim().split('\n').filter(line => line.trim())
+    const contentLines = generatedContent.trim().split('\n').filter((line: string) => line.trim())
     const title = contentLines[0]?.replace(/^(Title:|Post:)\s*/i, '').substring(0, 100)
     const description = contentLines.slice(1).join('\n').substring(0, 1500)
 
