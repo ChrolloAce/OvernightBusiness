@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Globe, ExternalLink, Loader2 } from 'lucide-react'
+import { Globe, ExternalLink, Loader2, RefreshCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface WebsiteScreenshotProps {
   website: string
@@ -49,7 +50,7 @@ export function WebsiteScreenshot({ website, clientName, className = '' }: Websi
         block_cookie_banners: 'true',
         delay: '2',
         full_page: 'false',
-        fresh: 'false' // Use cache when available
+        fresh: 'true' // Always get fresh screenshot when manually refreshing
       })
 
       const screenshotApiUrl = `https://api.screenshotone.com/take?${params.toString()}`
@@ -117,15 +118,29 @@ export function WebsiteScreenshot({ website, clientName, className = '' }: Websi
               <p className="text-sm font-medium truncate">{clientName}</p>
               <p className="text-xs opacity-80 truncate">{website}</p>
             </div>
-            <a
-              href={website.startsWith('http') ? website : `https://${website}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1 hover:bg-white/20 rounded transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ExternalLink className="h-4 w-4" />
-            </a>
+            <div className="flex items-center space-x-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  generateScreenshot()
+                }}
+                className="h-6 w-6 p-0 hover:bg-white/20 text-white"
+                title="Reload screenshot"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </Button>
+              <a
+                href={website.startsWith('http') ? website : `https://${website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1 hover:bg-white/20 rounded transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
           </div>
         </div>
       </div>

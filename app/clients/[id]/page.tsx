@@ -366,22 +366,12 @@ export default function ClientDetailPage() {
                             autoFocus
                             className="h-6 text-sm border-blue-200 focus:border-blue-400 bg-white ml-1"
                           />
-                        ) : client.website ? (
-                          <a 
-                            href={client.website} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center text-blue-600 hover:text-blue-700"
-                          >
-                            Website
-                            <ExternalLink className="ml-1 h-3 w-3" />
-                          </a>
                         ) : (
                           <span 
                             className="hover:text-blue-600 cursor-pointer p-1 rounded hover:bg-blue-50 transition-colors"
-                            onClick={() => handleFieldEdit('website', client.website)}
+                            onClick={() => handleFieldEdit('website', client.website || 'maktubtechnologies.com')}
                           >
-                            Add website...
+                            {client.website || 'Add website...'}
                           </span>
                         )}
                       </div>
