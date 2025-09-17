@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import { 
   Sparkles, 
   Plus, 
@@ -21,7 +22,8 @@ import {
   RefreshCw,
   Eye,
   Copy,
-  Check
+  Check,
+  ExternalLink
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -62,6 +64,7 @@ interface Automation {
 }
 
 export default function AgentDashboardPage() {
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [automations, setAutomations] = useState<Automation[]>([])
   const [isCreating, setIsCreating] = useState(false)
@@ -250,6 +253,13 @@ export default function AgentDashboardPage() {
       setAutomations(updatedAutomations)
       localStorage.setItem('ai_automations', JSON.stringify(updatedAutomations))
     }
+  }
+
+  const handleProfileClick = (profileId: string) => {
+    // Navigate to the profiles page and select the specific profile
+    // We'll store the selected profile ID in localStorage for the profiles page to pick up
+    localStorage.setItem('selected_profile_id', profileId)
+    router.push('/profiles')
   }
 
   const getStatusIcon = (status: string) => {
@@ -462,7 +472,7 @@ export default function AgentDashboardPage() {
                 <label className="text-sm font-medium text-gray-700">Assign Google Profiles</label>
                 <div className="mt-2 space-y-2 max-h-32 overflow-y-auto">
                   {profiles.map((profile) => (
-                    <div key={profile.id} className="flex items-center space-x-3 p-2 border border-gray-200 rounded-lg">
+                    <div key={profile.id} className="flex items-center space-x-3 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                       <input
                         type="checkbox"
                         id={profile.id}
@@ -488,6 +498,16 @@ export default function AgentDashboardPage() {
                       <Badge variant="secondary" className="text-xs">
                         {profile.category}
                       </Badge>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleProfileClick(profile.id)}
+                        className="text-blue-600 hover:text-blue-700 p-1"
+                        title={`View ${profile.name} profile`}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -759,9 +779,16 @@ export default function AgentDashboardPage() {
                         {automation.assignedProfiles.map((profileId) => {
                           const profile = profiles.find(p => p.id === profileId)
                           return profile ? (
-                            <Badge key={profileId} variant="outline" className="text-xs">
+                            <Badge 
+                              key={profileId} 
+                              variant="outline" 
+                              className="text-xs cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors group"
+                              onClick={() => handleProfileClick(profileId)}
+                              title={`Click to view ${profile.name} profile`}
+                            >
                               <Building2 className="mr-1 h-3 w-3" />
                               {profile.name}
+                              <ExternalLink className="ml-1 h-2 w-2 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </Badge>
                           ) : null
                         })}

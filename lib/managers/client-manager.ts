@@ -122,7 +122,7 @@ export class ClientManager {
   }
 
   // Google Business Profile Integration
-  public connectGoogleBusinessProfile(clientId: string, profileId: string): boolean {
+  public connectGoogleBusinessProfile(clientId: string, profileId: string, autoAssignData: boolean = true): boolean {
     try {
       // Get the Google Business Profile from storage
       const { BusinessProfilesStorage } = require('../business-profiles-storage')
@@ -133,16 +133,97 @@ export class ClientManager {
         return false
       }
 
-      const updated = this.updateClient(clientId, {
+      // Get current client data
+      const currentClient = this.getClient(clientId)
+      if (!currentClient) {
+        console.error('[ClientManager] Client not found:', clientId)
+        return false
+      }
+
+      // Prepare update data
+      const updateData: Partial<Client> = {
         googleBusinessProfileId: profileId,
         googleBusinessProfile: profile
-      })
+      }
+
+      // Auto-assign data from Google Business Profile if requested
+      if (autoAssignData) {
+        const autoAssignedData = this.extractDataFromGoogleProfile(profile, currentClient)
+        Object.assign(updateData, autoAssignedData)
+      }
+
+      const updated = this.updateClient(clientId, updateData)
+
+      if (updated) {
+        console.log('[ClientManager] Successfully connected Google Business Profile and auto-assigned data:', {
+          clientId,
+          profileId,
+          autoAssigned: autoAssignData ? Object.keys(updateData).filter(key => key !== 'googleBusinessProfileId' && key !== 'googleBusinessProfile') : []
+        })
+      }
 
       return !!updated
     } catch (error) {
       console.error('[ClientManager] Failed to connect Google Business Profile:', error)
       return false
     }
+  }
+
+  // Extract relevant data from Google Business Profile for auto-assignment
+  private extractDataFromGoogleProfile(profile: SavedBusinessProfile, currentClient: Client): Partial<Client> {
+    const extractedData: Partial<Client> = {}
+
+    // Phone number - use primary phone from Google profile if client doesn't have one
+    if (!currentClient.phone && profile.phone) {
+      extractedData.phone = profile.phone
+    } else if (!currentClient.phone && profile.googleData?.phoneNumbers?.primaryPhone) {
+      extractedData.phone = profile.googleData.phoneNumbers.primaryPhone
+    }
+
+    // Website - use website from Google profile if client doesn't have one
+    if (!currentClient.website && profile.website) {
+      extractedData.website = profile.website
+    } else if (!currentClient.website && profile.googleData?.profile?.websiteUri) {
+      extractedData.website = profile.googleData.profile.websiteUri
+    }
+
+    // Note: We intentionally skip email as per user request
+
+    // Update client name if it's generic and we have a better name from Google
+    if ((!currentClient.name || currentClient.name.toLowerCase().includes('untitled') || currentClient.name.toLowerCase().includes('new client')) && profile.name) {
+      extractedData.name = profile.name
+    } else if ((!currentClient.name || currentClient.name.toLowerCase().includes('untitled') || currentClient.name.toLowerCase().includes('new client')) && profile.googleData?.title) {
+      extractedData.name = profile.googleData.title
+    }
+
+    // Add business category as a tag if not already present
+    if (profile.category && !currentClient.tags.includes(profile.category)) {
+      extractedData.tags = [...currentClient.tags, profile.category]
+    }
+
+    // Add additional categories as tags
+    if (profile.googleData?.allCategories) {
+      const newTags = profile.googleData.allCategories.filter(cat => 
+        cat && !currentClient.tags.includes(cat) && cat !== profile.category
+      )
+      if (newTags.length > 0) {
+        extractedData.tags = [...(extractedData.tags || currentClient.tags), ...newTags]
+      }
+    }
+
+    // Add business address information to notes if not already present
+    if (profile.address && (!currentClient.notes || !currentClient.notes.includes(profile.address))) {
+      const addressInfo = `\n\nBusiness Address: ${profile.address}`
+      extractedData.notes = (currentClient.notes || '') + addressInfo
+    }
+
+    // Add business hours to notes if available
+    if (profile.googleData?.businessHours && profile.googleData.businessHours.length > 0) {
+      const hoursInfo = `\n\nBusiness Hours:\n${profile.googleData.businessHours.join('\n')}`
+      extractedData.notes = (extractedData.notes || currentClient.notes || '') + hoursInfo
+    }
+
+    return extractedData
   }
 
   public disconnectGoogleBusinessProfile(clientId: string): boolean {

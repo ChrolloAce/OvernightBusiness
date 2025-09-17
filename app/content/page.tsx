@@ -1331,7 +1331,7 @@ function ContentCreationModal({ isOpen, onClose, selectedProfile, onContentCreat
 }
 
 export default function ContentHubPage() {
-  const { selectedProfile } = useProfile()
+  const { selectedProfile, profiles, setSelectedProfile } = useProfile()
   const [businessMedia, setBusinessMedia] = useState<BusinessMedia | null>(null)
   const [reviews, setReviews] = useState<BusinessReview[]>([])
   const [reviewsSummary, setReviewsSummary] = useState<any>(null)
@@ -1380,6 +1380,18 @@ export default function ContentHubPage() {
       image: '/api/placeholder/400/400'
     }
   ])
+
+  // Handle profile selection from agents page navigation
+  useEffect(() => {
+    const selectedProfileId = localStorage.getItem('selected_profile_id')
+    if (selectedProfileId && profiles.length > 0) {
+      const targetProfile = profiles.find(p => p.id === selectedProfileId)
+      if (targetProfile && targetProfile.id !== selectedProfile?.id) {
+        setSelectedProfile(targetProfile)
+        localStorage.removeItem('selected_profile_id') // Clean up
+      }
+    }
+  }, [profiles, selectedProfile, setSelectedProfile])
 
   // Auto-load data when profile changes
   useEffect(() => {

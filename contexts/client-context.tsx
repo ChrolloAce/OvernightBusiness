@@ -12,7 +12,7 @@ interface ClientContextType {
   createClient: (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Client
   updateClient: (id: string, updates: Partial<Client>) => Client | null
   deleteClient: (id: string) => boolean
-  connectGoogleBusinessProfile: (clientId: string, profileId: string) => boolean
+  connectGoogleBusinessProfile: (clientId: string, profileId: string, autoAssignData?: boolean) => boolean
   getClientByGoogleBusinessProfileId: (profileId: string) => Client | null
 }
 
@@ -63,8 +63,8 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     return success
   }
 
-  const connectGoogleBusinessProfile = (clientId: string, profileId: string) => {
-    const success = clientManager.connectGoogleBusinessProfile(clientId, profileId)
+  const connectGoogleBusinessProfile = (clientId: string, profileId: string, autoAssignData: boolean = true) => {
+    const success = clientManager.connectGoogleBusinessProfile(clientId, profileId, autoAssignData)
     if (success) {
       loadClients() // Refresh the list
     }
