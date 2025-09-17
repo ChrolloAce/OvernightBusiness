@@ -209,11 +209,11 @@ export class AutomationService {
       // Create the post using Google Business API
       const result = await this.googleAPI.createPost(profile.googleBusinessId, postData)
       
-      if (result && !result.error) {
+      if (result) {
         console.log(`[AutomationService] Successfully posted to ${profile.name}`)
         return true
       } else {
-        console.error(`[AutomationService] Failed to post to ${profile.name}:`, result?.error)
+        console.error(`[AutomationService] Failed to post to ${profile.name}: No result returned`)
         return false
       }
     } catch (error) {
