@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       summary: content.description || content.title,
       callToAction: {
         actionType: 'LEARN_MORE',
-        url: businessInfo?.website || 'https://maktubtechnologies.com'
+        url: businessInfo?.website || 'https://example.com'
       },
       media: mediaItems
     }

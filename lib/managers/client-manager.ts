@@ -174,17 +174,36 @@ export class ClientManager {
     const extractedData: Partial<Client> = {}
 
     // Phone number - use primary phone from Google profile if client doesn't have one
-    if (!currentClient.phone && profile.phone) {
-      extractedData.phone = profile.phone
-    } else if (!currentClient.phone && profile.googleData?.phoneNumbers?.primaryPhone) {
-      extractedData.phone = profile.googleData.phoneNumbers.primaryPhone
+    // Try multiple possible locations for phone number
+    if (!currentClient.phone) {
+      const possiblePhones = [
+        profile.phone,
+        profile.googleData?.phoneNumbers?.primaryPhone,
+        profile.googleData?.primaryPhone,
+        profile.googleData?.adWordsLocationExtensions?.adPhone
+      ].filter(Boolean)
+      
+      if (possiblePhones.length > 0) {
+        extractedData.phone = possiblePhones[0]
+        console.log('[ClientManager] Extracted phone:', possiblePhones[0])
+      }
     }
 
     // Website - use website from Google profile if client doesn't have one
-    if (!currentClient.website && profile.website) {
-      extractedData.website = profile.website
-    } else if (!currentClient.website && profile.googleData?.profile?.websiteUri) {
-      extractedData.website = profile.googleData.profile.websiteUri
+    // Try multiple possible locations for website URL
+    if (!currentClient.website) {
+      const possibleWebsites = [
+        profile.website,
+        profile.googleData?.websiteUri,
+        profile.googleData?.profile?.websiteUri,
+        profile.googleData?.primaryCategory?.websiteUri,
+        profile.googleData?.metadata?.websiteUri
+      ].filter(Boolean)
+      
+      if (possibleWebsites.length > 0) {
+        extractedData.website = possibleWebsites[0]
+        console.log('[ClientManager] Extracted website:', possibleWebsites[0])
+      }
     }
 
     // Note: We intentionally skip email as per user request

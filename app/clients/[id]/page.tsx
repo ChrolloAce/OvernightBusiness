@@ -380,7 +380,7 @@ export default function ClientDetailPage() {
                         ) : (
                           <span 
                             className="hover:text-blue-600 cursor-pointer p-1 rounded hover:bg-blue-50 transition-colors"
-                            onClick={() => handleFieldEdit('website', client.website || 'maktubtechnologies.com')}
+                            onClick={() => handleFieldEdit('website', client.website || 'example.com')}
                           >
                             {client.website || 'Add website...'}
                           </span>
@@ -432,7 +432,7 @@ export default function ClientDetailPage() {
                   </CardHeader>
                   <CardContent>
                     <WebsiteScreenshot 
-                      website={client.website || 'maktubtechnologies.com'}
+                      website={client.website || ''}
                       clientName={client.name}
                       className="w-full h-64"
                     />
@@ -447,20 +447,20 @@ export default function ClientDetailPage() {
                             onBlur={handleFieldSave}
                             autoFocus
                             className="h-8 text-sm border-blue-200 focus:border-blue-400 flex-1 ml-2"
-                            placeholder="maktubtechnologies.com"
+                            placeholder="Enter website URL"
                           />
                         ) : (
                           <div 
                             className="text-sm text-blue-600 hover:text-blue-700 cursor-pointer hover:underline flex-1 ml-2 text-right"
-                            onClick={() => handleFieldEdit('website', client.website || 'maktubtechnologies.com')}
+                            onClick={() => handleFieldEdit('website', client.website || '')}
                           >
-                            {client.website || 'maktubtechnologies.com'}
+                            {client.website || 'No website set'}
                           </div>
                         )}
                       </div>
                       <div className="flex items-center space-x-3">
                         <a
-                          href={client.website?.startsWith('http') ? client.website : `https://${client.website || 'maktubtechnologies.com'}`}
+                          href={client.website ? (client.website.startsWith('http') ? client.website : `https://${client.website}`) : '#'}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center text-sm text-gray-600 hover:text-blue-600 transition-colors"
