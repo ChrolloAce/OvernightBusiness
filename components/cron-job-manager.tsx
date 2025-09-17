@@ -462,7 +462,7 @@ function CronJobModal({ job, automations, profiles, onSave, onClose }: CronJobMo
               <Label htmlFor="scheduleType">Schedule Type</Label>
               <Select
                 value={formData.scheduleType}
-                onValueChange={(value) => setFormData({ ...formData, scheduleType: value })}
+                onValueChange={(value) => setFormData({ ...formData, scheduleType: value as 'daily' | 'hourly' | 'weekly' | 'custom' })}
               >
                 <SelectTrigger>
                   <SelectValue />
