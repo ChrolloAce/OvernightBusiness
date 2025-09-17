@@ -105,7 +105,7 @@ export default function AgentDashboardPage() {
           schedule: {
             frequency: 'weekly',
             time: '09:00',
-            days: ['monday', 'wednesday', 'friday']
+            days: [1, 3, 5]
           },
           settings: {
             contentType: 'business_updates',
