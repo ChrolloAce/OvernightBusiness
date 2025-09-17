@@ -705,24 +705,21 @@ export default function ClientDetailPage() {
 
             {/* Phone Tab */}
             <TabsContent value="phone" className="space-y-6">
-              <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-                <div>
-                  <ClientPhoneTracking 
-                    clientId={client.id}
-                    clientName={client.name}
-                    clientPhone={client.phone}
-                    trackingNumber={client.trackingPhoneNumber}
-                    trackingPhoneSid={client.trackingPhoneSid}
-                  />
-                </div>
-                <div>
-                  <ClientCallAnalytics 
-                    clientId={client.id}
-                    clientName={client.name}
-                    trackingNumber={client.trackingPhoneNumber}
-                  />
-                </div>
-              </div>
+              {/* Phone Configuration */}
+              <ClientPhoneTracking 
+                clientId={client.id}
+                clientName={client.name}
+                clientPhone={client.phone}
+                trackingNumber={client.trackingPhoneNumber}
+                trackingPhoneSid={client.trackingPhoneSid}
+              />
+              
+              {/* Call Analytics - Full Width */}
+              <ClientCallAnalytics 
+                clientId={client.id}
+                clientName={client.name}
+                trackingNumber={client.trackingPhoneNumber}
+              />
             </TabsContent>
 
             {/* Notes Tab */}

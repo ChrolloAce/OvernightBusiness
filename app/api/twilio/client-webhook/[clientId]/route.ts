@@ -28,18 +28,15 @@ export async function POST(
     const clientManager = ClientManager.getInstance()
     const client = clientManager.getClient(clientId)
     
-    if (!client) {
-      console.error(`[Client Webhook] Client not found: ${clientId}`)
-      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?>
-        <Response>
-          <Say>Sorry, this number is not properly configured.</Say>
-        </Response>`, {
-        headers: { 'Content-Type': 'text/xml' }
-      })
-    }
-
     // Use client's phone number or fallback to default
-    const forwardToNumber = client.phone || '+17862903664'
+    let forwardToNumber = '+17862903664' // Default fallback
+    
+    if (client && client.phone) {
+      forwardToNumber = client.phone
+      console.log(`[Client Webhook ${clientId}] Found client phone: ${client.phone}`)
+    } else {
+      console.log(`[Client Webhook ${clientId}] No client phone found, using default: ${forwardToNumber}`)
+    }
     
     console.log(`[Client Webhook ${clientId}] Forwarding call to client phone: ${forwardToNumber}`)
 

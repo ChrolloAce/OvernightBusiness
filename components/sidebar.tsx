@@ -25,19 +25,12 @@ import { Badge } from '@/components/ui/badge'
 
 const navigation = [
   {
-    name: 'Dashboard',
-    href: '/',
-    icon: LayoutDashboard,
-    gradient: 'from-blue-500 to-cyan-500',
-    description: 'Overview & KPIs'
+    name: 'Clients',
+    href: '/clients',
+    icon: Building2,
+    gradient: 'from-purple-500 to-pink-500',
+    description: 'Client Management Hub'
   },
-        {
-          name: 'Clients',
-          href: '/clients',
-          icon: Building2,
-          gradient: 'from-purple-500 to-pink-500',
-          description: 'Client Management Hub'
-        },
   {
     name: 'Tasks',
     href: '/tasks',
@@ -122,28 +115,19 @@ export function Sidebar({ onItemClick }: SidebarProps) {
                     className={`
                     group relative flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 cursor-pointer
                     ${isActive 
-                      ? 'bg-gray-100' 
+                      ? 'bg-blue-50 border border-blue-200' 
                       : 'hover:bg-gray-50'
                     }
                   `}>
-                    {/* Active Indicator */}
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeTab"
-                        className="absolute inset-0 bg-gray-100 rounded-lg"
-                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      />
-                    )}
-                    
                     {/* Icon */}
                     <div className={`
                       relative w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300
                       ${isActive 
-                        ? 'bg-white shadow-sm' 
+                        ? 'bg-blue-100' 
                         : 'group-hover:bg-gray-100'
                       }
                     `}>
-                      <Icon className={`w-4 h-4 ${isActive ? 'text-gray-700' : 'text-gray-500 group-hover:text-gray-700'}`} />
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-700'}`} />
                     </div>
                     
                     {/* Text Content */}
@@ -151,13 +135,15 @@ export function Sidebar({ onItemClick }: SidebarProps) {
                       <p className={`
                         text-sm font-medium transition-colors duration-300
                         ${isActive 
-                          ? 'text-gray-900' 
+                          ? 'text-blue-700' 
                           : 'text-gray-600 group-hover:text-gray-900'
                         }
                       `}>
                         {item.name}
                       </p>
-                      <p className="text-xs text-gray-400 truncate">
+                      <p className={`text-xs truncate transition-colors duration-300 ${
+                        isActive ? 'text-blue-500' : 'text-gray-400'
+                      }`}>
                         {item.description}
                       </p>
                     </div>
