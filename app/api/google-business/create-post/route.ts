@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize empty media items array
-    let mediaItems = []
+    let mediaItems: Array<{ mediaFormat: string; sourceUrl: string }> = []
 
     // Use the access token directly for this request
     const postData = {
