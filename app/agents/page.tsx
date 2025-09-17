@@ -30,7 +30,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useProfile } from '@/contexts/profile-context'
-import { GoogleAuthService } from '@/lib/google-auth'
+import { GoogleAuthButton } from '@/components/google-auth-button'
 
 interface Automation {
   id: string
@@ -63,7 +63,6 @@ export default function AgentDashboardPage() {
   const [automations, setAutomations] = useState<Automation[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [authLoading, setAuthLoading] = useState(false)
   const [newAutomation, setNewAutomation] = useState({
     name: '',
     type: 'google_posts' as const,
@@ -78,36 +77,10 @@ export default function AgentDashboardPage() {
   useEffect(() => {
     setMounted(true)
     loadAutomations()
-    checkAuthenticationStatus()
   }, [])
 
-  const checkAuthenticationStatus = async () => {
-    try {
-      const googleAuth = GoogleAuthService.getInstance()
-      const authenticated = googleAuth.isAuthenticated()
-      setIsAuthenticated(authenticated)
-      
-      if (!authenticated) {
-        console.log('[AgentDashboard] Google authentication required for automations')
-      }
-    } catch (error) {
-      console.error('[AgentDashboard] Error checking authentication:', error)
-      setIsAuthenticated(false)
-    }
-  }
-
-  const handleGoogleLogin = async () => {
-    setAuthLoading(true)
-    try {
-      const googleAuth = GoogleAuthService.getInstance()
-      const authUrl = googleAuth.getAuthUrl()
-      
-      // Redirect to Google OAuth
-      window.location.href = authUrl
-    } catch (error) {
-      console.error('[AgentDashboard] Error during Google login:', error)
-      setAuthLoading(false)
-    }
+  const handleAuthChange = (authenticated: boolean) => {
+    setIsAuthenticated(authenticated)
   }
 
   const loadAutomations = () => {
@@ -250,20 +223,10 @@ export default function AgentDashboardPage() {
           <p className="text-gray-600 mt-1">AI-powered automations for your business</p>
         </div>
         <div className="flex items-center space-x-3">
-          {!isAuthenticated && (
-            <Button 
-              onClick={handleGoogleLogin}
-              disabled={authLoading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {authLoading ? (
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Globe className="mr-2 h-4 w-4" />
-              )}
-              Connect Google
-            </Button>
-          )}
+          <GoogleAuthButton 
+            onAuthChange={handleAuthChange}
+            size="sm"
+          />
           <Button 
             onClick={() => setIsCreating(true)}
             disabled={!isAuthenticated}
@@ -287,24 +250,12 @@ export default function AgentDashboardPage() {
                   To use AI automations for Google Business Profile posts, you need to authenticate with Google. 
                   Your tokens may have expired and need to be refreshed.
                 </p>
-                <Button 
-                  onClick={handleGoogleLogin}
-                  disabled={authLoading}
-                  size="sm"
-                  className="mt-3 bg-blue-600 hover:bg-blue-700"
-                >
-                  {authLoading ? (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Globe className="mr-2 h-4 w-4" />
-                      Connect Google Account
-                    </>
-                  )}
-                </Button>
+                <div className="mt-3">
+                  <GoogleAuthButton 
+                    onAuthChange={handleAuthChange}
+                    size="sm"
+                  />
+                </div>
               </div>
             </div>
           </CardContent>
