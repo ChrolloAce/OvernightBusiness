@@ -35,10 +35,8 @@ export function GoogleProfileConnector({ client, onProfileConnected }: GooglePro
   const { connectGoogleBusinessProfile } = useClients()
   const { profiles } = useProfile()
 
-  // Filter out profiles that are already connected to other clients
-  const availableProfiles = profiles.filter(profile => 
-    !profile.googleData?.connectedClientId || profile.googleData?.connectedClientId === client.id
-  )
+  // For now, show all profiles (we can add client connection tracking later)
+  const availableProfiles = profiles
 
   const handleConnect = async () => {
     if (!selectedProfileId) return
