@@ -67,11 +67,21 @@ export default function AgentDashboardPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [newAutomation, setNewAutomation] = useState({
+  const [newAutomation, setNewAutomation] = useState<{
+    name: string
+    type: 'google_posts' | 'review_responses' | 'content_creation'
+    assignedProfiles: string[]
+    frequency: 'daily' | 'weekly' | 'monthly' | 'custom'
+    time: string
+    times: string[]
+    days: number[]
+    contentType: string
+    tone: string
+  }>({
     name: '',
-    type: 'google_posts' as const,
-    assignedProfiles: [] as string[],
-    frequency: 'weekly' as const,
+    type: 'google_posts',
+    assignedProfiles: [],
+    frequency: 'weekly',
     time: '09:00',
     times: ['09:00'],
     days: [1, 2, 3, 4, 5], // Monday to Friday by default
@@ -649,9 +659,9 @@ export default function AgentDashboardPage() {
                     setEditingAutomation(null)
                     setNewAutomation({
                       name: '',
-                      type: 'google_posts' as const,
-                      assignedProfiles: [] as string[],
-                      frequency: 'weekly' as const,
+                      type: 'google_posts',
+                      assignedProfiles: [],
+                      frequency: 'weekly',
                       time: '09:00',
                       times: ['09:00'],
                       days: [1, 2, 3, 4, 5],
