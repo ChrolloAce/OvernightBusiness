@@ -165,7 +165,7 @@ export default function AgentDashboardPage() {
       automation.id === automationId
         ? { 
             ...automation, 
-            status: automation.status === 'active' ? 'paused' : 'active' as const
+            status: (automation.status === 'active' ? 'paused' : 'active') as 'active' | 'paused' | 'draft'
           }
         : automation
     )
