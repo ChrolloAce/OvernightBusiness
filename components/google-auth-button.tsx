@@ -8,14 +8,14 @@ import { GoogleAuthService } from '@/lib/google-auth'
 interface GoogleAuthButtonProps {
   onAuthChange?: (isAuthenticated: boolean) => void
   variant?: 'default' | 'outline' | 'ghost'
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'default' | 'sm' | 'lg' | 'icon'
   className?: string
 }
 
 export function GoogleAuthButton({ 
   onAuthChange, 
   variant = 'default', 
-  size = 'md',
+  size = 'default',
   className = '' 
 }: GoogleAuthButtonProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
