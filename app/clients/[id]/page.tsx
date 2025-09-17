@@ -44,7 +44,7 @@ import { ClientNotes } from '@/components/client-notes'
 import { ClientPhoneTracking } from '@/components/client-phone-tracking'
 import { ClientCallAnalytics } from '@/components/client-call-analytics'
 
-// Mock client data
+// Client data interface
 interface ClientData {
   id: string
   name: string
@@ -57,6 +57,10 @@ interface ClientData {
   avatar: string
   createdAt: string
   googleBusinessProfile?: SavedBusinessProfile
+  // Phone tracking properties
+  trackingPhoneNumber?: string
+  trackingPhoneSid?: string
+  customWebhookUrl?: string
 }
 
 // No mock client data - will show empty state if no real client found
@@ -145,7 +149,11 @@ export default function ClientDetailPage() {
         tags: realClient.tags,
         notes: realClient.notes || '',
         avatar: realClient.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2),
-        createdAt: realClient.createdAt
+        createdAt: realClient.createdAt,
+        // Phone tracking properties
+        trackingPhoneNumber: realClient.trackingPhoneNumber,
+        trackingPhoneSid: realClient.trackingPhoneSid,
+        customWebhookUrl: realClient.customWebhookUrl
       }
       
       if (realClient.googleBusinessProfile) {
