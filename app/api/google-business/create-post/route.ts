@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { GoogleBusinessAPI } from '@/lib/google-business-api'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,35 +15,32 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Google Business Post API] Creating post for profile: ${profileId}`)
 
-    // For now, simulate successful posting since Google Business API requires complex OAuth setup
-    // In production, you would:
-    // 1. Store user's refresh token securely in database
-    // 2. Use refresh token to get new access token
-    // 3. Make authenticated API calls to Google Business Profile API
+    // Initialize Google Business API
+    const googleAPI = new GoogleBusinessAPI()
     
-    console.log(`[Google Business Post API] Simulating post creation for testing:`, {
-      profileId,
-      content,
-      businessInfo
-    })
-
-    // Simulate a successful post
-    const mockPost = {
-      name: `locations/${profileId}/localPosts/${Date.now()}`,
+    // Prepare post data
+    const postData = {
+      topicType: 'STANDARD',
       languageCode: 'en-US',
       summary: content.description || content.title,
-      createTime: new Date().toISOString(),
-      updateTime: new Date().toISOString(),
-      searchUrl: `https://www.google.com/search?q=${encodeURIComponent(businessInfo?.name || '')}`
+      callToAction: {
+        actionType: 'LEARN_MORE',
+        url: businessInfo?.website || 'https://maktubtechnologies.com'
+      },
+      media: [] // Can add images later
     }
 
-    console.log(`[Google Business Post API] Mock post created successfully:`, mockPost)
+    console.log(`[Google Business Post API] Post data:`, postData)
+
+    // Create the post
+    const result = await googleAPI.createPost(profileId, postData)
+    
+    console.log(`[Google Business Post API] Post created successfully:`, result)
 
     return NextResponse.json({
       success: true,
-      post: mockPost,
-      message: 'Post created successfully (simulated for testing)',
-      note: 'This is a simulated post. To enable real posting, configure Google OAuth refresh tokens.'
+      post: result,
+      message: 'Post created successfully'
     })
 
   } catch (error) {

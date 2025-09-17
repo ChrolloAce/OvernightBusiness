@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useProfile } from '@/contexts/profile-context'
+import { GoogleAuthService } from '@/lib/google-auth'
 
 interface Automation {
   id: string
@@ -61,6 +62,8 @@ export default function AgentDashboardPage() {
   const [mounted, setMounted] = useState(false)
   const [automations, setAutomations] = useState<Automation[]>([])
   const [isCreating, setIsCreating] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authLoading, setAuthLoading] = useState(false)
   const [newAutomation, setNewAutomation] = useState({
     name: '',
     type: 'google_posts' as const,
@@ -75,7 +78,40 @@ export default function AgentDashboardPage() {
   useEffect(() => {
     setMounted(true)
     loadAutomations()
+    checkAuthenticationStatus()
   }, [])
+
+  const checkAuthenticationStatus = async () => {
+    try {
+      const googleAuth = GoogleAuthService.getInstance()
+      const authenticated = googleAuth.isAuthenticated()
+      setIsAuthenticated(authenticated)
+      
+      if (!authenticated) {
+        console.log('[AgentDashboard] Google authentication required for automations')
+      }
+    } catch (error) {
+      console.error('[AgentDashboard] Error checking authentication:', error)
+      setIsAuthenticated(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    setAuthLoading(true)
+    try {
+      const googleAuth = GoogleAuthService.getInstance()
+      await googleAuth.signIn()
+      
+      // Check authentication after login attempt
+      setTimeout(() => {
+        checkAuthenticationStatus()
+        setAuthLoading(false)
+      }, 2000)
+    } catch (error) {
+      console.error('[AgentDashboard] Error during Google login:', error)
+      setAuthLoading(false)
+    }
+  }
 
   const loadAutomations = () => {
     try {
@@ -216,14 +252,67 @@ export default function AgentDashboardPage() {
           </h1>
           <p className="text-gray-600 mt-1">AI-powered automations for your business</p>
         </div>
-        <Button 
-          onClick={() => setIsCreating(true)}
-          className="bg-purple-600 hover:bg-purple-700"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Create Agent
-        </Button>
+        <div className="flex items-center space-x-3">
+          {!isAuthenticated && (
+            <Button 
+              onClick={handleGoogleLogin}
+              disabled={authLoading}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {authLoading ? (
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Globe className="mr-2 h-4 w-4" />
+              )}
+              Connect Google
+            </Button>
+          )}
+          <Button 
+            onClick={() => setIsCreating(true)}
+            disabled={!isAuthenticated}
+            className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Create Agent
+          </Button>
+        </div>
       </div>
+
+      {/* Authentication Warning */}
+      {!isAuthenticated && (
+        <Card className="bg-orange-50 border-orange-200">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="font-medium text-orange-900">Google Authentication Required</h4>
+                <p className="text-sm text-orange-700 mt-1">
+                  To use AI automations for Google Business Profile posts, you need to authenticate with Google. 
+                  Your tokens may have expired and need to be refreshed.
+                </p>
+                <Button 
+                  onClick={handleGoogleLogin}
+                  disabled={authLoading}
+                  size="sm"
+                  className="mt-3 bg-blue-600 hover:bg-blue-700"
+                >
+                  {authLoading ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Globe className="mr-2 h-4 w-4" />
+                      Connect Google Account
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Overview */}
       <div className="grid gap-6 grid-cols-1 md:grid-cols-4">
@@ -277,17 +366,23 @@ export default function AgentDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-50 to-red-50 border-orange-200">
+        <Card className={`bg-gradient-to-br ${isAuthenticated ? 'from-green-50 to-emerald-50 border-green-200' : 'from-red-50 to-orange-50 border-red-200'}`}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-orange-600">Profiles</p>
+                <p className={`text-sm font-medium ${isAuthenticated ? 'text-green-600' : 'text-red-600'}`}>
+                  Google Auth
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {profiles.length}
+                  {isAuthenticated ? 'Connected' : 'Required'}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <Building2 className="h-6 w-6 text-orange-600" />
+              <div className={`w-12 h-12 ${isAuthenticated ? 'bg-green-100' : 'bg-red-100'} rounded-xl flex items-center justify-center`}>
+                {isAuthenticated ? (
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                ) : (
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                )}
               </div>
             </div>
           </CardContent>
@@ -524,6 +619,11 @@ export default function AgentDashboardPage() {
                         variant="ghost"
                         size="sm"
                         onClick={async () => {
+                          if (!isAuthenticated) {
+                            alert('Please connect your Google account first to run automations.')
+                            return
+                          }
+                          
                           try {
                             const { AutomationService } = await import('@/lib/automation-service')
                             const service = AutomationService.getInstance()
@@ -539,8 +639,9 @@ export default function AgentDashboardPage() {
                             alert('Error running automation. Check console for details.')
                           }
                         }}
-                        className="text-purple-600 hover:text-purple-700"
-                        title="Run automation now"
+                        disabled={!isAuthenticated}
+                        className={`${isAuthenticated ? 'text-purple-600 hover:text-purple-700' : 'text-gray-400'}`}
+                        title={isAuthenticated ? "Run automation now" : "Connect Google account to run automations"}
                       >
                         <Zap className="h-4 w-4" />
                       </Button>
