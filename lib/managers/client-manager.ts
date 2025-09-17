@@ -189,20 +189,9 @@ export class ClientManager {
     }
 
     // Website - use website from Google profile if client doesn't have one
-    // Try multiple possible locations for website URL
-    if (!currentClient.website) {
-      const possibleWebsites = [
-        profile.website,
-        profile.googleData?.websiteUri,
-        profile.googleData?.profile?.websiteUri,
-        profile.googleData?.primaryCategory?.websiteUri,
-        profile.googleData?.metadata?.websiteUri
-      ].filter(Boolean)
-      
-      if (possibleWebsites.length > 0) {
-        extractedData.website = possibleWebsites[0]
-        console.log('[ClientManager] Extracted website:', possibleWebsites[0])
-      }
+    if (!currentClient.website && profile.website) {
+      extractedData.website = profile.website
+      console.log('[ClientManager] Extracted website:', profile.website)
     }
 
     // Note: We intentionally skip email as per user request
