@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sidebar } from '@/components/sidebar'
-import FloatingProfileSelector from '@/components/floating-profile-selector'
 import { useProfile } from '@/contexts/profile-context'
 
 interface ConditionalLayoutProps {
@@ -95,11 +94,6 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
           </main>
         </div>
 
-        {/* Floating Profile Selector */}
-        <FloatingProfileSelector 
-          selectedProfile={selectedProfile}
-          onProfileSelect={setSelectedProfile}
-        />
       </div>
     )
   }

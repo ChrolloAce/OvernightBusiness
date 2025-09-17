@@ -53,20 +53,6 @@ const navigation = [
     description: 'Sales Pipeline'
   },
   {
-    name: 'Analytics',
-    href: '/analytics',
-    icon: BarChart3,
-    gradient: 'from-yellow-500 to-orange-500',
-    description: 'Performance Insights'
-  },
-  {
-    name: 'Calls',
-    href: '/calls',
-    icon: PhoneCall,
-    gradient: 'from-emerald-500 to-teal-500',
-    description: 'Call Analytics'
-  },
-  {
     name: 'Reports',
     href: '/reports',
     icon: PenTool,

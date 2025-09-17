@@ -25,7 +25,6 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  PhoneCall
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,7 +32,6 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Link from 'next/link'
-import { ClientPhoneManager } from '@/components/client-phone-manager'
 import { useClients } from '@/contexts/client-context'
 import { useTasks } from '@/contexts/task-context'
 import { ClientAnalytics } from '@/components/client-analytics'
@@ -409,11 +407,10 @@ export default function ClientDetailPage() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6 bg-white border border-gray-200 rounded-lg">
+            <TabsList className="grid w-full grid-cols-5 bg-white border border-gray-200 rounded-lg">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
               <TabsTrigger value="tasks">Tasks</TabsTrigger>
-              <TabsTrigger value="phone">Phone</TabsTrigger>
               <TabsTrigger value="files">Files</TabsTrigger>
               <TabsTrigger value="access">Access</TabsTrigger>
             </TabsList>
@@ -562,18 +559,6 @@ export default function ClientDetailPage() {
                 clientName={client.name}
                 googleBusinessProfile={client.googleBusinessProfile || null}
               />
-            </TabsContent>
-
-            {/* Phone Tab */}
-            <TabsContent value="phone" className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                  <PhoneCall className="mr-2 h-5 w-5 text-blue-600" />
-                  Phone Number & Call Management
-                </h2>
-                <p className="text-gray-600">Manage Twilio phone numbers and track call analytics for this client</p>
-              </div>
-              <ClientPhoneManager clientId={client.id} clientName={client.name} />
             </TabsContent>
 
             {/* Access Tab */}
