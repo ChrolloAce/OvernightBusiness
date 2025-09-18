@@ -163,9 +163,9 @@ export default function PhoneNumbersPage() {
         return
       }
 
-      const selectedClient = selectedClientId ? clients.find(c => c.id === selectedClientId) : null
+      const selectedClient = (selectedClientId && selectedClientId !== 'unassigned') ? clients.find(c => c.id === selectedClientId) : null
       
-      if (!selectedClient && selectedClientId !== '') {
+      if (!selectedClient && selectedClientId !== '' && selectedClientId !== 'unassigned') {
         console.error('Selected client not found:', selectedClientId)
         alert('Selected client not found')
         return
@@ -178,9 +178,9 @@ export default function PhoneNumbersPage() {
         if (num.sid === numberSid) {
           const updatedNum = {
             ...num,
-            assignedClientId: selectedClientId || undefined,
+            assignedClientId: (selectedClientId === 'unassigned') ? undefined : selectedClientId,
             assignedClientName: selectedClient?.name || undefined,
-            // Auto-set forward number to client's phone if available
+            // Auto-set forward number to client's phone if available, or keep current if unassigning
             forwardToNumber: selectedClient?.phone || num.forwardToNumber
           }
           console.log('[PhoneNumbers] Updated number:', updatedNum)
@@ -451,7 +451,7 @@ export default function PhoneNumbersPage() {
                                   <SelectValue placeholder="Select client..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">No client assigned</SelectItem>
+                                  <SelectItem value="unassigned">No client assigned</SelectItem>
                                   {clients && clients.length > 0 ? (
                                     clients.map((client) => (
                                       <SelectItem key={client.id} value={client.id}>
@@ -459,7 +459,7 @@ export default function PhoneNumbersPage() {
                                       </SelectItem>
                                     ))
                                   ) : (
-                                    <SelectItem value="" disabled>
+                                    <SelectItem value="no-clients" disabled>
                                       No clients available - create clients first
                                     </SelectItem>
                                   )}
