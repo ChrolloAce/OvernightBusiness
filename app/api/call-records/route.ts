@@ -13,13 +13,13 @@ export async function GET(request: NextRequest) {
     
     // Fetch call records from Firebase
     const callRecords = await firebaseCallRecordService.getCallRecords({
-      phoneAssignmentId,
-      clientId,
+      phoneAssignmentId: phoneAssignmentId || undefined,
+      clientId: clientId || undefined,
       limit
     })
     
     // Calculate statistics
-    const stats = await firebaseCallRecordService.getCallStatistics(phoneAssignmentId)
+    const stats = await firebaseCallRecordService.getCallStatistics(phoneAssignmentId || undefined)
     
     console.log(`[Call Records API] Found ${callRecords.length} records`)
     
