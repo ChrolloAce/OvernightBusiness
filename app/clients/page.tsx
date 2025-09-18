@@ -106,13 +106,9 @@ export default function ClientsPage() {
       // Create a new client with default values
       const newClient = await createClient({
         name: 'Untitled Client',
-        email: undefined,
-        phone: undefined,
         website: '',
         status: 'prospect',
-        tags: [],
-        notes: undefined,
-        googleBusinessProfileId: undefined
+        tags: []
       })
       
       // Immediately start editing the name

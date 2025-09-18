@@ -48,11 +48,11 @@ service cloud.firestore {
       // Allow create/update/delete for authenticated users
       // In production, you might want to restrict this to admins only
       allow create: if isAuthenticated() && 
-                       isValidClient(resource.data) &&
+                       isValidClient(request.resource.data) &&
                        request.auth.uid != null;
       
       allow update: if isAuthenticated() && 
-                       isValidClient(resource.data);
+                       isValidClient(request.resource.data);
       
       allow delete: if isAuthenticated();
       
@@ -69,10 +69,10 @@ service cloud.firestore {
       
       // Allow create/update/delete for authenticated users
       allow create: if isAuthenticated() && 
-                       isValidPhoneAssignment(resource.data);
+                       isValidPhoneAssignment(request.resource.data);
       
       allow update: if isAuthenticated() && 
-                       isValidPhoneAssignment(resource.data);
+                       isValidPhoneAssignment(request.resource.data);
       
       allow delete: if isAuthenticated();
       
@@ -88,7 +88,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       
       // Allow create for authenticated users and server-side
-      allow create: if (isAuthenticated() && isValidCallRecord(resource.data)) ||
+      allow create: if (isAuthenticated() && isValidCallRecord(request.resource.data)) ||
                        (request.auth == null && 
                         request.headers.keys().hasAny(['x-twilio-signature', 'user-agent']));
       

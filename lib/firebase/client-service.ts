@@ -14,7 +14,7 @@ import {
   serverTimestamp,
   writeBatch
 } from 'firebase/firestore'
-import { db, COLLECTIONS, FirebaseClient, convertFirestoreTimestamp } from '@/lib/firebase'
+import { db, COLLECTIONS, FirebaseClient, convertFirestoreTimestamp, getCurrentCompanyId, getCurrentUserId } from '@/lib/firebase'
 
 export class FirebaseClientService {
   private static instance: FirebaseClientService
@@ -89,8 +89,15 @@ export class FirebaseClientService {
       const clientsRef = collection(db, COLLECTIONS.CLIENTS)
       const newClientRef = doc(clientsRef)
       
+      // Remove undefined fields to prevent Firestore errors
+      const cleanData = Object.fromEntries(
+        Object.entries(clientData).filter(([_, value]) => value !== undefined)
+      )
+      
       const data = {
-        ...clientData,
+        ...cleanData,
+        companyId: getCurrentCompanyId(),
+        createdBy: getCurrentUserId(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }
@@ -125,7 +132,12 @@ export class FirebaseClientService {
       const clientRef = doc(db, COLLECTIONS.CLIENTS, clientId)
       
       // Remove id, createdAt, updatedAt from updates
-      const { id, createdAt, ...cleanUpdates } = updates
+      const { id, createdAt, ...preliminaryUpdates } = updates
+      
+      // Remove undefined fields to prevent Firestore errors
+      const cleanUpdates = Object.fromEntries(
+        Object.entries(preliminaryUpdates).filter(([_, value]) => value !== undefined)
+      )
       
       const data = {
         ...cleanUpdates,
