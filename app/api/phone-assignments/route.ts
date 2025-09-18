@@ -55,7 +55,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { twilioSid, phoneNumber, clientId, forwardToNumber } = body
+    const { twilioSid, phoneNumber, clientId } = body
+    let forwardToNumber = body.forwardToNumber
     
     console.log('[Phone Assignments API] Creating/updating assignment:', {
       twilioSid,
