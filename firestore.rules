@@ -40,6 +40,32 @@ service cloud.firestore {
              recordData.status is string;
     }
 
+    // Companies collection
+    match /companies/{companyId} {
+      // Allow read access to authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow create for authenticated users (for onboarding)
+      allow create: if isAuthenticated() && request.auth.uid != null;
+      
+      // Allow update/delete for authenticated users
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Allow read access to authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow create for authenticated users (for onboarding)
+      allow create: if isAuthenticated() && request.auth.uid != null;
+      
+      // Allow update/delete for authenticated users
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
     // Clients collection
     match /clients/{clientId} {
       // Allow read access to authenticated users
