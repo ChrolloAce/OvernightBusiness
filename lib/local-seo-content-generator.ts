@@ -340,7 +340,7 @@ Make it sound natural, helpful, and locally focused!
     
     // Enhance hashtags with local SEO
     const localHashtags = this.generateLocalHashtags(business, serviceLocationPairs)
-    hashtags = [...new Set([...hashtags, ...localHashtags])].slice(0, 8)
+    hashtags = Array.from(new Set([...hashtags, ...localHashtags])).slice(0, 8)
     
     // Ensure title is SEO optimized
     title = this.optimizeTitleForLocalSEO(title, business, serviceLocationPairs[0])
@@ -386,7 +386,7 @@ Make it sound natural, helpful, and locally focused!
       hashtags.push('#florida', '#southflorida', '#miami', '#broward')
     }
     
-    return [...new Set(hashtags)].slice(0, 10)
+    return Array.from(new Set(hashtags)).slice(0, 10)
   }
 
   // Optimize title for local SEO
@@ -467,6 +467,22 @@ Make it sound natural, helpful, and locally focused!
       educational: {
         title: `${primaryService} Tips for ${primaryLocation} Residents`,
         description: `As your local ${primaryService.toLowerCase()} experts in ${primaryLocation}, we want to share valuable tips with our community.\n\nOur professional team has been serving ${primaryLocation} and surrounding areas with quality ${primaryService.toLowerCase()}. We understand the unique needs of local residents.\n\nContact us for expert ${primaryService.toLowerCase()} services in ${primaryLocation}!`
+      },
+      behind_scenes: {
+        title: `Behind the Scenes at ${business.name} - ${primaryService} in ${primaryLocation}`,
+        description: `Ever wondered what goes into professional ${primaryService.toLowerCase()}? Take a look behind the scenes with ${business.name}!\n\nOur team works hard to serve ${primaryLocation} and surrounding areas with quality ${primaryService.toLowerCase()}. From preparation to completion, we maintain the highest standards.\n\nProud to serve: ${serviceLocationPairs.map(p => p.location).join(', ')}\n\nReady for professional service? Contact us today!`
+      },
+      customer_spotlight: {
+        title: `Customer Success Story - ${primaryService} in ${primaryLocation}`,
+        description: `We love celebrating our amazing customers in ${primaryLocation}! This week's spotlight shows how professional ${primaryService.toLowerCase()} made a difference.\n\nOur commitment to ${primaryLocation} residents:\n• Quality ${primaryService.toLowerCase()}\n• Local expertise\n• Reliable service\n\nServing ${serviceLocationPairs.map(p => p.location).join(', ')} with the same dedication. Contact us for your ${primaryService.toLowerCase()} needs!`
+      },
+      seasonal: {
+        title: `Seasonal ${primaryService} Services in ${primaryLocation}`,
+        description: `${options.seasonalContext || 'This season'} is the perfect time for ${primaryService.toLowerCase()} in ${primaryLocation}!\n\nOur local team understands the seasonal needs of ${primaryLocation} residents. We're here to help with professional ${primaryService.toLowerCase()} services.\n\nServing these local communities:\n${serviceLocationPairs.map(p => `• ${p.location}`).join('\n')}\n\nSchedule your seasonal service today!`
+      },
+      local_event: {
+        title: `${business.name} Supports Local ${primaryLocation} Community`,
+        description: `We're proud to be part of the ${primaryLocation} community! As your local ${primaryService.toLowerCase()} experts, we believe in giving back to the neighborhoods we serve.\n\nCommunity involvement is important to us:\n• Supporting local events\n• Serving ${primaryLocation} families\n• Building lasting relationships\n\nFor professional ${primaryService.toLowerCase()} in ${serviceLocationPairs.map(p => p.location).join(', ')}, contact ${business.name} today!`
       }
     }
     
