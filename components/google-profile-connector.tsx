@@ -45,7 +45,7 @@ export function GoogleProfileConnector({ client, onProfileConnected }: GooglePro
 
     setIsConnecting(true)
     try {
-      const success = connectGoogleBusinessProfile(client.id, selectedProfileId, autoAssignData)
+      const success = await connectGoogleBusinessProfile(client.id, selectedProfileId, autoAssignData)
       
       if (success) {
         setShowSuccess(true)
