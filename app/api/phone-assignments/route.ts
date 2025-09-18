@@ -1,58 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-// Initialize Prisma client
-const prisma = new PrismaClient()
+import { firebasePhoneService } from '@/lib/firebase/phone-service'
+import { firebaseClientService } from '@/lib/firebase/client-service'
 
 // GET all phone assignments
 export async function GET(request: NextRequest) {
   try {
-    console.log('[Phone Assignments API] Fetching all assignments')
+    console.log('[Phone Assignments API] Fetching all assignments from Firebase')
     
-    // Check if database is available
-    const isDatabaseAvailable = process.env.DATABASE_URL && process.env.DATABASE_URL !== ''
+    // Fetch from Firebase
+    const assignments = await firebasePhoneService.getAllPhoneAssignments()
     
-    if (!isDatabaseAvailable) {
-      console.log('[Phone Assignments API] Database not configured, using localStorage fallback')
-      
-      // Fallback to localStorage data for now
-      return NextResponse.json({
-        success: true,
-        assignments: [],
-        source: 'localStorage',
-        message: 'Database not configured, returning empty assignments'
-      })
-    }
-    
-    // Fetch from database
-    const assignments = await prisma.phoneAssignment.findMany({
-      include: {
-        client: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-            website: true
-          }
-        },
-        _count: {
-          select: {
-            callRecords: true
+    // Enrich with client data
+    const enrichedAssignments = await Promise.all(
+      assignments.map(async (assignment) => {
+        if (assignment.clientId) {
+          const client = await firebaseClientService.getClientById(assignment.clientId)
+          return {
+            ...assignment,
+            client: client ? {
+              id: client.id,
+              name: client.name,
+              phone: client.phone,
+              email: client.email,
+              website: client.website
+            } : null
           }
         }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+        return { ...assignment, client: null }
+      })
+    )
     
     console.log(`[Phone Assignments API] Found ${assignments.length} assignments`)
     
     return NextResponse.json({
       success: true,
-      assignments,
-      source: 'database'
+      assignments: enrichedAssignments,
+      source: 'firebase'
     })
     
   } catch (error) {
@@ -89,50 +72,29 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
     
-    // Check if database is available
-    const isDatabaseAvailable = process.env.DATABASE_URL && process.env.DATABASE_URL !== ''
-    
-    if (!isDatabaseAvailable) {
-      console.log('[Phone Assignments API] Database not configured, cannot save assignment')
+    // Get client data if clientId provided
+    let clientName: string | undefined
+    if (clientId) {
+      const client = await firebaseClientService.getClientById(clientId)
+      clientName = client?.name
       
-      return NextResponse.json({
-        success: false,
-        error: 'Database not configured. Phone assignments require database connection.',
-        requiresDatabase: true
-      }, { status: 503 })
+      // Use client's phone as forward number if not provided
+      if (!forwardToNumber && client?.phone) {
+        forwardToNumber = client.phone
+      }
     }
     
-    // Upsert phone assignment in database
-    const assignment = await prisma.phoneAssignment.upsert({
-      where: { twilioSid },
-      create: {
-        twilioSid,
-        phoneNumber,
-        clientId: clientId || null,
-        forwardToNumber: forwardToNumber || null,
-        isActive: true,
-        webhookUrl: clientId 
-          ? `https://overnight-business.vercel.app/api/twilio/client-webhook/${clientId}`
-          : 'https://overnight-business.vercel.app/api/twilio/webhook'
-      },
-      update: {
-        clientId: clientId || null,
-        forwardToNumber: forwardToNumber || null,
-        webhookUrl: clientId 
-          ? `https://overnight-business.vercel.app/api/twilio/client-webhook/${clientId}`
-          : 'https://overnight-business.vercel.app/api/twilio/webhook',
-        updatedAt: new Date()
-      },
-      include: {
-        client: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true
-          }
-        }
-      }
+    // Upsert phone assignment in Firebase
+    const assignment = await firebasePhoneService.upsertPhoneAssignment({
+      twilioSid,
+      phoneNumber,
+      clientId: clientId || undefined,
+      clientName,
+      forwardToNumber: forwardToNumber || undefined,
+      isActive: true,
+      webhookUrl: clientId 
+        ? `https://overnight-business.vercel.app/api/twilio/client-webhook/${clientId}`
+        : 'https://overnight-business.vercel.app/api/twilio/webhook'
     })
     
     console.log('[Phone Assignments API] Assignment saved:', assignment)
@@ -164,9 +126,20 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // Add client data to response
+    const client = clientId ? await firebaseClientService.getClientById(clientId) : null
+    
     return NextResponse.json({
       success: true,
-      assignment,
+      assignment: {
+        ...assignment,
+        client: client ? {
+          id: client.id,
+          name: client.name,
+          phone: client.phone,
+          email: client.email
+        } : null
+      },
       message: 'Phone assignment saved successfully'
     })
     
@@ -195,22 +168,8 @@ export async function DELETE(request: NextRequest) {
     
     console.log('[Phone Assignments API] Deleting assignment:', twilioSid)
     
-    // Check if database is available
-    const isDatabaseAvailable = process.env.DATABASE_URL && process.env.DATABASE_URL !== ''
-    
-    if (!isDatabaseAvailable) {
-      console.log('[Phone Assignments API] Database not configured')
-      
-      return NextResponse.json({
-        success: false,
-        error: 'Database not configured'
-      }, { status: 503 })
-    }
-    
-    // Delete from database
-    await prisma.phoneAssignment.delete({
-      where: { twilioSid }
-    })
+    // Delete from Firebase
+    await firebasePhoneService.deletePhoneAssignment(twilioSid)
     
     // Reset Twilio webhook to default
     try {

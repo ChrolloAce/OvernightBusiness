@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { firebaseClientService } from '@/lib/firebase/client-service'
+import { firebasePhoneService, firebaseCallRecordService } from '@/lib/firebase/phone-service'
 
 export async function POST(
   request: NextRequest,
@@ -26,49 +25,37 @@ export async function POST(
       direction
     })
 
-    // Try to get client data from database first
+    // Get client data from Firebase
     let forwardToNumber = '+17862903664' // Default fallback
     let phoneAssignmentId: string | null = null
     
     try {
-      // Check if database is available
-      if (process.env.DATABASE_URL) {
-        // Get client from database
-        const client = await prisma.client.findUnique({
-          where: { id: clientId },
-          select: {
-            id: true,
-            name: true,
-            phone: true
-          }
-        })
-        
-        if (client && client.phone) {
-          forwardToNumber = client.phone
-          console.log(`[Client Webhook ${clientId}] Found client ${client.name} with phone: ${client.phone}`)
-        } else {
-          console.log(`[Client Webhook ${clientId}] Client not found or no phone, using default: ${forwardToNumber}`)
-        }
-        
-        // Find phone assignment for this call
-        const phoneAssignment = await prisma.phoneAssignment.findFirst({
-          where: {
-            phoneNumber: to,
-            clientId: clientId
-          }
-        })
-        
-        if (phoneAssignment) {
-          phoneAssignmentId = phoneAssignment.id
-          if (phoneAssignment.forwardToNumber) {
-            forwardToNumber = phoneAssignment.forwardToNumber
-          }
-        }
+      // Get client from Firebase
+      const client = await firebaseClientService.getClientById(clientId)
+      
+      if (client && client.phone) {
+        forwardToNumber = client.phone
+        console.log(`[Client Webhook ${clientId}] Found client ${client.name} with phone: ${client.phone}`)
       } else {
-        console.log(`[Client Webhook ${clientId}] Database not configured, using default forwarding`)
+        console.log(`[Client Webhook ${clientId}] Client not found or no phone, using default: ${forwardToNumber}`)
       }
+      
+      // Find phone assignment for this call
+      const phoneAssignments = await firebasePhoneService.getAllPhoneAssignments()
+      const phoneAssignment = phoneAssignments.find(assignment => 
+        assignment.phoneNumber === to && assignment.clientId === clientId
+      )
+      
+      if (phoneAssignment) {
+        phoneAssignmentId = phoneAssignment.twilioSid // Use twilioSid as the ID
+        if (phoneAssignment.forwardToNumber) {
+          forwardToNumber = phoneAssignment.forwardToNumber
+        }
+        console.log(`[Client Webhook ${clientId}] Found phone assignment: ${phoneAssignment.phoneNumber}`)
+      }
+      
     } catch (dbError) {
-      console.error(`[Client Webhook ${clientId}] Database error, using fallback:`, dbError)
+      console.error(`[Client Webhook ${clientId}] Firebase error, using fallback:`, dbError)
     }
     
     console.log(`[Client Webhook ${clientId}] Forwarding call to client phone: ${forwardToNumber}`)
@@ -82,24 +69,22 @@ export async function POST(
         <Say>Sorry, the call could not be completed. Please try again later.</Say>
       </Response>`
 
-    // Save call record to database
+    // Save call record to Firebase
     try {
-      if (process.env.DATABASE_URL && phoneAssignmentId) {
-        const callRecord = await prisma.callRecord.create({
-          data: {
-            twilioCallSid: callSid,
-            phoneAssignmentId: phoneAssignmentId,
-            fromNumber: from,
-            toNumber: to,
-            forwardedTo: forwardToNumber,
-            status: callStatus,
-            direction: direction || 'inbound'
-          }
+      if (phoneAssignmentId) {
+        const callRecord = await firebaseCallRecordService.createCallRecord({
+          twilioCallSid: callSid,
+          phoneAssignmentId: phoneAssignmentId,
+          fromNumber: from,
+          toNumber: to,
+          forwardedTo: forwardToNumber,
+          status: callStatus,
+          direction: direction || 'inbound'
         })
         
-        console.log(`[Client Webhook ${clientId}] Call record saved to database:`, callRecord.id)
+        console.log(`[Client Webhook ${clientId}] Call record saved to Firebase:`, callRecord.id)
       } else {
-        console.log(`[Client Webhook ${clientId}] Call record (not saved):`, {
+        console.log(`[Client Webhook ${clientId}] Call record (no assignment found):`, {
           clientId,
           callSid,
           from,

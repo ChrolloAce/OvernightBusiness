@@ -1,0 +1,143 @@
+// Firestore Security Rules for OvernightBiz
+// These rules secure your database and ensure proper access control
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return request.auth != null && 
+             request.auth.token.role == 'admin';
+    }
+    
+    function isValidClient(clientData) {
+      return clientData.keys().hasAll(['name', 'status']) &&
+             clientData.name is string &&
+             clientData.status in ['active', 'inactive', 'prospect', 'archived'];
+    }
+    
+    function isValidPhoneAssignment(assignmentData) {
+      return assignmentData.keys().hasAll(['twilioSid', 'phoneNumber', 'isActive']) &&
+             assignmentData.twilioSid is string &&
+             assignmentData.phoneNumber is string &&
+             assignmentData.isActive is bool;
+    }
+    
+    function isValidCallRecord(recordData) {
+      return recordData.keys().hasAll(['twilioCallSid', 'fromNumber', 'toNumber', 'status']) &&
+             recordData.twilioCallSid is string &&
+             recordData.fromNumber is string &&
+             recordData.toNumber is string &&
+             recordData.status is string;
+    }
+
+    // Clients collection
+    match /clients/{clientId} {
+      // Allow read access to authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow create/update/delete for authenticated users
+      // In production, you might want to restrict this to admins only
+      allow create: if isAuthenticated() && 
+                       isValidClient(resource.data) &&
+                       request.auth.uid != null;
+      
+      allow update: if isAuthenticated() && 
+                       isValidClient(resource.data);
+      
+      allow delete: if isAuthenticated();
+      
+      // Allow server-side access (for webhooks)
+      allow read, write: if request.auth == null && 
+                            request.headers.keys().hasAny(['x-twilio-signature', 'user-agent']) &&
+                            request.headers['user-agent'] != null;
+    }
+
+    // Phone Assignments collection
+    match /phoneAssignments/{assignmentId} {
+      // Allow read access to authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow create/update/delete for authenticated users
+      allow create: if isAuthenticated() && 
+                       isValidPhoneAssignment(resource.data);
+      
+      allow update: if isAuthenticated() && 
+                       isValidPhoneAssignment(resource.data);
+      
+      allow delete: if isAuthenticated();
+      
+      // Allow server-side access (for webhooks and API routes)
+      allow read, write: if request.auth == null && 
+                            (request.headers.keys().hasAny(['x-twilio-signature', 'user-agent']) ||
+                             request.headers['host'] == 'overnight-business.vercel.app');
+    }
+
+    // Call Records collection
+    match /callRecords/{recordId} {
+      // Allow read access to authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow create for authenticated users and server-side
+      allow create: if (isAuthenticated() && isValidCallRecord(resource.data)) ||
+                       (request.auth == null && 
+                        request.headers.keys().hasAny(['x-twilio-signature', 'user-agent']));
+      
+      // Allow update for authenticated users and server-side (for duration, recording URL)
+      allow update: if isAuthenticated() || 
+                       (request.auth == null && 
+                        request.headers.keys().hasAny(['x-twilio-signature', 'user-agent']));
+      
+      // Allow delete for authenticated users only
+      allow delete: if isAuthenticated();
+    }
+
+    // Business Profiles collection (for Google Business Profile data)
+    match /businessProfiles/{profileId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Tasks collection
+    match /tasks/{taskId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Deals collection
+    match /deals/{dealId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Audit Logs collection (read-only for users, write for system)
+    match /auditLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() || request.auth == null;
+      allow update, delete: if isAdmin();
+    }
+
+    // Default deny rule for any other documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// Storage rules (if using Firebase Storage)
+/*
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+*/
