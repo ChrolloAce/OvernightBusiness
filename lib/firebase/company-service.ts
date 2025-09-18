@@ -317,7 +317,7 @@ export class FirebaseUserService {
     }
   }
 
-  private getDefaultPermissions(role: FirebaseUser['role']): string[] {
+  getDefaultPermissions(role: FirebaseUser['role']): string[] {
     const permissionSets = {
       owner: ['all'],
       admin: ['clients.read', 'clients.write', 'users.read', 'users.write', 'company.read', 'company.write', 'phone.read', 'phone.write'],
