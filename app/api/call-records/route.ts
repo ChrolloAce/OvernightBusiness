@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { firebaseCallRecordService } from '@/lib/firebase/phone-service'
+import { getCurrentCompanyId } from '@/lib/firebase'
 
 // GET call records with filtering
 export async function GET(request: NextRequest) {
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
     
     // Create call record in Firebase
     const callRecord = await firebaseCallRecordService.createCallRecord({
+      companyId: getCurrentCompanyId(),
       twilioCallSid,
       phoneAssignmentId,
       fromNumber,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { firebaseClientService } from '@/lib/firebase/client-service'
 import { firebasePhoneService, firebaseCallRecordService } from '@/lib/firebase/phone-service'
+import { getCurrentCompanyId } from '@/lib/firebase'
 
 export async function POST(
   request: NextRequest,
@@ -73,6 +74,8 @@ export async function POST(
     try {
       if (phoneAssignmentId) {
         const callRecord = await firebaseCallRecordService.createCallRecord({
+          companyId: getCurrentCompanyId(),
+          clientId: clientId,
           twilioCallSid: callSid,
           phoneAssignmentId: phoneAssignmentId,
           fromNumber: from,
