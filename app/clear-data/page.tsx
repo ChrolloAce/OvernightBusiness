@@ -45,7 +45,7 @@ export default function ClearDataPage() {
     
     // Redirect to dashboard after clearing
     setTimeout(() => {
-      window.location.href = '/dashboard'
+      window.location.replace('/dashboard')
     }, 1000)
     
   }, [])

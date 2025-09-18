@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { 
   Building2, 
@@ -28,6 +29,7 @@ interface GoogleProfileConnectorProps {
 }
 
 export function GoogleProfileConnector({ client, onProfileConnected }: GoogleProfileConnectorProps) {
+  const router = useRouter()
   const [isConnecting, setIsConnecting] = useState(false)
   const [selectedProfileId, setSelectedProfileId] = useState('')
   const [autoAssignData, setAutoAssignData] = useState(true)
@@ -96,7 +98,7 @@ export function GoogleProfileConnector({ client, onProfileConnected }: GooglePro
                 size="sm"
                 onClick={() => {
                   localStorage.setItem('selected_profile_id', connectedProfile.id)
-                  window.location.href = '/content'
+                  router.push('/content')
                 }}
                 className="text-green-700 border-green-300 hover:bg-green-100"
               >

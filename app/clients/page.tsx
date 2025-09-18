@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
   Users, 
@@ -28,6 +29,7 @@ import { useProfile } from '@/contexts/profile-context'
 import { ClientAvatar } from '@/components/client-avatar'
 
 export default function ClientsPage() {
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -533,7 +535,7 @@ export default function ClientsPage() {
                          <Button 
                            variant="ghost" 
                            size="sm"
-                           onClick={() => window.location.href = `/clients/${client.id}`}
+                           onClick={() => router.push(`/clients/${client.id}`)}
                            className="h-8 w-8 p-0"
                          >
                            <Eye className="h-4 w-4" />

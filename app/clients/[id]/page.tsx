@@ -477,7 +477,7 @@ export default function ClientDetailPage() {
                             if (screenshotComponent) {
                               screenshotComponent.setAttribute('data-screenshot-key', Date.now().toString())
                             }
-                            window.location.reload() // Simple reload for now
+                            router.refresh() // Simple refresh for now
                           }}
                           className="h-6 text-sm text-gray-600 hover:text-blue-600"
                         >

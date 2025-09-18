@@ -33,7 +33,7 @@ export function ClearLocalData() {
         alert('✅ All local data cleared! Please refresh the page.')
         
         // Force page refresh to reset all state
-        window.location.reload()
+        window.location.replace(window.location.href)
         
       } catch (error) {
         console.error('Error clearing data:', error)

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react'
 
 export function FirebaseSetup() {
+  const router = useRouter()
   const [isSetup, setIsSetup] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -247,7 +249,7 @@ export function FirebaseSetup() {
               Create Test Client in Firebase
             </Button>
             <Button
-              onClick={() => window.location.href = '/clients/new'}
+              onClick={() => router.push('/clients/new')}
               variant="outline"
               className="w-full"
             >
@@ -255,7 +257,7 @@ export function FirebaseSetup() {
               Go to Create Client Page
             </Button>
             <Button
-              onClick={() => window.location.href = '/phone-numbers'}
+              onClick={() => router.push('/phone-numbers')}
               variant="outline"
               className="w-full"
             >
