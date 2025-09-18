@@ -333,9 +333,10 @@ Make it sound natural, helpful, and locally focused!
     
     // Extract hashtags
     const hashtagLines = lines.filter(line => line.includes('#'))
-    let hashtags = hashtagLines
+    const hashtagMatches = hashtagLines
       .join(' ')
-      .match(/#\w+/g) || []
+      .match(/#\w+/g)
+    let hashtags: string[] = hashtagMatches ? Array.from(hashtagMatches) : []
     
     // Enhance hashtags with local SEO
     const localHashtags = this.generateLocalHashtags(business, serviceLocationPairs)
