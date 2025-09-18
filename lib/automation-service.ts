@@ -175,7 +175,7 @@ export class AutomationService {
             phone: profile.phone,
             // Enhanced context for local SEO
             serviceArea: profile.googleData?.serviceArea,
-            serviceTypes: profile.googleData?.serviceTypes || profile.serviceTypes,
+            serviceTypes: profile.googleData?.serviceTypes || [],
             allCategories: profile.googleData?.allCategories,
             businessHours: profile.googleData?.businessHours,
             rating: profile.rating,
