@@ -150,10 +150,10 @@ export default function ClientDetailPage() {
         notes: realClient.notes || '',
         avatar: realClient.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2),
         createdAt: realClient.createdAt.toISOString(),
-        // Phone tracking properties
-        trackingPhoneNumber: realClient.trackingPhoneNumber,
-        trackingPhoneSid: realClient.trackingPhoneSid,
-        customWebhookUrl: realClient.customWebhookUrl
+        // Phone tracking properties (will be loaded from Firebase phone assignments)
+        trackingPhoneNumber: undefined, // TODO: Load from Firebase phone assignments
+        trackingPhoneSid: undefined,    // TODO: Load from Firebase phone assignments  
+        customWebhookUrl: undefined     // TODO: Load from Firebase phone assignments
       }
       
       if (realClient.googleBusinessProfile) {
