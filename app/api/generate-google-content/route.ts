@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { localSEOContentGenerator, BusinessContext } from '@/lib/local-seo-content-generator'
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
@@ -13,61 +14,65 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`[Google Content Generator] Generating content for profile: ${profileId}`)
+    console.log(`[Google Content Generator] Generating LOCAL SEO content for profile: ${profileId}`)
 
-    // Prepare ChatGPT prompt based on business info and content type
-    const prompt = generatePrompt(businessInfo, contentType, tone)
-    
-    // Call OpenAI API (you'll need to add OPENAI_API_KEY to your environment)
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
+    // Convert businessInfo to enhanced BusinessContext
+    const businessContext: BusinessContext = {
+      name: businessInfo.name || 'Business',
+      category: businessInfo.category || 'Service Provider',
+      address: businessInfo.address || '',
+      website: businessInfo.website,
+      phone: businessInfo.phone,
+      serviceArea: businessInfo.serviceArea || {
+        businessType: businessInfo.businessType,
+        places: businessInfo.places || [],
+        regionCode: businessInfo.regionCode
       },
-      body: JSON.stringify({
-        model: 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a professional content creator specializing in Google Business Profile posts. Create engaging, relevant content that drives customer engagement and showcases the business value.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 300,
-        temperature: 0.7
-      })
+      serviceTypes: businessInfo.serviceTypes || [],
+      allCategories: businessInfo.allCategories || [],
+      businessHours: businessInfo.businessHours || [],
+      rating: businessInfo.rating,
+      reviewCount: businessInfo.reviewCount
+    }
+
+    console.log('[Google Content Generator] Enhanced business context:', {
+      name: businessContext.name,
+      category: businessContext.category,
+      serviceAreaPlaces: businessContext.serviceArea?.places?.length || 0,
+      serviceTypes: businessContext.serviceTypes?.length || 0,
+      allCategories: businessContext.allCategories?.length || 0
     })
 
-    if (!openaiResponse.ok) {
-      throw new Error(`OpenAI API error: ${openaiResponse.status}`)
-    }
+    // Generate enhanced local SEO content
+    const enhancedContent = await localSEOContentGenerator.generateOptimizedContent(
+      businessContext,
+      contentType
+    )
 
-    const openaiData = await openaiResponse.json()
-    const generatedContent = openaiData.choices[0]?.message?.content
-
-    if (!generatedContent) {
-      throw new Error('No content generated from ChatGPT')
-    }
-
-    console.log(`[Google Content Generator] Content generated successfully for ${profileId}`)
-
-    // Parse the generated content to extract title and description
-    const contentLines = generatedContent.trim().split('\n').filter((line: string) => line.trim())
-    const title = contentLines[0]?.replace(/^(Title:|Post:)\s*/i, '').substring(0, 100)
-    const description = contentLines.slice(1).join('\n').substring(0, 1500)
+    console.log(`[Google Content Generator] LOCAL SEO content generated with:`)
+    console.log(`- Service-location pairs: ${enhancedContent.serviceLocationPairs.length}`)
+    console.log(`- Local keywords: ${enhancedContent.localKeywords.length}`)
+    console.log(`- Hashtags: ${enhancedContent.hashtags.length}`)
 
     return NextResponse.json({
       success: true,
       content: {
-        title: title || 'Business Update',
-        description: description || generatedContent,
-        fullContent: generatedContent
+        title: enhancedContent.title,
+        description: enhancedContent.description,
+        fullContent: `${enhancedContent.title}\n\n${enhancedContent.description}\n\n${enhancedContent.hashtags.join(' ')}`,
+        hashtags: enhancedContent.hashtags,
+        localKeywords: enhancedContent.localKeywords,
+        serviceLocationPairs: enhancedContent.serviceLocationPairs,
+        seoOptimized: true
       },
-      profileId
+      profileId,
+      seoMetadata: {
+        localKeywords: enhancedContent.localKeywords,
+        serviceLocationPairs: enhancedContent.serviceLocationPairs,
+        targetLocations: enhancedContent.serviceLocationPairs.map(p => p.location),
+        targetServices: enhancedContent.serviceLocationPairs.map(p => p.service),
+        generatedAt: new Date().toISOString()
+      }
     })
 
   } catch (error) {

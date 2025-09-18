@@ -171,7 +171,18 @@ export class AutomationService {
             name: profile.name,
             category: profile.category,
             address: profile.address,
-            website: profile.website
+            website: profile.website,
+            phone: profile.phone,
+            // Enhanced context for local SEO
+            serviceArea: profile.googleData?.serviceArea,
+            serviceTypes: profile.googleData?.serviceTypes || profile.serviceTypes,
+            allCategories: profile.googleData?.allCategories,
+            businessHours: profile.googleData?.businessHours,
+            rating: profile.rating,
+            reviewCount: profile.reviewCount,
+            businessType: profile.googleData?.businessType,
+            places: profile.googleData?.serviceArea?.places?.placeInfos || [],
+            regionCode: profile.googleData?.serviceArea?.regionCode
           },
           contentType: settings.contentType,
           tone: settings.tone
