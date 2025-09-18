@@ -462,15 +462,44 @@ export default function ClientsPage() {
                        {editingCell?.clientId === client.id && editingCell?.field === 'googleBusiness' ? (
                          <Select 
                            value={editValue} 
-                           onValueChange={(value) => {
+                           onValueChange={async (value) => {
                              if (value === 'none') {
-                               updateClient(client.id, { 
+                               await updateClient(client.id, { 
                                  googleBusinessProfileId: undefined,
                                  googleBusinessProfile: undefined 
                                })
                              } else {
-                               // Use connectGoogleBusinessProfile with auto-assignment
-                               connectGoogleBusinessProfile(client.id, value, true)
+                               // Get profile data and connect with auto-assignment
+                               console.log('[Clients Page] Connecting Google Business Profile:', { clientId: client.id, profileId: value })
+                               const selectedProfile = profiles.find(p => p.id === value)
+                               if (selectedProfile) {
+                                 console.log('[Clients Page] Found profile data:', selectedProfile.name)
+                                 
+                                 // Update client with Google Business Profile data
+                                 const updates = {
+                                   googleBusinessProfileId: value,
+                                   googleBusinessProfile: selectedProfile,
+                                   // Auto-assign data if client fields are empty
+                                   ...((!client.phone && selectedProfile.phone) ? { phone: selectedProfile.phone } : {}),
+                                   ...((!client.website && selectedProfile.website) ? { website: selectedProfile.website } : {}),
+                                   // Add category as tag if not already present
+                                   tags: client.tags.includes(selectedProfile.category) 
+                                     ? client.tags 
+                                     : [...client.tags, selectedProfile.category]
+                                 }
+                                 
+                                 const success = await updateClient(client.id, updates)
+                                 console.log('[Clients Page] Connection result:', !!success)
+                                 
+                                 if (success) {
+                                   alert(`✅ Connected ${selectedProfile.name} to ${client.name}!${(!client.phone && selectedProfile.phone) || (!client.website && selectedProfile.website) ? '\n\nClient data has been auto-updated with business information.' : ''}`)
+                                 } else {
+                                   alert('Failed to connect Google Business Profile. Please try again.')
+                                 }
+                               } else {
+                                 console.error('[Clients Page] Profile not found:', value)
+                                 alert('Profile not found. Please try again.')
+                               }
                              }
                              setEditingCell(null)
                            }}
