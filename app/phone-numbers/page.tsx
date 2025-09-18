@@ -133,10 +133,17 @@ export default function PhoneNumbersPage() {
 
   const handleSaveClientAssignment = async (numberSid: string) => {
     try {
+      if (!clients || clients.length === 0) {
+        console.error('No clients available')
+        alert('No clients found. Please create clients first.')
+        return
+      }
+
       const selectedClient = clients.find(c => c.id === selectedClientId)
       
       if (!selectedClient && selectedClientId !== '') {
         console.error('Selected client not found')
+        alert('Selected client not found')
         return
       }
 
@@ -183,6 +190,20 @@ export default function PhoneNumbersPage() {
 
   if (!mounted) return null
 
+  // Show loading state while clients are loading
+  if (!clients) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 text-gray-400 animate-spin mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Loading clients...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -217,7 +238,7 @@ export default function PhoneNumbersPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-600">Total Numbers</p>
-                <p className="text-2xl font-bold text-gray-900">{phoneNumbers.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{phoneNumbers?.length || 0}</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <PhoneCall className="h-6 w-6 text-blue-600" />
@@ -232,7 +253,7 @@ export default function PhoneNumbersPage() {
               <div>
                 <p className="text-sm font-medium text-green-600">Assigned</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {phoneNumbers.filter(num => num.assignedClientId).length}
+                  {phoneNumbers?.filter(num => num.assignedClientId).length || 0}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -248,7 +269,7 @@ export default function PhoneNumbersPage() {
               <div>
                 <p className="text-sm font-medium text-orange-600">Unassigned</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {phoneNumbers.filter(num => !num.assignedClientId).length}
+                  {phoneNumbers?.filter(num => !num.assignedClientId).length || 0}
                 </p>
               </div>
               <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
@@ -391,11 +412,17 @@ export default function PhoneNumbersPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="">No client assigned</SelectItem>
-                                  {clients.map((client) => (
-                                    <SelectItem key={client.id} value={client.id}>
-                                      {client.name}
+                                  {clients && clients.length > 0 ? (
+                                    clients.map((client) => (
+                                      <SelectItem key={client.id} value={client.id}>
+                                        {client.name}
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <SelectItem value="" disabled>
+                                      No clients available - create clients first
                                     </SelectItem>
-                                  ))}
+                                  )}
                                 </SelectContent>
                               </Select>
                               <Button
