@@ -160,8 +160,8 @@ export default function ClientsPage() {
           bValue = b.email || ''
           break
         case 'created':
-          aValue = a.createdAt
-          bValue = b.createdAt
+          aValue = a.createdAt instanceof Date ? a.createdAt.toISOString() : a.createdAt
+          bValue = b.createdAt instanceof Date ? b.createdAt.toISOString() : b.createdAt
           break
         default:
           aValue = a.name
