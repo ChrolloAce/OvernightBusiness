@@ -109,11 +109,7 @@ export default function ClientsPage() {
       status: 'prospect',
       tags: [],
       notes: undefined,
-      googleBusinessProfileId: undefined,
-      activeProjects: 0,
-      lastActivity: new Date().toISOString(),
-      totalRevenue: 0,
-      outstandingInvoices: 0
+      googleBusinessProfileId: undefined
     })
     
     // Immediately start editing the name
@@ -524,7 +520,7 @@ export default function ClientsPage() {
                        style={{ width: columnWidths.projects }}
                      >
                        <span className="text-sm font-medium text-gray-700">
-                         {client.activeProjects || 0}
+                         0
                        </span>
                      </div>
 

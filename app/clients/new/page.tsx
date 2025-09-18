@@ -81,10 +81,7 @@ export default function NewClientPage() {
         status: formData.status,
         tags: formData.tags,
         notes: formData.notes || undefined,
-        activeProjects: 0,
-        lastActivity: new Date().toISOString(),
-        totalRevenue: 0,
-        outstandingInvoices: 0
+        googleBusinessProfileId: formData.googleBusinessProfileId !== 'none' ? formData.googleBusinessProfileId : undefined
       })
       
       console.log('Client created successfully:', newClient)
