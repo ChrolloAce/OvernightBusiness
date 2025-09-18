@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useClients } from '@/contexts/client-context'
 
 interface TwilioPhoneNumber {
   sid: string
@@ -33,6 +34,9 @@ interface TwilioPhoneNumber {
     sms: boolean
     mms: boolean
   }
+  // Client assignment
+  assignedClientId?: string
+  assignedClientName?: string
 }
 
 export default function PhoneNumbersPage() {
@@ -42,6 +46,9 @@ export default function PhoneNumbersPage() {
   const [editingNumber, setEditingNumber] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [copiedNumber, setCopiedNumber] = useState<string | null>(null)
+  const [editingClient, setEditingClient] = useState<string | null>(null)
+  const [selectedClientId, setSelectedClientId] = useState('')
+  const { clients } = useClients()
 
   useEffect(() => {
     setMounted(true)
@@ -119,6 +126,61 @@ export default function PhoneNumbersPage() {
     await loadPhoneNumbers()
   }
 
+  const handleAssignClient = (numberSid: string, currentClientId?: string) => {
+    setEditingClient(numberSid)
+    setSelectedClientId(currentClientId || '')
+  }
+
+  const handleSaveClientAssignment = async (numberSid: string) => {
+    try {
+      const selectedClient = clients.find(c => c.id === selectedClientId)
+      
+      if (!selectedClient && selectedClientId !== '') {
+        console.error('Selected client not found')
+        return
+      }
+
+      // Update the phone number with client assignment
+      const updatedNumbers = phoneNumbers.map(num => {
+        if (num.sid === numberSid) {
+          return {
+            ...num,
+            assignedClientId: selectedClientId || undefined,
+            assignedClientName: selectedClient?.name || undefined,
+            // Auto-set forward number to client's phone if available
+            forwardToNumber: selectedClient?.phone || num.forwardToNumber
+          }
+        }
+        return num
+      })
+
+      setPhoneNumbers(updatedNumbers)
+      localStorage.setItem('twilio_phone_numbers', JSON.stringify(updatedNumbers))
+
+      // Update the client with the tracking phone number
+      if (selectedClient) {
+        const phoneNumber = phoneNumbers.find(num => num.sid === numberSid)
+        if (phoneNumber) {
+          // Here you would call updateClient to set the trackingPhoneNumber
+          console.log(`[PhoneNumbers] Assigned ${phoneNumber.phoneNumber} to client ${selectedClient.name}`)
+          
+          // TODO: Call Twilio API to update webhook configuration for this specific number
+          // This would set up call forwarding to the client's actual phone number
+        }
+      }
+
+      setEditingClient(null)
+      setSelectedClientId('')
+    } catch (error) {
+      console.error('Error assigning client to phone number:', error)
+    }
+  }
+
+  const handleCancelClientEdit = () => {
+    setEditingClient(null)
+    setSelectedClientId('')
+  }
+
   if (!mounted) return null
 
   return (
@@ -146,6 +208,55 @@ export default function PhoneNumbersPage() {
             Buy Number
           </Button>
         </div>
+      </div>
+
+      {/* Assignment Summary */}
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
+        <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-600">Total Numbers</p>
+                <p className="text-2xl font-bold text-gray-900">{phoneNumbers.length}</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <PhoneCall className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-600">Assigned</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {phoneNumbers.filter(num => num.assignedClientId).length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <Check className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-orange-50 to-red-50 border-orange-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-orange-600">Unassigned</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {phoneNumbers.filter(num => !num.assignedClientId).length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-orange-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Phone Numbers List */}
@@ -260,6 +371,67 @@ export default function PhoneNumbersPage() {
                                 size="sm"
                                 onClick={() => handleEditForwardNumber(number.sid, number.forwardToNumber)}
                                 className="h-6 w-6 p-0 text-gray-400 hover:text-blue-600"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">Assigned Client:</span>
+                          {editingClient === number.sid ? (
+                            <div className="flex items-center space-x-2">
+                              <Select 
+                                value={selectedClientId} 
+                                onValueChange={setSelectedClientId}
+                              >
+                                <SelectTrigger className="h-8 text-sm border-blue-200 focus:border-blue-400 w-48">
+                                  <SelectValue placeholder="Select client..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">No client assigned</SelectItem>
+                                  {clients.map((client) => (
+                                    <SelectItem key={client.id} value={client.id}>
+                                      {client.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSaveClientAssignment(number.sid)}
+                                className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                              >
+                                <Save className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCancelClientEdit}
+                                className="h-8 w-8 p-0 text-gray-600 hover:text-gray-700"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              {number.assignedClientName ? (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                  {number.assignedClientName}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-gray-50 text-gray-600">
+                                  Unassigned
+                                </Badge>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleAssignClient(number.sid, number.assignedClientId)}
+                                className="h-6 w-6 p-0 text-gray-400 hover:text-blue-600"
+                                title="Assign to client"
                               >
                                 <Edit className="h-3 w-3" />
                               </Button>
