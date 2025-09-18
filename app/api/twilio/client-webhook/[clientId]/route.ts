@@ -79,7 +79,7 @@ export async function POST(
           toNumber: to,
           forwardedTo: forwardToNumber,
           status: callStatus,
-          direction: direction || 'inbound'
+          direction: (direction as 'inbound' | 'outbound') || 'inbound'
         })
         
         console.log(`[Client Webhook ${clientId}] Call record saved to Firebase:`, callRecord.id)
