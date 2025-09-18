@@ -60,6 +60,7 @@ model Client {
   websites    Website[]
   adAccounts  AdAccount[]
   auditLogs   AuditLog[]
+  phoneAssignments PhoneAssignment[]
   
   @@map("clients")
 }
@@ -285,6 +286,49 @@ model AuditLog {
   client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   
   @@map("audit_logs")
+}
+
+// Phone System Models
+model PhoneAssignment {
+  id              String       @id @default(cuid())
+  twilioSid       String       @unique
+  phoneNumber     String
+  clientId        String?
+  forwardToNumber String?
+  isActive        Boolean      @default(true)
+  webhookUrl      String?
+  lastCallAt      DateTime?
+  totalCalls      Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  // Relations
+  client          Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  callRecords     CallRecord[]
+  
+  @@index([clientId])
+  @@map("phone_assignments")
+}
+
+model CallRecord {
+  id                String          @id @default(cuid())
+  twilioCallSid     String          @unique
+  phoneAssignmentId String
+  fromNumber        String
+  toNumber          String
+  forwardedTo       String?
+  duration          Int?            // Duration in seconds
+  recordingUrl      String?
+  status            String
+  direction         String          @default("inbound")
+  createdAt         DateTime        @default(now())
+  
+  // Relations
+  phoneAssignment   PhoneAssignment @relation(fields: [phoneAssignmentId], references: [id], onDelete: Cascade)
+  
+  @@index([phoneAssignmentId])
+  @@index([createdAt])
+  @@map("call_records")
 }
 
 // Enums

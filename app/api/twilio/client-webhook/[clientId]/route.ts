@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ClientManager } from '@/lib/managers/client-manager'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 export async function POST(
   request: NextRequest,
@@ -24,18 +26,49 @@ export async function POST(
       direction
     })
 
-    // Get client data to find their real phone number
-    const clientManager = ClientManager.getInstance()
-    const client = clientManager.getClient(clientId)
-    
-    // Use client's phone number or fallback to default
+    // Try to get client data from database first
     let forwardToNumber = '+17862903664' // Default fallback
+    let phoneAssignmentId: string | null = null
     
-    if (client && client.phone) {
-      forwardToNumber = client.phone
-      console.log(`[Client Webhook ${clientId}] Found client phone: ${client.phone}`)
-    } else {
-      console.log(`[Client Webhook ${clientId}] No client phone found, using default: ${forwardToNumber}`)
+    try {
+      // Check if database is available
+      if (process.env.DATABASE_URL) {
+        // Get client from database
+        const client = await prisma.client.findUnique({
+          where: { id: clientId },
+          select: {
+            id: true,
+            name: true,
+            phone: true
+          }
+        })
+        
+        if (client && client.phone) {
+          forwardToNumber = client.phone
+          console.log(`[Client Webhook ${clientId}] Found client ${client.name} with phone: ${client.phone}`)
+        } else {
+          console.log(`[Client Webhook ${clientId}] Client not found or no phone, using default: ${forwardToNumber}`)
+        }
+        
+        // Find phone assignment for this call
+        const phoneAssignment = await prisma.phoneAssignment.findFirst({
+          where: {
+            phoneNumber: to,
+            clientId: clientId
+          }
+        })
+        
+        if (phoneAssignment) {
+          phoneAssignmentId = phoneAssignment.id
+          if (phoneAssignment.forwardToNumber) {
+            forwardToNumber = phoneAssignment.forwardToNumber
+          }
+        }
+      } else {
+        console.log(`[Client Webhook ${clientId}] Database not configured, using default forwarding`)
+      }
+    } catch (dbError) {
+      console.error(`[Client Webhook ${clientId}] Database error, using fallback:`, dbError)
     }
     
     console.log(`[Client Webhook ${clientId}] Forwarding call to client phone: ${forwardToNumber}`)
@@ -49,23 +82,35 @@ export async function POST(
         <Say>Sorry, the call could not be completed. Please try again later.</Say>
       </Response>`
 
-    // Save call record for analytics
-    const callRecord = {
-      clientId: clientId,
-      twilioCallSid: callSid,
-      fromNumber: from,
-      toNumber: to, // This is the tracking number
-      forwardedToNumber: forwardToNumber, // Client's real number
-      status: callStatus,
-      direction: direction as 'inbound' | 'outbound',
-      startTime: new Date().toISOString()
+    // Save call record to database
+    try {
+      if (process.env.DATABASE_URL && phoneAssignmentId) {
+        const callRecord = await prisma.callRecord.create({
+          data: {
+            twilioCallSid: callSid,
+            phoneAssignmentId: phoneAssignmentId,
+            fromNumber: from,
+            toNumber: to,
+            forwardedTo: forwardToNumber,
+            status: callStatus,
+            direction: direction || 'inbound'
+          }
+        })
+        
+        console.log(`[Client Webhook ${clientId}] Call record saved to database:`, callRecord.id)
+      } else {
+        console.log(`[Client Webhook ${clientId}] Call record (not saved):`, {
+          clientId,
+          callSid,
+          from,
+          to,
+          forwardedTo: forwardToNumber,
+          status: callStatus
+        })
+      }
+    } catch (recordError) {
+      console.error(`[Client Webhook ${clientId}] Failed to save call record:`, recordError)
     }
-
-    // Log call record (in production, save to database)
-    console.log(`[Client Webhook ${clientId}] Call record:`, callRecord)
-    
-    // TODO: Save to database instead of localStorage (server-side doesn't have localStorage)
-    // For now, just log the call data for tracking
 
     return new NextResponse(twimlResponse, {
       headers: { 'Content-Type': 'text/xml' }
