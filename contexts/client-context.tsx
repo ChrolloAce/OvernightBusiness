@@ -71,28 +71,45 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const deleteClient = (id: string) => {
-    const success = clientManager.deleteClient(id)
-    if (success) {
-      loadClients() // Refresh the list
-      // Clear selected client if it was deleted
-      if (selectedClient?.id === id) {
-        setSelectedClient(null)
+  const deleteClient = async (id: string) => {
+    try {
+      console.log('[ClientProvider] Deleting client from Firebase:', id)
+      const success = await clientManager.deleteClient(id)
+      if (success) {
+        await loadClients() // Refresh the list
+        // Clear selected client if it was deleted
+        if (selectedClient?.id === id) {
+          setSelectedClient(null)
+        }
       }
+      return success
+    } catch (error) {
+      console.error('[ClientProvider] Error deleting client:', error)
+      return false
     }
-    return success
   }
 
-  const connectGoogleBusinessProfile = (clientId: string, profileId: string, autoAssignData: boolean = true) => {
-    const success = clientManager.connectGoogleBusinessProfile(clientId, profileId, autoAssignData)
-    if (success) {
-      loadClients() // Refresh the list
+  const connectGoogleBusinessProfile = async (clientId: string, profileId: string, autoAssignData: boolean = true) => {
+    try {
+      console.log('[ClientProvider] Connecting Google Business Profile in Firebase:', { clientId, profileId })
+      const success = await clientManager.connectGoogleBusinessProfile(clientId, profileId, undefined, autoAssignData)
+      if (success) {
+        await loadClients() // Refresh the list
+      }
+      return success
+    } catch (error) {
+      console.error('[ClientProvider] Error connecting Google Business Profile:', error)
+      return false
     }
-    return success
   }
 
-  const getClientByGoogleBusinessProfileId = (profileId: string) => {
-    return clientManager.getClientByGoogleBusinessProfileId(profileId)
+  const getClientByGoogleBusinessProfileId = async (profileId: string) => {
+    try {
+      return await clientManager.getClientByGoogleBusinessProfileId(profileId)
+    } catch (error) {
+      console.error('[ClientProvider] Error finding client by Google profile:', error)
+      return null
+    }
   }
 
   useEffect(() => {
