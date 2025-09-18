@@ -61,12 +61,11 @@ export async function POST(
       startTime: new Date().toISOString()
     }
 
-    // Store call record in localStorage (in production, use database)
-    const existingCalls = JSON.parse(localStorage.getItem(`client_calls_${clientId}`) || '[]')
-    existingCalls.push(callRecord)
-    localStorage.setItem(`client_calls_${clientId}`, JSON.stringify(existingCalls))
-
-    console.log(`[Client Webhook ${clientId}] Call record saved:`, callRecord)
+    // Log call record (in production, save to database)
+    console.log(`[Client Webhook ${clientId}] Call record:`, callRecord)
+    
+    // TODO: Save to database instead of localStorage (server-side doesn't have localStorage)
+    // For now, just log the call data for tracking
 
     return new NextResponse(twimlResponse, {
       headers: { 'Content-Type': 'text/xml' }

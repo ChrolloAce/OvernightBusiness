@@ -19,13 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useClients } from '@/contexts/client-context'
 
-interface TwilioPhoneNumber {
-  sid: string
-  phoneNumber: string
-  friendlyName: string
-  voiceUrl: string
-  status: 'active' | 'inactive'
-}
+// TwilioPhoneNumber interface removed - no longer needed since assignment is handled from Phone Numbers tab
 
 interface ClientPhoneTrackingProps {
   clientId: string
@@ -42,7 +36,6 @@ export function ClientPhoneTracking({
   trackingNumber, 
   trackingPhoneSid 
 }: ClientPhoneTrackingProps) {
-  const [availableNumbers, setAvailableNumbers] = useState<TwilioPhoneNumber[]>([])
   const [loading, setLoading] = useState(false)
   const [editingPhone, setEditingPhone] = useState(false)
   const [phoneValue, setPhoneValue] = useState(clientPhone || '')
@@ -50,68 +43,9 @@ export function ClientPhoneTracking({
   
   const { updateClient } = useClients()
 
-  useEffect(() => {
-    loadAvailableNumbers()
-  }, [])
+  // useEffect and loadAvailableNumbers removed - no longer needed since assignment is handled from Phone Numbers tab
 
-  const loadAvailableNumbers = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch('/api/twilio/phone-numbers')
-      const data = await response.json()
-      
-      if (data.success) {
-        setAvailableNumbers(data.phoneNumbers)
-      }
-    } catch (error) {
-      console.error('Error loading phone numbers:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleAssignTrackingNumber = async (phoneSid: string, phoneNumber: string) => {
-    try {
-      // Generate custom webhook URL for this client
-      const customWebhookUrl = `https://overnight-business.vercel.app/api/twilio/client-webhook/${clientId}`
-      
-      console.log(`[ClientPhoneTracking] Assigning tracking number ${phoneNumber} to client ${clientName}`)
-      
-      // Update Twilio phone number configuration to use custom webhook
-      const webhookResponse = await fetch('/api/twilio/update-webhook', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          phoneSid: phoneSid,
-          webhookUrl: customWebhookUrl,
-          clientId: clientId
-        })
-      })
-
-      const webhookResult = await webhookResponse.json()
-      
-      if (webhookResult.success) {
-        // Update client with tracking number info
-        updateClient(clientId, {
-          trackingPhoneNumber: phoneNumber,
-          trackingPhoneSid: phoneSid,
-          customWebhookUrl: customWebhookUrl
-        })
-
-        console.log(`[ClientPhoneTracking] Successfully assigned tracking number ${phoneNumber} to client ${clientName}`)
-        alert(`Successfully assigned tracking number ${phoneNumber} to ${clientName}!`)
-      } else {
-        console.error('Failed to update Twilio webhook:', webhookResult.error)
-        alert(`Error: ${webhookResult.error}`)
-      }
-      
-    } catch (error) {
-      console.error('Error assigning tracking number:', error)
-      alert('Error assigning tracking number. Please try again.')
-    }
-  }
+  // Assignment functionality removed - now handled from Phone Numbers tab
 
   const handleSaveClientPhone = () => {
     updateClient(clientId, { phone: phoneValue })
@@ -203,23 +137,24 @@ export function ClientPhoneTracking({
               </div>
             </div>
 
-            {/* Tracking Number Assignment */}
+            {/* Tracking Number Display Only */}
             <div className="flex items-center justify-between">
               <div>
                 <label className="text-sm font-medium text-gray-700">Tracking Number</label>
-                <p className="text-xs text-gray-500">Twilio number for call tracking</p>
+                <p className="text-xs text-gray-500">Assigned from Phone Numbers tab</p>
               </div>
               <div className="flex items-center space-x-2">
                 {trackingNumber ? (
                   <>
-                    <span className="text-sm font-mono text-gray-900">
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                       {formatPhoneNumber(trackingNumber)}
-                    </span>
+                    </Badge>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => copyToClipboard(trackingNumber)}
                       className="h-6 w-6 p-0 text-gray-400 hover:text-blue-600"
+                      title="Copy tracking number"
                     >
                       {copiedText === trackingNumber ? (
                         <Check className="h-3 w-3 text-green-600" />
@@ -229,28 +164,14 @@ export function ClientPhoneTracking({
                     </Button>
                   </>
                 ) : (
-                  <Select onValueChange={(value) => {
-                    const selectedNumber = availableNumbers.find(num => num.sid === value)
-                    if (selectedNumber) {
-                      handleAssignTrackingNumber(selectedNumber.sid, selectedNumber.phoneNumber)
-                    }
-                  }}>
-                    <SelectTrigger className="w-48 h-8 text-sm">
-                      <SelectValue placeholder="Assign tracking number" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableNumbers.map((number) => (
-                        <SelectItem key={number.sid} value={number.sid}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>{formatPhoneNumber(number.phoneNumber)}</span>
-                            <Badge variant="secondary" className="text-xs ml-2">
-                              {number.friendlyName}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="text-right">
+                    <Badge variant="outline" className="bg-gray-50 text-gray-600">
+                      No tracking number
+                    </Badge>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Assign from Phone Numbers tab
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
