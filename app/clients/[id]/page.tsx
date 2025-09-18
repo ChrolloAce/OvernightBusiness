@@ -149,7 +149,7 @@ export default function ClientDetailPage() {
         tags: realClient.tags,
         notes: realClient.notes || '',
         avatar: realClient.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2),
-        createdAt: realClient.createdAt,
+        createdAt: realClient.createdAt.toISOString(),
         // Phone tracking properties
         trackingPhoneNumber: realClient.trackingPhoneNumber,
         trackingPhoneSid: realClient.trackingPhoneSid,
