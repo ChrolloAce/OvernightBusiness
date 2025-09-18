@@ -86,7 +86,7 @@ export class FirebaseMigrationService {
       console.log('✅ All localStorage data cleared')
 
       // Step 6: Log migration completion
-      await this.logAuditEvent('migration', 'system', 'complete_migration', {
+      await this.logAuditEvent('create', 'project', 'complete_migration', {
         migrated: results.migrated
       })
 
