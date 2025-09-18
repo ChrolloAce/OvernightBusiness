@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 interface Company {
   id: string
   name: string
-  email: string
+  email?: string
   phone?: string
   website?: string
   industry?: string
@@ -272,7 +272,7 @@ export default function CompaniesPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-900">{company.name}</h3>
-                        <p className="text-sm text-gray-600">{company.email}</p>
+                        <p className="text-sm text-gray-600">{company.email || 'No email set'}</p>
                         <div className="flex items-center space-x-2 mt-2">
                           <Badge className={getSizeColor(company.size || 'small')} variant="outline">
                             {company.size || 'small'}
@@ -328,7 +328,7 @@ export default function CompaniesPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex items-center space-x-2">
                         <Mail className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm">{selectedCompany.email}</span>
+                        <span className="text-sm">{selectedCompany.email || 'No email set'}</span>
                       </div>
                       {selectedCompany.phone && (
                         <div className="flex items-center space-x-2">

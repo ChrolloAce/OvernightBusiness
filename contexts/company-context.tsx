@@ -6,7 +6,7 @@ import { firebaseCompanyService, firebaseUserService } from '@/lib/firebase/comp
 interface Company {
   id: string
   name: string
-  email: string
+  email?: string
   phone?: string
   website?: string
   industry?: string
