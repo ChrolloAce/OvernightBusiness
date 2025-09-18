@@ -200,17 +200,70 @@ export default function PhoneNumbersPage() {
         console.error('[PhoneNumbers] Failed to save to localStorage:', storageError)
       }
 
-      // Log assignment success
+      // Update Twilio webhook configuration to set up call forwarding
       if (selectedClient) {
         const phoneNumber = phoneNumbers.find(num => num.sid === numberSid)
         if (phoneNumber) {
-          console.log(`[PhoneNumbers] Successfully assigned ${phoneNumber.phoneNumber} to client ${selectedClient.name}`)
+          console.log(`[PhoneNumbers] Updating Twilio webhook for ${phoneNumber.phoneNumber} to forward to client ${selectedClient.name}`)
           
-          // TODO: Call Twilio API to update webhook configuration for this specific number
-          // This would set up call forwarding to the client's actual phone number
+          try {
+            // Call Twilio API to update webhook configuration for this specific client
+            const webhookResponse = await fetch('/api/twilio/update-webhook', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                phoneSid: numberSid,
+                webhookUrl: `https://overnight-business.vercel.app/api/twilio/client-webhook/${selectedClient.id}`,
+                clientId: selectedClient.id
+              })
+            })
+
+            const webhookResult = await webhookResponse.json()
+            
+            if (webhookResult.success) {
+              console.log(`[PhoneNumbers] Successfully configured Twilio webhook for ${phoneNumber.phoneNumber}`)
+              alert(`✅ Successfully assigned ${phoneNumber.phoneNumber} to ${selectedClient.name}!\n\nCalls to this number will now forward to ${selectedClient.phone || 'the default number'}.`)
+            } else {
+              console.error('Failed to update Twilio webhook:', webhookResult.error)
+              alert(`⚠️ Assignment saved locally but failed to update Twilio configuration: ${webhookResult.error}`)
+            }
+          } catch (webhookError) {
+            console.error('Error updating Twilio webhook:', webhookError)
+            alert(`⚠️ Assignment saved locally but failed to update Twilio configuration. Check console for details.`)
+          }
         }
       } else {
-        console.log(`[PhoneNumbers] Unassigned phone number ${numberSid}`)
+        console.log(`[PhoneNumbers] Unassigned phone number ${numberSid} - resetting to default webhook`)
+        
+        try {
+          // Reset to default webhook when unassigning
+          const webhookResponse = await fetch('/api/twilio/update-webhook', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              phoneSid: numberSid,
+              webhookUrl: `https://overnight-business.vercel.app/api/twilio/webhook`,
+              clientId: null
+            })
+          })
+
+          const webhookResult = await webhookResponse.json()
+          
+          if (webhookResult.success) {
+            console.log(`[PhoneNumbers] Reset webhook to default for phone number`)
+            alert(`✅ Phone number unassigned and reset to default forwarding.`)
+          } else {
+            console.error('Failed to reset Twilio webhook:', webhookResult.error)
+            alert(`⚠️ Unassignment saved locally but failed to reset Twilio configuration.`)
+          }
+        } catch (webhookError) {
+          console.error('Error resetting Twilio webhook:', webhookError)
+          alert(`⚠️ Unassignment saved locally but failed to reset Twilio configuration.`)
+        }
       }
 
       setEditingClient(null)
