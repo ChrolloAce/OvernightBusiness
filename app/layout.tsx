@@ -5,6 +5,8 @@ import { ProfileProvider } from '@/contexts/profile-context'
 import { ClientProvider } from '@/contexts/client-context'
 import { TaskProvider } from '@/contexts/task-context'
 import { CompanyProvider } from '@/contexts/company-context'
+import { AuthProvider } from '@/contexts/auth-context'
+import { AuthGuard } from '@/components/auth-guard'
 import { ConditionalLayout } from '@/components/conditional-layout'
 import { ClientInitializer } from '@/components/client-initializer'
 import { ClientDataInitializer } from '@/components/client-data-initializer'
@@ -30,28 +32,28 @@ export default function RootLayout({
   return (
     <html lang="en" className="light">
       <body className={`${inter.className} bg-gray-50`}>
-        <CompanyProvider>
-          <FirebaseAuthProvider>
-            <ProfileProvider>
-              <ClientProvider>
-                <TaskProvider>
-                <AutoLogin>
-                  <div className="min-h-screen bg-gray-50">
-                    <ConditionalLayout>
-                      {children}
-                    </ConditionalLayout>
-                  </div>
-                </AutoLogin>
-                
-                <ClientInitializer />
-                <ClientDataInitializer />
-                <AutomationInitializer />
-                <CronInitializer />
-                </TaskProvider>
-              </ClientProvider>
-            </ProfileProvider>
-          </FirebaseAuthProvider>
-        </CompanyProvider>
+        <AuthProvider>
+          <AuthGuard>
+            <CompanyProvider>
+              <ProfileProvider>
+                <ClientProvider>
+                  <TaskProvider>
+                    <div className="min-h-screen bg-gray-50">
+                      <ConditionalLayout>
+                        {children}
+                      </ConditionalLayout>
+                    </div>
+                    
+                    <ClientInitializer />
+                    <ClientDataInitializer />
+                    <AutomationInitializer />
+                    <CronInitializer />
+                  </TaskProvider>
+                </ClientProvider>
+              </ProfileProvider>
+            </CompanyProvider>
+          </AuthGuard>
+        </AuthProvider>
       </body>
     </html>
   )
