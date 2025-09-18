@@ -27,6 +27,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useTheme } from '@/components/theme-provider'
+import { MigrationTrigger } from '@/components/migration-trigger'
 
 export default function Dashboard() {
   const { theme, setTheme } = useTheme()
@@ -148,6 +149,9 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* Firebase Migration Component */}
+          <MigrationTrigger />
 
           {/* Stats Grid */}
           <div className="grid gap-3 lg:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
