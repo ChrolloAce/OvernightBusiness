@@ -14,7 +14,7 @@ import {
   serverTimestamp,
   writeBatch
 } from 'firebase/firestore'
-import { db, COLLECTIONS, FirebaseClient, convertFirestoreTimestamp, getCurrentCompanyId, getCurrentUserId } from '@/lib/firebase'
+import { db, COLLECTIONS, FirebaseClient, convertFirestoreTimestamp, getCurrentCompanyId, getCurrentUserId, ensureFirebaseAuth } from '@/lib/firebase'
 
 export class FirebaseClientService {
   private static instance: FirebaseClientService
@@ -30,6 +30,9 @@ export class FirebaseClientService {
   async getAllClients(): Promise<FirebaseClient[]> {
     try {
       console.log('[Firebase Client Service] Fetching all clients')
+      
+      // Ensure Firebase auth first
+      await ensureFirebaseAuth()
       
       const clientsRef = collection(db, COLLECTIONS.CLIENTS)
       const q = query(clientsRef, orderBy('createdAt', 'desc'))
@@ -85,6 +88,9 @@ export class FirebaseClientService {
   async createClient(clientData: Omit<FirebaseClient, 'id' | 'createdAt' | 'updatedAt'>): Promise<FirebaseClient> {
     try {
       console.log('[Firebase Client Service] Creating client:', clientData.name)
+      
+      // Ensure Firebase auth first
+      await ensureFirebaseAuth()
       
       const clientsRef = collection(db, COLLECTIONS.CLIENTS)
       const newClientRef = doc(clientsRef)

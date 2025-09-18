@@ -1,7 +1,7 @@
 // Firebase configuration and initialization
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
-import { getAuth } from 'firebase/auth'
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'
 import { getStorage } from 'firebase/storage'
 
 // Your Firebase configuration
@@ -38,6 +38,37 @@ if (process.env.NODE_ENV === 'development' && !(globalThis as any).firestoreEmul
 }
 
 export default app
+
+// Firebase Auth helpers
+export const ensureFirebaseAuth = async (): Promise<boolean> => {
+  try {
+    const user = auth.currentUser
+    if (!user) {
+      console.log('🔐 No Firebase user found, signing in anonymously...')
+      await signInAnonymously(auth)
+      console.log('✅ Firebase anonymous authentication successful')
+      return true
+    }
+    console.log('✅ Firebase user already authenticated:', user.uid)
+    return true
+  } catch (error) {
+    console.error('❌ Firebase authentication failed:', error)
+    return false
+  }
+}
+
+// Auto-authenticate when Firebase initializes
+if (typeof window !== 'undefined') {
+  // Only run in browser environment
+  onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      // Automatically sign in anonymously if no user
+      signInAnonymously(auth).catch((error) => {
+        console.error('Auto Firebase auth failed:', error)
+      })
+    }
+  })
+}
 
 // Data migration and cleanup utilities
 export const clearAllLocalStorageData = (): void => {

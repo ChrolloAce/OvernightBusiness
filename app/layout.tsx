@@ -10,6 +10,7 @@ import { ClientDataInitializer } from '@/components/client-data-initializer'
 import { AutomationInitializer } from '@/components/automation-initializer'
 import { CronInitializer } from '@/components/cron-initializer'
 import { AutoLogin } from '@/components/auto-login'
+import { FirebaseAuthProvider } from '@/components/firebase-auth-provider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -28,24 +29,26 @@ export default function RootLayout({
   return (
     <html lang="en" className="light">
       <body className={`${inter.className} bg-gray-50`}>
-        <ProfileProvider>
-          <ClientProvider>
-            <TaskProvider>
-              <AutoLogin>
-                <div className="min-h-screen bg-gray-50">
-                  <ConditionalLayout>
-                    {children}
-                  </ConditionalLayout>
-                </div>
-              </AutoLogin>
-              
-              <ClientInitializer />
-              <ClientDataInitializer />
-              <AutomationInitializer />
-              <CronInitializer />
-            </TaskProvider>
-          </ClientProvider>
-        </ProfileProvider>
+        <FirebaseAuthProvider>
+          <ProfileProvider>
+            <ClientProvider>
+              <TaskProvider>
+                <AutoLogin>
+                  <div className="min-h-screen bg-gray-50">
+                    <ConditionalLayout>
+                      {children}
+                    </ConditionalLayout>
+                  </div>
+                </AutoLogin>
+                
+                <ClientInitializer />
+                <ClientDataInitializer />
+                <AutomationInitializer />
+                <CronInitializer />
+              </TaskProvider>
+            </ClientProvider>
+          </ProfileProvider>
+        </FirebaseAuthProvider>
       </body>
     </html>
   )
