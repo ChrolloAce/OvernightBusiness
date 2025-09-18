@@ -1,6 +1,6 @@
 // Firebase-based Client Manager (replaces localStorage-based ClientManager)
 import { firebaseClientService } from '@/lib/firebase/client-service'
-import { FirebaseClient } from '@/lib/firebase'
+import { FirebaseClient, getCurrentCompanyId, getCurrentUserId } from '@/lib/firebase'
 
 export interface Client {
   id: string
@@ -129,6 +129,7 @@ export class FirebaseClientManager {
       console.log('[Firebase Client Manager] Creating client:', clientData.name)
       
       const firebaseClient = await firebaseClientService.createClient({
+        companyId: getCurrentCompanyId(),
         name: clientData.name,
         email: clientData.email,
         phone: clientData.phone,
@@ -138,7 +139,9 @@ export class FirebaseClientManager {
         tags: clientData.tags || [],
         notes: clientData.notes,
         googleBusinessProfileId: clientData.googleBusinessProfileId,
-        googleBusinessProfile: clientData.googleBusinessProfile
+        googleBusinessProfile: clientData.googleBusinessProfile,
+        assignedUserId: getCurrentUserId(),
+        createdBy: getCurrentUserId()
       })
       
       const client = this.convertFirebaseClient(firebaseClient)
