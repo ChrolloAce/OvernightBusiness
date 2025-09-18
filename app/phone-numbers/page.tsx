@@ -64,11 +64,27 @@ export default function PhoneNumbersPage() {
       const data = await response.json()
       
       if (data.success && data.phoneNumbers) {
-        setPhoneNumbers(data.phoneNumbers)
-        console.log(`[PhoneNumbers] Loaded ${data.phoneNumbers.length} phone numbers from Twilio`)
+        // Merge API data with locally stored assignment data
+        const storedAssignments = JSON.parse(localStorage.getItem('twilio_phone_numbers') || '[]')
+        
+        const mergedNumbers = data.phoneNumbers.map((apiNumber: any) => {
+          // Find existing assignment data for this number
+          const storedNumber = storedAssignments.find((stored: any) => stored.sid === apiNumber.sid)
+          
+          return {
+            ...apiNumber,
+            // Merge in assignment data if it exists
+            assignedClientId: storedNumber?.assignedClientId,
+            assignedClientName: storedNumber?.assignedClientName,
+            // Use stored forward number if available, otherwise use API default
+            forwardToNumber: storedNumber?.forwardToNumber || apiNumber.forwardToNumber
+          }
+        })
+        
+        setPhoneNumbers(mergedNumbers)
+        console.log(`[PhoneNumbers] Loaded ${mergedNumbers.length} phone numbers with assignment data`)
       } else {
         console.error('[PhoneNumbers] Failed to load phone numbers:', data.error)
-        // Fallback to empty array or show error
         setPhoneNumbers([])
       }
     } catch (error) {
@@ -127,59 +143,83 @@ export default function PhoneNumbersPage() {
   }
 
   const handleAssignClient = (numberSid: string, currentClientId?: string) => {
-    setEditingClient(numberSid)
-    setSelectedClientId(currentClientId || '')
+    try {
+      console.log('[PhoneNumbers] Starting client assignment edit:', { numberSid, currentClientId })
+      setEditingClient(numberSid)
+      setSelectedClientId(currentClientId || '')
+    } catch (error) {
+      console.error('Error starting client assignment:', error)
+      alert(`Error starting assignment: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
   const handleSaveClientAssignment = async (numberSid: string) => {
     try {
+      console.log('[PhoneNumbers] Starting client assignment:', { numberSid, selectedClientId, clientsLength: clients?.length })
+      
       if (!clients || clients.length === 0) {
         console.error('No clients available')
         alert('No clients found. Please create clients first.')
         return
       }
 
-      const selectedClient = clients.find(c => c.id === selectedClientId)
+      const selectedClient = selectedClientId ? clients.find(c => c.id === selectedClientId) : null
       
       if (!selectedClient && selectedClientId !== '') {
-        console.error('Selected client not found')
+        console.error('Selected client not found:', selectedClientId)
         alert('Selected client not found')
         return
       }
 
+      console.log('[PhoneNumbers] Found client:', selectedClient?.name || 'Unassigning')
+
       // Update the phone number with client assignment
       const updatedNumbers = phoneNumbers.map(num => {
         if (num.sid === numberSid) {
-          return {
+          const updatedNum = {
             ...num,
             assignedClientId: selectedClientId || undefined,
             assignedClientName: selectedClient?.name || undefined,
             // Auto-set forward number to client's phone if available
             forwardToNumber: selectedClient?.phone || num.forwardToNumber
           }
+          console.log('[PhoneNumbers] Updated number:', updatedNum)
+          return updatedNum
         }
         return num
       })
 
+      console.log('[PhoneNumbers] Saving updated numbers to localStorage')
       setPhoneNumbers(updatedNumbers)
-      localStorage.setItem('twilio_phone_numbers', JSON.stringify(updatedNumbers))
+      
+      // Save to localStorage safely
+      try {
+        localStorage.setItem('twilio_phone_numbers', JSON.stringify(updatedNumbers))
+        console.log('[PhoneNumbers] Successfully saved to localStorage')
+      } catch (storageError) {
+        console.error('[PhoneNumbers] Failed to save to localStorage:', storageError)
+      }
 
-      // Update the client with the tracking phone number
+      // Log assignment success
       if (selectedClient) {
         const phoneNumber = phoneNumbers.find(num => num.sid === numberSid)
         if (phoneNumber) {
-          // Here you would call updateClient to set the trackingPhoneNumber
-          console.log(`[PhoneNumbers] Assigned ${phoneNumber.phoneNumber} to client ${selectedClient.name}`)
+          console.log(`[PhoneNumbers] Successfully assigned ${phoneNumber.phoneNumber} to client ${selectedClient.name}`)
           
           // TODO: Call Twilio API to update webhook configuration for this specific number
           // This would set up call forwarding to the client's actual phone number
         }
+      } else {
+        console.log(`[PhoneNumbers] Unassigned phone number ${numberSid}`)
       }
 
       setEditingClient(null)
       setSelectedClientId('')
+      
+      console.log('[PhoneNumbers] Assignment completed successfully')
     } catch (error) {
       console.error('Error assigning client to phone number:', error)
+      alert(`Error assigning client: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
