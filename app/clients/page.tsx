@@ -101,26 +101,31 @@ export default function ClientsPage() {
     }
   }
 
-  const handleCreateClient = () => {
-    // Create a new client instantly with default values
-    const newClient = createClient({
-      name: 'Untitled Client',
-      email: undefined,
-      phone: undefined,
-      website: '',
-      status: 'prospect',
-      tags: [],
-      notes: undefined,
-      googleBusinessProfileId: undefined
-    })
-    
-    // Immediately start editing the name
-    setTimeout(() => {
-      setEditingCell({ clientId: newClient.id, field: 'name' })
-      setEditValue('Untitled Client')
-    }, 100)
-    
-    console.log('Client created instantly:', newClient.name)
+  const handleCreateClient = async () => {
+    try {
+      // Create a new client with default values
+      const newClient = await createClient({
+        name: 'Untitled Client',
+        email: undefined,
+        phone: undefined,
+        website: '',
+        status: 'prospect',
+        tags: [],
+        notes: undefined,
+        googleBusinessProfileId: undefined
+      })
+      
+      // Immediately start editing the name
+      setTimeout(() => {
+        setEditingCell({ clientId: newClient.id, field: 'name' })
+        setEditValue('Untitled Client')
+      }, 100)
+      
+      console.log('Client created successfully:', newClient.name)
+    } catch (error) {
+      console.error('Error creating client:', error)
+      alert('Failed to create client. Please try again.')
+    }
   }
 
   const getStatusColor = (status: string) => {

@@ -73,7 +73,7 @@ export default function NewClientPage() {
       console.log('Creating client:', formData)
       
       // Create the client using the client manager
-      const newClient = createClient({
+      const newClient = await createClient({
         name: formData.name,
         email: formData.email || undefined,
         phone: formData.phone || undefined,
@@ -89,7 +89,7 @@ export default function NewClientPage() {
       // Connect Google Business Profile with auto-assignment if selected
       if (formData.googleBusinessProfileId && formData.googleBusinessProfileId !== 'none') {
         console.log('Connecting Google Business Profile with auto-assignment:', formData.googleBusinessProfileId)
-        connectGoogleBusinessProfile(newClient.id, formData.googleBusinessProfileId, true)
+        await connectGoogleBusinessProfile(newClient.id, formData.googleBusinessProfileId, true)
       }
       
       // Redirect to client detail page
