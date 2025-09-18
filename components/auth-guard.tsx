@@ -14,8 +14,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const pathname = usePathname()
   const { user, isLoading, isAuthenticated, needsOnboarding } = useAuth()
 
+  // Check for auth bypass
+  const authBypass = typeof window !== 'undefined' ? localStorage.getItem('auth_bypass') === 'true' : false
+
   // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/signup', '/']
+  const publicRoutes = ['/login', '/signup', '/', '/bypass-auth']
   const isPublicRoute = publicRoutes.includes(pathname)
 
   useEffect(() => {
@@ -27,6 +30,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
       needsOnboarding,
       userEmail: user?.email
     })
+
+    // Allow bypass for development/existing users
+    if (authBypass && !isPublicRoute) {
+      console.log('[AuthGuard] Auth bypass active - allowing access')
+      return
+    }
 
     // Redirect unauthenticated users to login (except on public routes)
     if (!isAuthenticated && !isPublicRoute) {
