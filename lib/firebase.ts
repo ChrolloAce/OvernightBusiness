@@ -23,12 +23,12 @@ export const auth = getAuth(app)
 export const storage = getStorage(app)
 
 // Connect to emulator in development (optional)
-if (process.env.NODE_ENV === 'development' && !globalThis.firestoreEmulatorConnected) {
+if (process.env.NODE_ENV === 'development' && !(globalThis as any).firestoreEmulatorConnected) {
   try {
     // Only connect to emulator if FIREBASE_EMULATOR_HOST is set
     if (process.env.FIREBASE_EMULATOR_HOST) {
       connectFirestoreEmulator(db, 'localhost', 8080)
-      globalThis.firestoreEmulatorConnected = true
+      ;(globalThis as any).firestoreEmulatorConnected = true
       console.log('🔥 Connected to Firebase Emulator')
     }
   } catch (error) {
