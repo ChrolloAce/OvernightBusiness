@@ -8,12 +8,12 @@ interface ClientContextType {
   clients: Client[]
   selectedClient: Client | null
   setSelectedClient: (client: Client | null) => void
-  loadClients: () => void
-  createClient: (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Client
-  updateClient: (id: string, updates: Partial<Client>) => Client | null
-  deleteClient: (id: string) => boolean
-  connectGoogleBusinessProfile: (clientId: string, profileId: string, autoAssignData?: boolean) => boolean
-  getClientByGoogleBusinessProfileId: (profileId: string) => Client | null
+  loadClients: () => Promise<void>
+  createClient: (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Client>
+  updateClient: (id: string, updates: Partial<Client>) => Promise<Client | null>
+  deleteClient: (id: string) => Promise<boolean>
+  connectGoogleBusinessProfile: (clientId: string, profileId: string, autoAssignData?: boolean) => Promise<boolean>
+  getClientByGoogleBusinessProfileId: (profileId: string) => Promise<Client | null>
 }
 
 const ClientContext = createContext<ClientContextType | undefined>(undefined)
