@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAuth } from '@/contexts/auth-context'
+import { DebugAuth } from '@/components/debug-auth'
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -76,10 +77,19 @@ export default function OnboardingPage() {
 
   const handleSignOut = async () => {
     try {
+      console.log('[Onboarding] Signing out user...')
       await signOut()
-      router.push('/login')
+      
+      // Clear all localStorage data
+      localStorage.clear()
+      
+      // Force reload to clear all state
+      window.location.href = '/'
     } catch (error) {
       console.error('Error signing out:', error)
+      // Force reload even if signout fails
+      localStorage.clear()
+      window.location.href = '/'
     }
   }
 
@@ -376,6 +386,9 @@ export default function OnboardingPage() {
           </p>
         </div>
       </motion.div>
+      
+      {/* Debug Component */}
+      <DebugAuth />
     </div>
   )
 }

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { DebugAuth } from '@/components/debug-auth'
 export default function LandingPage() {
   const features = [
     {
@@ -187,6 +188,9 @@ export default function LandingPage() {
           <p className="text-sm mt-2">Premium Business Suite for Modern Companies</p>
         </div>
       </footer>
+      
+      {/* Debug Component */}
+      <DebugAuth />
     </div>
   )
 } 
