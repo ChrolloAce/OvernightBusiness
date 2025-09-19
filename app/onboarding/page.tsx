@@ -13,7 +13,8 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  LogOut
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,7 +25,7 @@ import { useAuth } from '@/contexts/auth-context'
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { user, completeOnboarding } = useAuth()
+  const { user, completeOnboarding, signOut } = useAuth()
   const [currentStep, setCurrentStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -73,6 +74,15 @@ export default function OnboardingPage() {
     }
   }
 
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      router.push('/login')
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
+
   const steps = [
     { number: 1, title: 'Company Information', icon: Building2 },
     { number: 2, title: 'Contact Details', icon: Mail },
@@ -115,7 +125,18 @@ export default function OnboardingPage() {
         </div>
 
         <Card className="shadow-xl border-0">
-          <CardHeader className="text-center">
+          <CardHeader className="text-center relative">
+            {/* Sign Out Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSignOut}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+            >
+              <LogOut className="h-4 w-4 mr-1" />
+              Sign Out
+            </Button>
+            
             <CardTitle className="text-xl font-bold text-gray-900">
               {currentStep === 1 && 'Tell us about your company'}
               {currentStep === 2 && 'Contact information'}
@@ -349,6 +370,9 @@ export default function OnboardingPage() {
         <div className="text-center mt-6">
           <p className="text-xs text-gray-500">
             You can always update this information later in your company settings
+          </p>
+          <p className="text-xs text-gray-400 mt-2">
+            Signed in as: <span className="font-medium">{user?.email}</span>
           </p>
         </div>
       </motion.div>
