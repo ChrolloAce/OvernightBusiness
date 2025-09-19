@@ -87,8 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return firebaseAuthService.hasPermission(permission)
   }
 
-  const isAuthenticated = firebaseAuthService.isAuthenticated()
-  const needsOnboarding = firebaseAuthService.needsOnboarding()
+  const isAuthenticated = user !== null
+  const needsOnboarding = user !== null && !user.companyId
 
   return (
     <AuthContext.Provider 
