@@ -25,13 +25,6 @@ import { Badge } from '@/components/ui/badge'
 
 const navigation = [
   {
-    name: 'Companies',
-    href: '/companies',
-    icon: Building2,
-    gradient: 'from-blue-500 to-indigo-500',
-    description: 'Company & User Management'
-  },
-  {
     name: 'Clients',
     href: '/clients',
     icon: Building2,
