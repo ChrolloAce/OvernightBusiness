@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { firebaseCompanyService, firebaseUserService } from '@/lib/firebase/company-service'
+import { useAuth } from '@/contexts/auth-context'
 
 interface Company {
   id: string
@@ -51,6 +52,7 @@ interface CompanyContextType {
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined)
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
+  const { user, isAuthenticated, needsOnboarding } = useAuth()
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
@@ -58,31 +60,39 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
   // Initialize with default company and user
   useEffect(() => {
-    initializeCompanyContext()
-  }, [])
+    // Only initialize if user is authenticated and has completed onboarding
+    if (isAuthenticated && !needsOnboarding && user?.companyId) {
+      initializeCompanyContext()
+    }
+  }, [isAuthenticated, needsOnboarding, user?.companyId])
 
   const initializeCompanyContext = async () => {
     try {
-      // Try to load saved company/user from localStorage
-      const savedCompanyId = localStorage.getItem('currentCompanyId')
+      console.log('[CompanyProvider] Initializing company context for user:', user?.email)
+      
+      // Use the user's companyId if available
+      const companyId = user?.companyId || localStorage.getItem('currentCompanyId')
       const savedUserId = localStorage.getItem('currentUserId')
       
-      if (savedCompanyId) {
-        const company = await firebaseCompanyService.getCompanyById(savedCompanyId)
+      if (companyId) {
+        console.log('[CompanyProvider] Loading company:', companyId)
+        const company = await firebaseCompanyService.getCompanyById(companyId)
         if (company) {
           setCurrentCompany(company)
+          localStorage.setItem('currentCompanyId', companyId)
         }
       }
       
       if (savedUserId) {
-        const user = await firebaseUserService.getUserById(savedUserId)
-        if (user) {
-          setCurrentUser(user)
+        const userDoc = await firebaseUserService.getUserById(savedUserId)
+        if (userDoc) {
+          setCurrentUser(userDoc)
         }
       }
       
-      // If no saved data, create/load default
-      if (!savedCompanyId || !savedUserId) {
+      // If no saved data, try to load companies
+      if (!companyId) {
+        console.log('[CompanyProvider] No company ID found, loading all companies')
         await loadCompanies()
       }
       
