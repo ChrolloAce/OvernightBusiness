@@ -19,9 +19,10 @@ export function FirebaseAuthProvider({ children }: FirebaseAuthProviderProps) {
         setIsAuthenticated(true)
         setIsLoading(false)
       } else {
-        console.log('🔐 No Firebase user, attempting anonymous sign-in...')
-        const success = await ensureFirebaseAuth()
-        setIsAuthenticated(success)
+        console.log('🔐 No Firebase user found')
+        // DISABLED: Don't automatically sign in anonymously
+        // const success = await ensureFirebaseAuth()
+        setIsAuthenticated(false)
         setIsLoading(false)
       }
     })

@@ -31,8 +31,12 @@ export class FirebaseClientService {
     try {
       console.log('[Firebase Client Service] Fetching all clients')
       
-      // Ensure Firebase auth first
-      await ensureFirebaseAuth()
+      // Check Firebase auth - don't proceed if not authenticated
+      const isAuthenticated = await ensureFirebaseAuth()
+      if (!isAuthenticated) {
+        console.log('[Firebase Client Service] Not authenticated, returning empty array')
+        return []
+      }
       
       const clientsRef = collection(db, COLLECTIONS.CLIENTS)
       const q = query(clientsRef, orderBy('createdAt', 'desc'))
@@ -89,8 +93,11 @@ export class FirebaseClientService {
     try {
       console.log('[Firebase Client Service] Creating client:', clientData.name)
       
-      // Ensure Firebase auth first
-      await ensureFirebaseAuth()
+      // Check Firebase auth - don't proceed if not authenticated
+      const isAuthenticated = await ensureFirebaseAuth()
+      if (!isAuthenticated) {
+        throw new Error('User must be authenticated to create clients')
+      }
       
       const clientsRef = collection(db, COLLECTIONS.CLIENTS)
       const newClientRef = doc(clientsRef)

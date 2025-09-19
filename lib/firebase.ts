@@ -44,10 +44,11 @@ export const ensureFirebaseAuth = async (): Promise<boolean> => {
   try {
     const user = auth.currentUser
     if (!user) {
-      console.log('🔐 No Firebase user found, signing in anonymously...')
-      await signInAnonymously(auth)
-      console.log('✅ Firebase anonymous authentication successful')
-      return true
+      console.log('🔐 No Firebase user found - ANONYMOUS AUTH DISABLED')
+      // DISABLED: Don't automatically sign in anonymously
+      // await signInAnonymously(auth)
+      // console.log('✅ Firebase anonymous authentication successful')
+      return false // Return false instead of signing in anonymously
     }
     console.log('✅ Firebase user already authenticated:', user.uid)
     return true
@@ -57,18 +58,19 @@ export const ensureFirebaseAuth = async (): Promise<boolean> => {
   }
 }
 
-// Auto-authenticate when Firebase initializes
-if (typeof window !== 'undefined') {
-  // Only run in browser environment
-  onAuthStateChanged(auth, (user) => {
-    if (!user) {
-      // Automatically sign in anonymously if no user
-      signInAnonymously(auth).catch((error) => {
-        console.error('Auto Firebase auth failed:', error)
-      })
-    }
-  })
-}
+// Auto-authenticate when Firebase initializes - DISABLED
+// This was causing auth loops during sign out
+// if (typeof window !== 'undefined') {
+//   // Only run in browser environment
+//   onAuthStateChanged(auth, (user) => {
+//     if (!user) {
+//       // Automatically sign in anonymously if no user
+//       signInAnonymously(auth).catch((error) => {
+//         console.error('Auto Firebase auth failed:', error)
+//       })
+//     }
+//   })
+// }
 
 // Data migration and cleanup utilities
 export const clearAllLocalStorageData = (): void => {
