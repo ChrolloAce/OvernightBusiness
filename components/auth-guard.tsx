@@ -44,8 +44,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
       return
     }
 
-    // Redirect authenticated users who need onboarding
-    if (isAuthenticated && needsOnboarding && pathname !== '/onboarding') {
+    // Redirect authenticated users who need onboarding (but allow dashboard access for now)
+    if (isAuthenticated && needsOnboarding && pathname !== '/onboarding' && pathname !== '/dashboard') {
       console.log('[AuthGuard] Redirecting to onboarding - user needs company setup')
       router.push('/onboarding')
       return

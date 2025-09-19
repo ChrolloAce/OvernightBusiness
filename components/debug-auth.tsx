@@ -35,6 +35,16 @@ export function DebugAuth() {
       window.location.href = '/'
     }
   }
+
+  const handleSkipOnboarding = () => {
+    try {
+      console.log('[Debug] Skipping onboarding...')
+      // Force redirect to dashboard
+      window.location.href = '/dashboard'
+    } catch (error) {
+      console.error('[Debug] Error skipping onboarding:', error)
+    }
+  }
   
   return (
     <div className="fixed bottom-4 right-4 bg-red-100 border border-red-300 rounded-lg p-4 text-sm max-w-sm">
@@ -45,13 +55,22 @@ export function DebugAuth() {
         <p>User Email: {user?.email || 'None'}</p>
         <p>Company ID: {user?.companyId || 'None'}</p>
       </div>
-      <Button 
-        onClick={handleForceSignOut}
-        size="sm" 
-        className="mt-3 bg-red-600 hover:bg-red-700 text-white w-full"
-      >
-        Force Sign Out & Clear All
-      </Button>
+      <div className="space-y-2 mt-3">
+        <Button 
+          onClick={handleSkipOnboarding}
+          size="sm" 
+          className="bg-green-600 hover:bg-green-700 text-white w-full"
+        >
+          Skip to Dashboard
+        </Button>
+        <Button 
+          onClick={handleForceSignOut}
+          size="sm" 
+          className="bg-red-600 hover:bg-red-700 text-white w-full"
+        >
+          Force Sign Out & Clear All
+        </Button>
+      </div>
     </div>
   )
 }
