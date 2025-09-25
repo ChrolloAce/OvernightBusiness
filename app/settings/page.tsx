@@ -159,11 +159,11 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Account Created</Label>
+                  <Label>Company ID</Label>
                   <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
-                    <Calendar className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm font-medium">
-                      {user?.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'}
+                    <Building2 className="w-4 h-4 text-gray-500" />
+                    <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
+                      {user?.companyId || 'Not assigned'}
                     </span>
                   </div>
                 </div>
