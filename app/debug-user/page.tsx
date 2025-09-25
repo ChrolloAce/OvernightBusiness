@@ -9,6 +9,7 @@ import { useCompany } from '@/contexts/company-context'
 export default function DebugUserPage() {
   const [debugData, setDebugData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [forceLinking, setForceLinking] = useState(false)
   const { user } = useAuth()
   const { currentCompany } = useCompany()
 
@@ -22,6 +23,39 @@ export default function DebugUserPage() {
       console.error('Error fetching debug data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const forceLinkToCompany = async () => {
+    if (!user) return
+    
+    setForceLinking(true)
+    try {
+      const response = await fetch('/api/force-link-company', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.uid,
+          email: user.email,
+          name: user.name
+        })
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        alert('✅ Successfully linked to company! Refresh the page to see changes.')
+        fetchDebugData() // Refresh debug data
+        // Force page reload to refresh auth context
+        setTimeout(() => window.location.reload(), 1000)
+      } else {
+        alert('❌ Failed to link to company: ' + result.error)
+      }
+    } catch (error) {
+      console.error('Error force linking:', error)
+      alert('❌ Error linking to company')
+    } finally {
+      setForceLinking(false)
     }
   }
 
@@ -80,8 +114,18 @@ export default function DebugUserPage() {
           </Card>
         </div>
 
-        <div className="text-center">
-          <Button onClick={() => window.location.href = '/settings'}>
+        <div className="text-center space-x-4">
+          <Button 
+            onClick={forceLinkToCompany}
+            disabled={forceLinking}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            {forceLinking ? 'Linking...' : '🔗 Force Link to Company'}
+          </Button>
+          <Button 
+            onClick={() => window.location.href = '/settings'}
+            variant="outline"
+          >
             Back to Settings
           </Button>
         </div>
