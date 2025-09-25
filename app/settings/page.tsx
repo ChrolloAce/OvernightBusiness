@@ -20,9 +20,18 @@ import {
   RefreshCw,
   Moon,
   Sun,
-  Monitor
+  Monitor,
+  LogOut,
+  Building2,
+  Mail,
+  Phone,
+  Calendar,
+  MapPin
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { useAuth } from '@/contexts/auth-context'
+import { useCompany } from '@/contexts/company-context'
+import { useRouter } from 'next/navigation'
 
 export default function SettingsPage() {
   const [mounted, setMounted] = useState(false)
@@ -32,27 +41,29 @@ export default function SettingsPage() {
     sms: false,
     marketing: true
   })
-  const [profile, setProfile] = useState({
-    name: 'John Doe',
-    email: 'john@example.com',
-    company: 'Overnight Biz',
-    timezone: 'UTC-5'
-  })
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const { theme, setTheme } = useTheme()
+  const { user, signOut } = useAuth()
+  const { currentCompany } = useCompany()
+  const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const handleNotificationChange = (key: string, value: boolean) => {
-    setNotifications(prev => ({
-      ...prev,
-      [key]: value
-    }))
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await signOut()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout error:', error)
+      setIsLoggingOut(false)
+    }
   }
 
-  const handleProfileChange = (key: string, value: string) => {
-    setProfile(prev => ({
+  const handleNotificationChange = (key: string, value: boolean) => {
+    setNotifications(prev => ({
       ...prev,
       [key]: value
     }))
@@ -91,63 +102,127 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
-                <Button 
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <Save className="w-4 h-4 mr-2 relative z-10" />
-                  <span className="relative z-10">Save Changes</span>
-                </Button>
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                    className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <LogOut className="w-4 h-4 mr-2 relative z-10" />
+                    <span className="relative z-10">{isLoggingOut ? 'Signing Out...' : 'Sign Out'}</span>
+                  </Button>
+                  <Button 
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 relative overflow-hidden group"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <Save className="w-4 h-4 mr-2 relative z-10" />
+                    <span className="relative z-10">Save Changes</span>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Profile Settings */}
+            {/* User Profile */}
             <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="w-5 h-5" />
-                  Profile Settings
+                  Your Profile
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={profile.name}
-                    onChange={(e) => handleProfileChange('name', e.target.value)}
-                    className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20"
-                  />
+                  <Label>Full Name</Label>
+                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <User className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium">{user?.name || 'Not provided'}</span>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={profile.email}
-                    onChange={(e) => handleProfileChange('email', e.target.value)}
-                    className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20"
-                  />
+                  <Label>Email Address</Label>
+                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <Mail className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium">{user?.email || 'Not provided'}</span>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input
-                    id="company"
-                    value={profile.company}
-                    onChange={(e) => handleProfileChange('company', e.target.value)}
-                    className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20"
-                  />
+                  <Label>User Role</Label>
+                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <Shield className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium capitalize">{user?.role || 'User'}</span>
+                    <Badge variant="outline" className="ml-auto">
+                      {user?.role === 'owner' ? 'Owner' : user?.role === 'admin' ? 'Admin' : 'User'}
+                    </Badge>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="timezone">Timezone</Label>
-                  <Input
-                    id="timezone"
-                    value={profile.timezone}
-                    onChange={(e) => handleProfileChange('timezone', e.target.value)}
-                    className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border-white/30 dark:border-white/20"
-                  />
+                  <Label>Account Created</Label>
+                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium">
+                      {user?.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Company Information */}
+            <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5" />
+                  Company Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Company Name</Label>
+                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <Building2 className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium">{currentCompany?.name || 'Not provided'}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Company Email</Label>
+                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <Mail className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium">{currentCompany?.email || 'Not provided'}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <Phone className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium">{currentCompany?.phone || 'Not provided'}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Industry</Label>
+                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <MapPin className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium capitalize">{currentCompany?.industry || 'Not specified'}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Subscription</Label>
+                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <Key className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium capitalize">{currentCompany?.subscription || 'Free'}</span>
+                    <Badge 
+                      variant="outline" 
+                      className={`ml-auto ${
+                        currentCompany?.subscription === 'pro' 
+                          ? 'text-green-600 border-green-600' 
+                          : 'text-blue-600 border-blue-600'
+                      }`}
+                    >
+                      {currentCompany?.subscription === 'pro' ? 'Pro' : 'Free'}
+                    </Badge>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -264,62 +339,55 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            {/* Security Settings */}
+            {/* Security & Session */}
             <Card className="bg-white/60 dark:bg-black/30 backdrop-blur-xl border-white/30 dark:border-white/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="w-5 h-5" />
-                  Security
+                  Security & Session
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Two-Factor Authentication</Label>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Add an extra layer of security
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                      Not Enabled
+                <div className="space-y-2">
+                  <Label>Authentication Method</Label>
+                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <Key className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium">Firebase Authentication</span>
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 ml-auto">
+                      Active
                     </Badge>
                   </div>
-                  <Button variant="outline" size="sm" className="w-full">
-                    <Key className="w-4 h-4 mr-2" />
-                    Enable 2FA
-                  </Button>
                 </div>
-                <div className="space-y-3">
-                  <div className="space-y-0.5">
-                    <Label>Password</Label>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Last changed 30 days ago
-                    </p>
+                <div className="space-y-2">
+                  <Label>Current Session</Label>
+                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <Globe className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium">Web Browser Session</span>
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 ml-auto">
+                      Active
+                    </Badge>
                   </div>
-                  <Button variant="outline" size="sm" className="w-full">
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Change Password
-                  </Button>
                 </div>
-                <div className="space-y-3">
-                  <div className="space-y-0.5">
-                    <Label>Active Sessions</Label>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Manage your active sessions
-                    </p>
+                <div className="space-y-2">
+                  <Label>User ID</Label>
+                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <User className="w-4 h-4 text-gray-500" />
+                    <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
+                      {user?.uid ? `${user.uid.substring(0, 8)}...${user.uid.substring(user.uid.length - 8)}` : 'Not available'}
+                    </span>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between p-3 bg-white/30 dark:bg-black/20 rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium">Current Session</p>
-                        <p className="text-xs text-gray-500">Chrome on Windows</p>
-                      </div>
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                        Active
-                      </Badge>
-                    </div>
-                  </div>
+                </div>
+                <div className="pt-2">
+                  <Button 
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    {isLoggingOut ? 'Signing Out...' : 'Sign Out of All Sessions'}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
