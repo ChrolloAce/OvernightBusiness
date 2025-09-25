@@ -42,6 +42,7 @@ export default function SettingsPage() {
     marketing: true
   })
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [isFixing, setIsFixing] = useState(false)
   const { theme, setTheme } = useTheme()
   const { user, signOut } = useAuth()
   const { currentCompany } = useCompany()
@@ -59,6 +60,30 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Logout error:', error)
       setIsLoggingOut(false)
+    }
+  }
+
+  const handleImmediateFix = async () => {
+    setIsFixing(true)
+    try {
+      const response = await fetch('/api/immediate-fix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        alert('✅ Company ID fixed! Refreshing page...')
+        window.location.reload()
+      } else {
+        alert('❌ Failed to fix: ' + result.error)
+      }
+    } catch (error) {
+      console.error('Fix error:', error)
+      alert('❌ Error fixing company ID')
+    } finally {
+      setIsFixing(false)
     }
   }
 
@@ -160,11 +185,23 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Company ID</Label>
-                  <div className="flex items-center space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
-                    <Building2 className="w-4 h-4 text-gray-500" />
-                    <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
-                      {user?.companyId || 'Not assigned'}
-                    </span>
+                  <div className="flex items-center justify-between space-x-2 p-3 bg-white/30 dark:bg-black/20 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <Building2 className="w-4 h-4 text-gray-500" />
+                      <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
+                        {user?.companyId || 'Not assigned'}
+                      </span>
+                    </div>
+                    {!user?.companyId && (
+                      <Button
+                        onClick={handleImmediateFix}
+                        disabled={isFixing}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 h-6"
+                      >
+                        {isFixing ? 'Fixing...' : 'Fix Now'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
