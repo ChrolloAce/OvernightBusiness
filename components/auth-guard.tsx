@@ -44,12 +44,13 @@ export function AuthGuard({ children }: AuthGuardProps) {
       return
     }
 
-    // Redirect authenticated users who need onboarding (but allow dashboard access for now)
-    if (isAuthenticated && needsOnboarding && pathname !== '/onboarding' && pathname !== '/dashboard') {
-      console.log('[AuthGuard] Redirecting to onboarding - user needs company setup')
-      router.push('/onboarding')
-      return
-    }
+    // DISABLED: Don't redirect to onboarding automatically
+    // Allow authenticated users to access any page
+    // if (isAuthenticated && needsOnboarding && pathname !== '/onboarding' && pathname !== '/dashboard') {
+    //   console.log('[AuthGuard] Redirecting to onboarding - user needs company setup')
+    //   router.push('/onboarding')
+    //   return
+    // }
 
     // Redirect authenticated users away from auth pages
     if (isAuthenticated && !needsOnboarding && (pathname === '/login' || pathname === '/signup' || pathname === '/onboarding')) {
@@ -83,21 +84,22 @@ export function AuthGuard({ children }: AuthGuardProps) {
     )
   }
 
-  // Show onboarding loading if user needs onboarding but not on onboarding page
-  if (isAuthenticated && needsOnboarding && pathname !== '/onboarding') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Building2 className="h-8 w-8 text-white" />
-          </div>
-          <Loader2 className="h-8 w-8 text-blue-600 animate-spin mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Setting up your account</h2>
-          <p className="text-gray-600">Redirecting to company setup...</p>
-        </div>
-      </div>
-    )
-  }
+  // DISABLED: Don't show onboarding loading screen
+  // Allow users to access pages even without company setup
+  // if (isAuthenticated && needsOnboarding && pathname !== '/onboarding') {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+  //           <Building2 className="h-8 w-8 text-white" />
+  //         </div>
+  //         <Loader2 className="h-8 w-8 text-blue-600 animate-spin mx-auto mb-4" />
+  //         <h2 className="text-xl font-semibold text-gray-900 mb-2">Setting up your account</h2>
+  //         <p className="text-gray-600">Redirecting to company setup...</p>
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
   // Show login loading if not authenticated and not on public route
   if (!isAuthenticated && !isPublicRoute) {
