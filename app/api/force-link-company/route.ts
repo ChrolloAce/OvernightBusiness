@@ -17,14 +17,24 @@ export async function POST(request: NextRequest) {
 
     console.log('[Force Link] Starting force link for user:', { userId, email })
     
-    // 1. Ensure default company exists
-    const defaultCompanyId = 'company_overnight_biz_main'
-    let defaultCompany = await firebaseCompanyService.getCompanyById(defaultCompanyId)
+    // 1. Ensure default company exists or create one
+    let defaultCompany: any
+    
+    // Try to find existing company first
+    try {
+      const companies = await firebaseCompanyService.getAllCompanies()
+      defaultCompany = companies.find(c => c.name === 'OvernightBiz Main Company')
+      
+      if (defaultCompany) {
+        console.log('[Force Link] Found existing company:', defaultCompany.id)
+      }
+    } catch (error) {
+      console.log('[Force Link] Error finding companies:', error)
+    }
     
     if (!defaultCompany) {
       console.log('[Force Link] Creating default company...')
       defaultCompany = await firebaseCompanyService.createCompany({
-        id: defaultCompanyId,
         name: 'OvernightBiz Main Company',
         email: 'admin@overnightbiz.com',
         phone: '+17862903664',
