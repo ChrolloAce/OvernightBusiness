@@ -22,7 +22,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAuth } from '@/contexts/auth-context'
-import { DebugAuth } from '@/components/debug-auth'
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -343,6 +342,39 @@ export default function OnboardingPage() {
                 </Button>
               )}
               
+              {/* Quick Fix Button */}
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/fix-user', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        userId: user?.uid,
+                        email: user?.email,
+                        name: user?.name
+                      })
+                    })
+                    const result = await response.json()
+                    
+                    if (result.success) {
+                      alert('✅ User record fixed! Redirecting to dashboard...')
+                      window.location.href = '/dashboard'
+                    } else {
+                      alert('❌ Failed to fix user record')
+                    }
+                  } catch (error) {
+                    console.error('Error fixing user:', error)
+                    alert('❌ Error fixing user record')
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                className="text-green-600 border-green-300 hover:bg-green-50"
+              >
+                Quick Fix & Skip to Dashboard
+              </Button>
+              
               <div className="flex-1" />
               
               {currentStep < 3 ? (
@@ -386,9 +418,6 @@ export default function OnboardingPage() {
           </p>
         </div>
       </motion.div>
-      
-      {/* Debug Component */}
-      <DebugAuth />
     </div>
   )
 }
